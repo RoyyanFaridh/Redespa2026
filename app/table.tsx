@@ -248,7 +248,7 @@ export default function MudamudiTable({
             {/* ==================================================
                 ADD DATA
                 ================================================== */}
-            {isAdmin && (
+            
             <button
                 type="button"
                 onClick={() =>
@@ -289,7 +289,6 @@ export default function MudamudiTable({
                 Tambah Data
                 </span>
             </button>
-            )}
         </div>
         </header>
 
