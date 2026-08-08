@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
   const supabase = createClient()
@@ -137,48 +138,108 @@ export default function LoginPage() {
 
             {/* Password */}
             <div>
-              <label
+            <label
                 htmlFor="password"
                 className="mb-1.5 block text-[11px] font-medium text-gray-600"
-              >
+            >
                 Password
-              </label>
+            </label>
 
-              <div className="relative">
+            <div className="relative">
+                {/* Lock Icon */}
                 <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-                  <svg
+                <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="1.7"
                     className="h-4 w-4 text-gray-400"
-                  >
+                >
                     <rect
-                      x="4"
-                      y="10"
-                      width="16"
-                      height="11"
-                      rx="2"
+                    x="4"
+                    y="10"
+                    width="16"
+                    height="11"
+                    rx="2"
                     />
                     <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M8 10V7a4 4 0 0 1 8 0v3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M8 10V7a4 4 0 0 1 8 0v3"
                     />
-                  </svg>
+                </svg>
                 </div>
 
+                {/* Password Input */}
                 <input
-                  id="password"
-                  type="password"
-                  placeholder="Masukkan password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-[12px] text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-[#0d7f78] focus:ring-2 focus:ring-[#0d7f78]/10"
-                  required
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Masukkan password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-10 text-[12px] text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-[#0d7f78] focus:ring-2 focus:ring-[#0d7f78]/10"
+                required
                 />
-              </div>
+
+                {/* Eye Button */}
+                <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-3 flex items-center text-gray-400 transition hover:text-gray-600"
+                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                >
+                {showPassword ? (
+                    // Eye Off
+                    <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    className="h-4 w-4"
+                    >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 3l18 18"
+                    />
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M10.6 10.6a2 2 0 0 0 2.8 2.8"
+                    />
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9.9 5.1A10.7 10.7 0 0 1 12 5c5 0 8.5 4.5 9.5 7a15.8 15.8 0 0 1-3.1 4.3"
+                    />
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6.2 6.2C4.5 7.5 3.3 9.3 2.5 12c1 2.5 4.5 7 9.5 7 1 0 2-.2 2.9-.5"
+                    />
+                    </svg>
+                ) : (
+                    // Eye
+                    <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    className="h-4 w-4"
+                    >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z"
+                    />
+                    <circle cx="12" cy="12" r="2.5" />
+                    </svg>
+                )}
+                </button>
+            </div>
             </div>
 
             {/* Submit */}
