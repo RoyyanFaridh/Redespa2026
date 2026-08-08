@@ -18,7 +18,6 @@ import {
 
 import { validateClient } from './mudamudi/validation'
 import { useMudamudiFilter } from './mudamudi/useMudamudiFilter'
-
 import SearchFilterBar from './mudamudi/SearchFilterBar'
 import MudamudiTableView from './mudamudi/MudamudiTableView'
 import MudamudiFormModal from './mudamudi/MudamudiFormModal'
@@ -315,23 +314,18 @@ export default function MudamudiTable({
             totalCount={initialData.length}
             sortIndicator={filter.sortIndicator}
             toggleSort={filter.toggleSort}
+            filterKey={filter.filterKey}
             onEdit={(s) =>
-              guardOrOpen(() =>
-                setModal({
-                  type: 'edit',
-                  data: s,
-                })
-              )
+                guardOrOpen(() =>
+                setModal({ type: 'edit', data: s })
+                )
             }
             onDelete={(s) =>
-              guardOrOpen(() =>
-                setModal({
-                  type: 'delete',
-                  data: s,
-                })
-              )
+                guardOrOpen(() =>
+                setModal({ type: 'delete', data: s })
+                )
             }
-          />
+            />
         </section>
       </div>
 

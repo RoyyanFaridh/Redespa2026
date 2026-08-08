@@ -21,7 +21,10 @@ export default function MudamudiFormModal({
 }: Props) {
   return (
     <ModalWrapper onClose={onClose}>
-      <form onSubmit={onSubmit}>
+        <form
+            onSubmit={onSubmit}
+            className="w-full max-w-125 overflow-hidden rounded-2xl bg-white shadow-xl"
+        >
 
         {/* ==================================================
             HEADER

@@ -10,3 +10,5 @@ export type FieldErrors = { nama?: string; jenjang?: string; kelompok?: string }
 
 export type SortKey = 'nama' | 'jenjang' | 'kelompok'
 export type SortConfig = { key: SortKey; direction: 'asc' | 'desc' } | null
+
+export type PerPageOption = 10 | 50 | 100

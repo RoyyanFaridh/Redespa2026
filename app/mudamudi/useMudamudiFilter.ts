@@ -49,6 +49,9 @@ export function useMudamudiFilter(initialData: Mudamudi[]) {
 
   const hasActiveFilters = !!(search || filterJenjang || filterKelompok || sortConfig)
 
+
+  const filterKey = `${search}|${filterJenjang}|${filterKelompok}|${sortConfig?.key ?? ''}|${sortConfig?.direction ?? ''}`
+
   return {
     search, setSearch,
     filterJenjang, setFilterJenjang,
@@ -56,5 +59,6 @@ export function useMudamudiFilter(initialData: Mudamudi[]) {
     displayedData,
     toggleSort, sortIndicator,
     resetAll, hasActiveFilters,
+    filterKey,
   }
 }

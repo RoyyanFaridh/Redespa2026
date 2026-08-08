@@ -31,7 +31,7 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#fafafa] px-4 py-8">
-      <div className="w-full max-w-[380px]">
+      <div className="w-full max-w-95">
 
         {/* ======================================================
             LOGIN CARD
