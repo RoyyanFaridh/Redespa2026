@@ -27,6 +27,9 @@ export default function DesktopTable({ data, startIndex, sortIndicator, toggleSo
             >
               NAMA{sortIndicator('nama')}
             </th>
+            <th className="w-32 px-3 py-2.5 text-left text-[10px] font-medium uppercase tracking-wide text-gray-500">
+              JENIS KELAMIN
+            </th>
             <th
               className="w-36.25 cursor-pointer select-none px-3 py-2.5 text-left text-[10px] font-medium uppercase tracking-wide text-gray-500 transition hover:text-gray-800"
               onClick={() => toggleSort('jenjang')}
@@ -48,7 +51,7 @@ export default function DesktopTable({ data, startIndex, sortIndicator, toggleSo
         <tbody>
           {data.length === 0 ? (
             <tr>
-              <td colSpan={5} className="px-4 py-8 text-center text-[12px] text-gray-500">
+              <td colSpan={6} className="px-4 py-8 text-center text-[12px] text-gray-500">
                 Tidak ada data yang cocok
               </td>
             </tr>
@@ -74,6 +77,10 @@ export default function DesktopTable({ data, startIndex, sortIndicator, toggleSo
                         {toTitleCase(s.nama)}
                       </span>
                     </div>
+                  </td>
+
+                  <td className="px-3 py-2.5 text-[11px] text-gray-600">
+                    {s.jenis_kelamin}
                   </td>
 
                   <td className="px-3 py-2.5">

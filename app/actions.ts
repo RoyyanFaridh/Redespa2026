@@ -6,12 +6,14 @@ import { toTitleCase } from './mudamudi/format'
 
 const JENJANG_OPTIONS = ['Pra Nikah', 'Remaja', 'Pra Remaja']
 const KELOMPOK_OPTIONS = ['Pandak 1', 'Pandak 2', 'Pandak 3', 'Pandak 4', 'Carikan', 'Payungan']
+const JENIS_KELAMIN_OPTIONS = ['Laki-laki', 'Perempuan']
 
-function validate(nama: string, jenjang: string, kelompok: string) {
+function validate(nama: string, jenjang: string, kelompok: string, jenisKelamin: string) {
   if (!nama.trim()) return 'Nama wajib diisi'
   if (/\d/.test(nama)) return 'Nama tidak boleh mengandung angka'
   if (!JENJANG_OPTIONS.includes(jenjang)) return 'Jenjang tidak valid'
   if (!KELOMPOK_OPTIONS.includes(kelompok)) return 'Kelompok tidak valid'
+  if (!JENIS_KELAMIN_OPTIONS.includes(jenisKelamin)) return 'Jenis kelamin wajib dipilih'
   return null
 }
 
@@ -24,8 +26,9 @@ export async function addMudamudi(formData: FormData) {
   const namaRaw = (formData.get('nama') as string).trim()
   const jenjang = formData.get('jenjang') as string
   const kelompok = formData.get('kelompok') as string
+  const jenisKelamin = formData.get('jenis_kelamin') as string
 
-  const validationError = validate(namaRaw, jenjang, kelompok)
+  const validationError = validate(namaRaw, jenjang, kelompok, jenisKelamin)
   if (validationError) return { error: validationError }
 
   const nama = toTitleCase(namaRaw)
@@ -39,7 +42,7 @@ export async function addMudamudi(formData: FormData) {
   const isDuplicate = candidates?.some((c) => normalizeForCompare(c.nama) === normalizeForCompare(nama))
   if (isDuplicate) return { error: 'Data dengan nama, jenjang, dan kelompok yang sama sudah ada' }
 
-  const { error } = await supabase.from('mudamudi').insert({ nama, jenjang, kelompok })
+  const { error } = await supabase.from('mudamudi').insert({ nama, jenjang, kelompok, jenis_kelamin: jenisKelamin })
   if (error) {
     if (error.code === '23505') return { error: 'Data dengan kombinasi ini sudah ada' }
     return { error: error.message }
@@ -53,8 +56,9 @@ export async function updateMudamudi(id: number, formData: FormData) {
   const namaRaw = (formData.get('nama') as string).trim()
   const jenjang = formData.get('jenjang') as string
   const kelompok = formData.get('kelompok') as string
+  const jenisKelamin = formData.get('jenis_kelamin') as string
 
-  const validationError = validate(namaRaw, jenjang, kelompok)
+  const validationError = validate(namaRaw, jenjang, kelompok, jenisKelamin)
   if (validationError) return { error: validationError }
 
   const nama = toTitleCase(namaRaw)
@@ -69,7 +73,7 @@ export async function updateMudamudi(id: number, formData: FormData) {
   const isDuplicate = candidates?.some((c) => normalizeForCompare(c.nama) === normalizeForCompare(nama))
   if (isDuplicate) return { error: 'Data dengan nama, jenjang, dan kelompok yang sama sudah ada' }
 
-  const { error } = await supabase.from('mudamudi').update({ nama, jenjang, kelompok }).eq('id', id)
+  const { error } = await supabase.from('mudamudi').update({ nama, jenjang, kelompok, jenis_kelamin: jenisKelamin }).eq('id', id)
   if (error) {
     if (error.code === '23505') return { error: 'Data dengan kombinasi ini sudah ada' }
     return { error: error.message }

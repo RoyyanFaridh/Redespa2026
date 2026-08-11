@@ -1,5 +1,5 @@
 import { Mudamudi, FieldErrors } from './types'
-import { JENJANG_OPTIONS, KELOMPOK_OPTIONS } from './constants'
+import { JENJANG_OPTIONS, KELOMPOK_OPTIONS, JENIS_KELAMIN_OPTIONS } from './constants'
 import ModalWrapper from './ModalWrapper'
 
 type Props = {
@@ -154,7 +154,7 @@ export default function MudamudiFormModal({
           <div>
             <label
               htmlFor="nama"
-              className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-gray-600"
+              className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-gray-400"
             >
               <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gray-100 text-gray-500">
                 <svg
@@ -183,7 +183,7 @@ export default function MudamudiFormModal({
               type="text"
               placeholder="Masukkan nama lengkap"
               defaultValue={initialData?.nama ?? ''}
-              className={`h-9.75 w-full rounded-lg border bg-white px-3 text-[12px] text-gray-700 outline-none transition placeholder:text-gray-400 focus:ring-2 ${
+              className={`h-9.75 w-full rounded-lg border bg-white px-3 text-[12px] text-gray-700 outline-none transition placeholder:text-gray-500 focus:ring-2 ${
                 fieldErrors.nama
                   ? 'border-red-300 focus:border-red-400 focus:ring-red-50'
                   : 'border-gray-200 focus:border-teal-400 focus:ring-teal-50'
@@ -198,6 +198,86 @@ export default function MudamudiFormModal({
           </div>
 
           {/* ==================================================
+            JENIS KELAMIN
+            ================================================== */}
+
+            <div>
+              <label
+                htmlFor="jenis_kelamin"
+                className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-gray-400"
+              >
+                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-violet-50 text-violet-600">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-3 w-3"
+                  >
+                    <circle cx="12" cy="8" r="4" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 12v9M9 18h6"
+                    />
+                  </svg>
+                </span>
+            Jenis Kelamin
+              </label>
+
+              <div className="relative">
+                <select
+                  id="jenis_kelamin"
+                  name="jenis_kelamin"
+                  defaultValue={initialData?.jenis_kelamin ?? ''}
+                  className={`h-9.75 w-full appearance-none rounded-lg border bg-white px-3 pr-9 text-[12px] outline-none transition focus:ring-2 ${
+                    initialData?.jenis_kelamin
+                      ? 'text-gray-700'
+                      : 'text-gray-500'
+                  } ${
+                    fieldErrors.jenis_kelamin
+                      ? 'border-red-300 focus:border-red-400 focus:ring-red-50'
+                      : 'border-gray-200 focus:border-violet-300 focus:ring-violet-50'
+                  }`}
+                >
+                  <option value="" disabled>
+                    Pilih Jenis Kelamin
+                  </option>
+
+              {JENIS_KELAMIN_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+
+            {/* Arrow */}
+            <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-500">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-3.5 w-3.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m6 9 6 6 6-6"
+                />
+              </svg>
+            </div>
+              </div>
+
+            {fieldErrors.jenis_kelamin && ( <p className="mt-1 text-[10px] text-red-500">
+            {fieldErrors.jenis_kelamin} </p>
+            )}
+
+            </div>
+
+          {/* ==================================================
               JENJANG + KELOMPOK
               ================================================== */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -208,7 +288,7 @@ export default function MudamudiFormModal({
             <div>
               <label
                 htmlFor="jenjang"
-                className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-gray-600"
+                className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-gray-400"
               >
                 <span className="flex h-5 w-5 items-center justify-center rounded-md bg-orange-50 text-orange-500">
                   <svg
@@ -243,7 +323,7 @@ export default function MudamudiFormModal({
                   className={`h-9.75 w-full appearance-none rounded-lg border bg-white px-3 pr-9 text-[12px] outline-none transition focus:ring-2 ${
                     initialData?.jenjang
                       ? 'text-gray-700'
-                      : 'text-gray-400'
+                      : 'text-gray-500'
                   } ${
                     fieldErrors.jenjang
                       ? 'border-red-300 focus:border-red-400 focus:ring-red-50'
@@ -262,7 +342,7 @@ export default function MudamudiFormModal({
                 </select>
 
                 {/* Arrow */}
-                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-500">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -293,7 +373,7 @@ export default function MudamudiFormModal({
             <div>
               <label
                 htmlFor="kelompok"
-                className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-gray-600"
+                className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-gray-400"
               >
                 <span className="flex h-5 w-5 items-center justify-center rounded-md bg-sky-50 text-sky-600">
                   <svg
@@ -334,7 +414,7 @@ export default function MudamudiFormModal({
                   className={`h-9.75 w-full appearance-none rounded-lg border bg-white px-3 pr-9 text-[12px] outline-none transition focus:ring-2 ${
                     initialData?.kelompok
                       ? 'text-gray-700'
-                      : 'text-gray-400'
+                      : 'text-gray-500'
                   } ${
                     fieldErrors.kelompok
                       ? 'border-red-300 focus:border-red-400 focus:ring-red-50'
@@ -353,7 +433,7 @@ export default function MudamudiFormModal({
                 </select>
 
                 {/* Arrow */}
-                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-500">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"

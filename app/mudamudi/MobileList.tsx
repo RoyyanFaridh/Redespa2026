@@ -42,7 +42,7 @@ export default function MobileList({ data, onEdit, onDelete }: Props) {
                     {toTitleCase(s.nama)}
                   </p>
                   <p className="mt-0.5 truncate text-[10px] text-gray-400">
-                    {s.kelompok}
+                    {s.jenis_kelamin} · {s.kelompok}
                   </p>
                 </div>
               </div>
