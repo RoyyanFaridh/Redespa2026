@@ -152,15 +152,8 @@ export default function MudamudiTable({
     <main className="min-h-screen bg-white">
       <div className="mx-auto w-full px-4 py-6 sm:px-6 md:px-7 lg:px-8">
 
-        {/* ======================================================
-            HEADER
-            ====================================================== */}
         <header className="border-b border-gray-200 pb-5">
         <div className="flex items-start justify-between gap-4">
-
-            {/* ==================================================
-                BRAND
-                ================================================== */}
             <div className="min-w-0">
             <div className="flex items-center gap-2.5">
 
@@ -180,10 +173,6 @@ export default function MudamudiTable({
                 </p>
                 </div>
             </div>
-
-            {/* ==================================================
-                ACCOUNT / SESSION
-                ================================================== */}
             <div className="mt-3 flex items-center gap-3 pl-10.5">
 
                 {/* Status */}
@@ -304,6 +293,8 @@ export default function MudamudiTable({
             setFilterJenjang={filter.setFilterJenjang}
             filterKelompok={filter.filterKelompok}
             setFilterKelompok={filter.setFilterKelompok}
+            filterJenisKelamin={filter.filterJenisKelamin}
+            setFilterJenisKelamin={filter.setFilterJenisKelamin}
             hasActiveFilters={filter.hasActiveFilters}
             onReset={filter.resetAll}
           />

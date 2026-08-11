@@ -1,4 +1,11 @@
-import { JENJANG_OPTIONS, KELOMPOK_OPTIONS } from './constants'
+'use client'
+
+import { useState } from 'react'
+import {
+  JENJANG_OPTIONS,
+  KELOMPOK_OPTIONS,
+  JENIS_KELAMIN_OPTIONS,
+} from './constants'
 
 type Props = {
   search: string
@@ -7,6 +14,8 @@ type Props = {
   setFilterJenjang: (v: string) => void
   filterKelompok: string
   setFilterKelompok: (v: string) => void
+  filterJenisKelamin: string
+  setFilterJenisKelamin: (v: string) => void
   hasActiveFilters: boolean
   onReset: () => void
 }
@@ -18,14 +27,28 @@ export default function SearchFilterBar({
   setFilterJenjang,
   filterKelompok,
   setFilterKelompok,
+  filterJenisKelamin,
+  setFilterJenisKelamin,
   hasActiveFilters,
   onReset,
 }: Props) {
+  const [showFilter, setShowFilter] = useState(false)
+
+  const activeFilterCount = [
+    filterJenisKelamin,
+    filterJenjang,
+    filterKelompok,
+  ].filter(Boolean).length
+
   return (
     <div className="mb-4">
-      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-[minmax(0,1fr)_132px_132px] md:gap-2.5">
+      {/* ==================================================
+        SEARCH + FILTER BUTTON
+        ================================================== */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2.5">
+        
         {/* Search */}
-        <div className="relative col-span-2 md:col-span-1">
+        <div className="relative">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -47,57 +70,249 @@ export default function SearchFilterBar({
           />
         </div>
 
-        {/* Filter Jenjang */}
-        <select
-          value={filterJenjang}
-          onChange={(e) => setFilterJenjang(e.target.value)}
-          className="h-9.5 w-full min-w-0 appearance-none rounded-lg border border-gray-200 bg-white px-3 text-[12px] text-gray-600 outline-none transition focus:border-gray-300 focus:ring-1 focus:ring-gray-200 md:px-3.5"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 10px center',
-            backgroundSize: '14px',
-          }}
+        {/* ==================================================
+          FILTER BUTTON
+          ================================================== */}
+        <button
+          type="button"
+          onClick={() => setShowFilter((prev) => !prev)}
+          className={`
+            flex h-9.5 items-center justify-center gap-1.5
+            rounded-lg border px-3 text-[12px]
+            transition
+            ${
+              showFilter || hasActiveFilters
+                ? 'border-teal-200 bg-teal-50 text-teal-700'
+                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+            }
+          `}
         >
-          <option value="">Semua Jenjang</option>
-          {JENJANG_OPTIONS.map((j) => (
-            <option key={j} value={j}>
-              {j}
-            </option>
-          ))}
-        </select>
+          {/* Filter Icon */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            className="h-3.5 w-3.5"
+          >
+            <path d="M4 6h16" />
+            <path d="M7 12h10" />
+            <path d="M10 18h4" />
+          </svg>
 
-        {/* Filter Kelompok */}
-        <select
-          value={filterKelompok}
-          onChange={(e) => setFilterKelompok(e.target.value)}
-          className="h-9.5 w-full min-w-0 appearance-none rounded-lg border border-gray-200 bg-white px-3 text-[12px] text-gray-600 outline-none transition focus:border-gray-300 focus:ring-1 focus:ring-gray-200 md:px-3.5"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 10px center',
-            backgroundSize: '14px',
-          }}
-        >
-          <option value="">Semua Kelompok</option>
-          {KELOMPOK_OPTIONS.map((k) => (
-            <option key={k} value={k}>
-              {k}
-            </option>
-          ))}
-        </select>
+          Filter
+
+          {/* Active Filter Count */}
+          {activeFilterCount > 0 && (
+            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-teal-700 px-1 text-[9px] font-medium text-white">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Reset hanya muncul ketika filter aktif */}
-      {hasActiveFilters && (
-        <div className="mt-2 flex justify-end">
-          <button
-            type="button"
-            onClick={onReset}
-            className="text-[11px] text-gray-500 underline underline-offset-2 transition hover:text-gray-700"
-          >
-            Reset filter
-          </button>
+      {/* ==================================================
+        FILTER PANEL
+        ================================================== */}
+      {showFilter && (
+        <div className="mt-2.5 rounded-xl border border-gray-200 bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.05)]">
+          
+          {/* ==================================================
+            HEADER
+            ================================================== */}
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-[12px] font-semibold text-gray-800">
+                Filter Data
+              </h3>
+
+              <p className="mt-0.5 text-[10px] text-gray-400">
+                Pilih kriteria untuk menyaring data
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowFilter(false)}
+              aria-label="Tutup filter"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-4 w-4"
+              >
+                <path d="M6 6l12 12" />
+                <path d="M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+
+          {/* ==================================================
+            FILTER OPTIONS
+            ================================================== */}
+          <div className="grid gap-4 md:grid-cols-3 md:gap-6">
+
+            {/* ==================================================
+              JENIS KELAMIN
+              ================================================== */}
+            <div>
+              <p className="mb-2 text-[11px] font-medium text-gray-600">
+                Jenis Kelamin
+              </p>
+
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {/* Semua */}
+                <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-600">
+                  <input
+                    type="radio"
+                    name="jenis-kelamin"
+                    value=""
+                    checked={filterJenisKelamin === ''}
+                    onChange={(e) =>
+                      setFilterJenisKelamin(e.target.value)
+                    }
+                    className="h-3.5 w-3.5 accent-teal-600"
+                  />
+                  Semua
+                </label>
+
+                {JENIS_KELAMIN_OPTIONS.map((jk) => (
+                  <label
+                    key={jk}
+                    className="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-600"
+                  >
+                    <input
+                      type="radio"
+                      name="jenis-kelamin"
+                      value={jk}
+                      checked={filterJenisKelamin === jk}
+                      onChange={(e) =>
+                        setFilterJenisKelamin(e.target.value)
+                      }
+                      className="h-3.5 w-3.5 accent-teal-600"
+                    />
+                    {jk}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* ==================================================
+              JENJANG
+              ================================================== */}
+            <div className="border-t border-gray-100 pt-4 md:border-t-0 md:border-l md:pl-6 md:pt-0">
+              <p className="mb-2 text-[11px] font-medium text-gray-600">
+                Jenjang
+              </p>
+
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {/* Semua */}
+                <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-600">
+                  <input
+                    type="radio"
+                    name="jenjang"
+                    value=""
+                    checked={filterJenjang === ''}
+                    onChange={(e) =>
+                      setFilterJenjang(e.target.value)
+                    }
+                    className="h-3.5 w-3.5 accent-teal-600"
+                  />
+                  Semua
+                </label>
+
+                {JENJANG_OPTIONS.map((j) => (
+                  <label
+                    key={j}
+                    className="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-600"
+                  >
+                    <input
+                      type="radio"
+                      name="jenjang"
+                      value={j}
+                      checked={filterJenjang === j}
+                      onChange={(e) =>
+                        setFilterJenjang(e.target.value)
+                      }
+                      className="h-3.5 w-3.5 accent-teal-600"
+                    />
+                    {j}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* ==================================================
+              KELOMPOK
+              ================================================== */}
+            <div className="border-t border-gray-100 pt-4 md:border-l md:border-t-0 md:pl-6 md:pt-0">
+              <p className="mb-2 text-[11px] font-medium text-gray-600">
+                Kelompok
+              </p>
+
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {/* Semua */}
+                <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-600">
+                  <input
+                    type="radio"
+                    name="kelompok"
+                    value=""
+                    checked={filterKelompok === ''}
+                    onChange={(e) =>
+                      setFilterKelompok(e.target.value)
+                    }
+                    className="h-3.5 w-3.5 accent-teal-600"
+                  />
+                  Semua
+                </label>
+
+                {KELOMPOK_OPTIONS.map((k) => (
+                  <label
+                    key={k}
+                    className="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-600"
+                  >
+                    <input
+                      type="radio"
+                      name="kelompok"
+                      value={k}
+                      checked={filterKelompok === k}
+                      onChange={(e) =>
+                        setFilterKelompok(e.target.value)
+                      }
+                      className="h-3.5 w-3.5 accent-teal-600"
+                    />
+                    {k}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ==================================================
+            FOOTER
+            ================================================== */}
+          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
+            <button
+              type="button"
+              onClick={onReset}
+              className="text-[11px] text-gray-500 underline underline-offset-2 transition hover:text-gray-700"
+            >
+              Reset filter
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowFilter(false)}
+              className="rounded-lg bg-teal-700 px-3.5 py-2 text-[11px] font-medium text-white transition hover:bg-teal-800"
+            >
+              Selesai
+            </button>
+          </div>
         </div>
       )}
     </div>
