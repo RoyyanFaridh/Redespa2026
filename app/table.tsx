@@ -296,6 +296,8 @@ export default function MudamudiTable({
             filterJenisKelamin={filter.filterJenisKelamin}
             setFilterJenisKelamin={filter.setFilterJenisKelamin}
             hasActiveFilters={filter.hasActiveFilters}
+            sortConfig={filter.sortConfig}
+            setSortConfig={filter.setSortConfig}
             onReset={filter.resetAll}
           />
 

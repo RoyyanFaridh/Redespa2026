@@ -6,6 +6,7 @@ import {
   KELOMPOK_OPTIONS,
   JENIS_KELAMIN_OPTIONS,
 } from './constants'
+import { SortConfig } from './types'
 
 type Props = {
   search: string
@@ -17,6 +18,8 @@ type Props = {
   filterJenisKelamin: string
   setFilterJenisKelamin: (v: string) => void
   hasActiveFilters: boolean
+  sortConfig: SortConfig
+  setSortConfig: (config: SortConfig) => void
   onReset: () => void
 }
 
@@ -29,6 +32,8 @@ export default function SearchFilterBar({
   setFilterKelompok,
   filterJenisKelamin,
   setFilterJenisKelamin,
+  sortConfig,
+  setSortConfig,
   hasActiveFilters,
   onReset,
 }: Props) {
@@ -156,11 +161,72 @@ export default function SearchFilterBar({
             FILTER OPTIONS
             ================================================== */}
           <div className="grid gap-4 md:grid-cols-3 md:gap-6">
-
-            {/* ==================================================
-              JENIS KELAMIN
-              ================================================== */}
             <div>
+              <div className="mb-4 border-b border-gray-100 pb-4">
+                <p className="mb-2 text-[11px] font-medium text-gray-600">
+                  Urutkan
+                </p>
+
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-600">
+                    <input
+                      type="radio"
+                      name="sort"
+                      checked={
+                        sortConfig?.key === 'created_at' &&
+                        sortConfig?.direction === 'desc'
+                      }
+                      onChange={() =>
+                        setSortConfig({
+                          key: 'created_at',
+                          direction: 'desc',
+                        })
+                      }
+                      className="h-3.5 w-3.5 accent-teal-600"
+                    />
+                    Terbaru
+                  </label>
+
+                  <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-600">
+                    <input
+                      type="radio"
+                      name="sort"
+                      checked={
+                        sortConfig?.key === 'nama' &&
+                        sortConfig?.direction === 'asc'
+                      }
+                      onChange={() =>
+                        setSortConfig({
+                          key: 'nama',
+                          direction: 'asc',
+                        })
+                      }
+                      className="h-3.5 w-3.5 accent-teal-600"
+                    />
+                    Nama A - Z
+                  </label>
+
+                  <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-600">
+                    <input
+                      type="radio"
+                      name="sort"
+                      checked={
+                        sortConfig?.key === 'nama' &&
+                        sortConfig?.direction === 'desc'
+                      }
+                      onChange={() =>
+                        setSortConfig({
+                          key: 'nama',
+                          direction: 'desc',
+                        })
+                      }
+                      className="h-3.5 w-3.5 accent-teal-600"
+                    />
+                    Nama Z - A
+                  </label>
+                </div>
+              </div>
+              
               <p className="mb-2 text-[11px] font-medium text-gray-600">
                 Jenis Kelamin
               </p>
