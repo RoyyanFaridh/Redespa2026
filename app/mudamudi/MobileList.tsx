@@ -7,9 +7,15 @@ type Props = {
   data: Mudamudi[]
   onEdit: (s: Mudamudi) => void
   onDelete: (s: Mudamudi) => void
+  startIndex: number
 }
 
-export default function MobileList({ data, onEdit, onDelete }: Props) {
+export default function MobileList({
+  data,
+  onEdit,
+  onDelete,
+  startIndex,
+}: Props) {
   if (data.length === 0) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white px-4 py-8 text-center text-[12px] text-gray-500 md:hidden">
@@ -35,7 +41,7 @@ export default function MobileList({ data, onEdit, onDelete }: Props) {
               <div className="flex min-w-0 items-center gap-2.5">
                 {/* Nomor */}
                 <span className="w-4 shrink-0 text-center text-[10px] font-medium text-gray-400">
-                  {index + 1}
+                  {startIndex + index + 1}
                 </span>
 
                 {/* Avatar */}

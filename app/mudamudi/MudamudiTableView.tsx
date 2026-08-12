@@ -79,7 +79,12 @@ export default function MudamudiTableView({
         data
       </p>
 
-      <MobileList data={paginatedData} onEdit={onEdit} onDelete={onDelete} />
+      <MobileList
+        data={paginatedData}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        startIndex={(currentPage - 1) * itemsPerPage}
+      />
 
       <DesktopTable
         data={paginatedData}
