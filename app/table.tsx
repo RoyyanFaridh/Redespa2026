@@ -256,7 +256,7 @@ export default function MudamudiTable({
               {/* Export */}
               <button
                 type="button"
-                onClick={() => setShowExportModal(true)}
+                onClick={() => guardOrOpen(() => setShowExportModal(true))}
                 aria-label="Export Presensi"
                 title="Export Presensi"
                 className="
