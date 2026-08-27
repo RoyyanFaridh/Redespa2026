@@ -18,10 +18,13 @@ import {
 
 import { validateClient } from './mudamudi/validation'
 import { useMudamudiFilter } from './mudamudi/useMudamudiFilter'
+
 import SearchFilterBar from './mudamudi/SearchFilterBar'
 import MudamudiTableView from './mudamudi/MudamudiTableView'
 import MudamudiFormModal from './mudamudi/MudamudiFormModal'
 import DeleteConfirmModal from './mudamudi/DeleteConfirmModal'
+import ExportModal from './mudamudi/ExportModal'
+import { DownloadIcon } from './mudamudi/icons'
 
 export default function MudamudiTable({
   initialData,
@@ -34,6 +37,7 @@ export default function MudamudiTable({
   const supabase = createClient()
 
   const [modal, setModal] = useState<ModalState | null>(null)
+  const [showExportModal, setShowExportModal] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
 
@@ -152,8 +156,15 @@ export default function MudamudiTable({
     <main className="min-h-screen bg-white">
       <div className="mx-auto w-full px-4 py-6 sm:px-6 md:px-7 lg:px-8">
 
+        {/* ======================================================
+            HEADER
+            ====================================================== */}
         <header className="border-b border-gray-200 pb-5">
         <div className="flex items-start justify-between gap-4">
+
+            {/* ==================================================
+                BRAND
+                ================================================== */}
             <div className="min-w-0">
             <div className="flex items-center gap-2.5">
 
@@ -173,6 +184,10 @@ export default function MudamudiTable({
                 </p>
                 </div>
             </div>
+
+            {/* ==================================================
+                ACCOUNT / SESSION
+                ================================================== */}
             <div className="mt-3 flex items-center gap-3 pl-10.5">
 
                 {/* Status */}
@@ -234,49 +249,72 @@ export default function MudamudiTable({
             </div>
 
             {/* ==================================================
-                ADD DATA
+                ACTIONS
                 ================================================== */}
-            
-            <button
+            <div className="flex shrink-0 items-center gap-2">
+
+              {/* Export */}
+              <button
                 type="button"
-                onClick={() =>
-                guardOrOpen(() =>
-                    setModal({ type: 'add' })
-                )
-                }
-                aria-label="Tambah Data"
-                title="Tambah Data"
+                onClick={() => setShowExportModal(true)}
+                aria-label="Export Presensi"
+                title="Export Presensi"
                 className="
-                flex h-8.5 w-8.5 shrink-0 items-center justify-center
-                rounded-[10px] bg-[#171717] text-white
-                transition hover:bg-gray-800 active:scale-95
+                  flex h-8.5 w-8.5 shrink-0 items-center justify-center
+                  rounded-[10px] border border-gray-200 bg-white text-gray-600
+                  transition hover:bg-gray-50 active:scale-95
 
-                md:h-8.5 md:w-auto
-                md:gap-1.5 md:px-3.5
-                md:text-[11px] md:font-medium
+                  md:h-8.5 md:w-auto
+                  md:gap-1.5 md:px-3.5
+                  md:text-[11px] md:font-medium
                 "
-            >
-                {/* Icon + */}
-                <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="h-4 w-4"
-                >
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 5v14M5 12h14"
-                />
-                </svg>
+              >
+                <DownloadIcon className="h-4 w-4" />
+                <span className="hidden md:inline">Export</span>
+              </button>
 
-                {/* Text — hanya desktop/tablet */}
-                <span className="hidden md:inline">
-                Tambah Data
-                </span>
-            </button>
+              {/* Add Data */}
+              <button
+                  type="button"
+                  onClick={() =>
+                  guardOrOpen(() =>
+                      setModal({ type: 'add' })
+                  )
+                  }
+                  aria-label="Tambah Data"
+                  title="Tambah Data"
+                  className="
+                  flex h-8.5 w-8.5 shrink-0 items-center justify-center
+                  rounded-[10px] bg-[#171717] text-white
+                  transition hover:bg-gray-800 active:scale-95
+
+                  md:h-8.5 md:w-auto
+                  md:gap-1.5 md:px-3.5
+                  md:text-[11px] md:font-medium
+                  "
+              >
+                  {/* Icon + */}
+                  <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="h-4 w-4"
+                  >
+                  <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 5v14M5 12h14"
+                  />
+                  </svg>
+
+                  {/* Text — hanya desktop/tablet */}
+                  <span className="hidden md:inline">
+                  Tambah Data
+                  </span>
+              </button>
+            </div>
         </div>
         </header>
 
@@ -295,9 +333,9 @@ export default function MudamudiTable({
             setFilterKelompok={filter.setFilterKelompok}
             filterJenisKelamin={filter.filterJenisKelamin}
             setFilterJenisKelamin={filter.setFilterJenisKelamin}
-            hasActiveFilters={filter.hasActiveFilters}
             sortConfig={filter.sortConfig}
             setSortConfig={filter.setSortConfig}
+            hasActiveFilters={filter.hasActiveFilters}
             onReset={filter.resetAll}
           />
 
@@ -309,16 +347,22 @@ export default function MudamudiTable({
             toggleSort={filter.toggleSort}
             filterKey={filter.filterKey}
             onEdit={(s) =>
-                guardOrOpen(() =>
-                setModal({ type: 'edit', data: s })
-                )
+              guardOrOpen(() =>
+                setModal({
+                  type: 'edit',
+                  data: s,
+                })
+              )
             }
             onDelete={(s) =>
-                guardOrOpen(() =>
-                setModal({ type: 'delete', data: s })
-                )
+              guardOrOpen(() =>
+                setModal({
+                  type: 'delete',
+                  data: s,
+                })
+              )
             }
-            />
+          />
         </section>
       </div>
 
@@ -362,6 +406,16 @@ export default function MudamudiTable({
             handleDelete(modal.data.id)
           }
           onClose={closeModal}
+        />
+      )}
+
+      {/* ========================================================
+          EXPORT MODAL
+          ======================================================== */}
+      {showExportModal && (
+        <ExportModal
+          allData={initialData}
+          onClose={() => setShowExportModal(false)}
         />
       )}
     </main>

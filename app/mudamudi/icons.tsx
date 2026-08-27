@@ -35,3 +35,13 @@ export function ChevronRightIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+export function DownloadIcon({ className }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m7 10 5 5 5-5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 21h14" />
+    </svg>
+  )
+}
