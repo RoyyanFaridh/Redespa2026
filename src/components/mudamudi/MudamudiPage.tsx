@@ -29,6 +29,7 @@ import MudamudiQRModal from "./MudamudiQRModal";
 
 type Props = {
   initialData: Mudamudi[];
+  adminDesa: string | null;
 };
 
 function UploadIcon() {
@@ -65,7 +66,7 @@ function DownloadIcon() {
   );
 }
 
-export default function MudamudiPage({ initialData }: Props) {
+export default function MudamudiPage({ initialData, adminDesa }: Props) {
   const router = useRouter();
 
   const [modal, setModal] = useState<ModalState | null>(null);
@@ -139,13 +140,9 @@ export default function MudamudiPage({ initialData }: Props) {
     const formData = new FormData(e.currentTarget);
 
     const nama = String(formData.get("nama") ?? "");
-
     const kelas = String(formData.get("kelas") ?? "");
-
     const kelompok = String(formData.get("kelompok") ?? "");
-
     const jenisKelamin = String(formData.get("jenis_kelamin") ?? "");
-
     const tanggalLahir = String(formData.get("tanggal_lahir") ?? "");
 
     const errors = validateClient(
@@ -189,13 +186,9 @@ export default function MudamudiPage({ initialData }: Props) {
     const formData = new FormData(e.currentTarget);
 
     const nama = String(formData.get("nama") ?? "");
-
     const kelas = String(formData.get("kelas") ?? "");
-
     const kelompok = String(formData.get("kelompok") ?? "");
-
     const jenisKelamin = String(formData.get("jenis_kelamin") ?? "");
-
     const tanggalLahir = String(formData.get("tanggal_lahir") ?? "");
 
     const errors = validateClient(
@@ -278,7 +271,6 @@ export default function MudamudiPage({ initialData }: Props) {
                   className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-700 transition-colors hover:bg-amber-100 active:bg-amber-200 md:h-9 md:w-auto md:gap-1.5 md:px-3.5 md:text-[11px] md:font-medium"
                 >
                   <UploadIcon />
-
                   <span className="hidden md:inline">Import</span>
                 </button>
 
@@ -290,7 +282,6 @@ export default function MudamudiPage({ initialData }: Props) {
                   className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-sky-200 bg-sky-50 text-sky-700 transition-colors hover:bg-sky-100 active:bg-sky-200 md:h-9 md:w-auto md:gap-1.5 md:px-3.5 md:text-[11px] md:font-medium"
                 >
                   <DownloadIcon />
-
                   <span className="hidden md:inline">Export</span>
                 </button>
 
@@ -302,7 +293,6 @@ export default function MudamudiPage({ initialData }: Props) {
                   className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-teal-600 text-lg font-medium leading-none text-white transition-colors hover:bg-teal-700 active:bg-teal-800 md:h-9 md:w-auto md:px-4 md:text-[11px]"
                 >
                   <span className="md:hidden">+</span>
-
                   <span className="hidden md:inline">+ Tambah Data</span>
                 </button>
               </div>

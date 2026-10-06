@@ -1,6 +1,5 @@
 import { requireAdmin } from "../../../src/backend/auth/admin";
 import { createClient } from "../../../src/backend/supabase/server";
-
 import MudamudiPage from "../../../src/components/mudamudi/MudamudiPage";
 
 export default async function Page() {
