@@ -37,6 +37,7 @@ export default function DetailModal({ data, onClose }: Props) {
         <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
           {label}
         </p>
+
         <p className="mt-1 text-[11px] leading-4 text-gray-700">
           {value ?? "-"}
         </p>
@@ -99,13 +100,28 @@ export default function DetailModal({ data, onClose }: Props) {
             </h3>
 
             <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
-              <DetailItem label="Desa" value={data.desa} />
-
               <DetailItem label="Kelompok" value={data.kelompok} />
 
-              <DetailItem label="Jenis Kelamin" value={data.jenis_kelamin} />
+              <DetailItem
+                label="Jenis Kelamin"
+                value={data.jenis_kelamin}
+              />
 
-              <DetailItem label="Kelas" value={data.kelas} />
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                  Kelas
+                </p>
+
+                <div className="mt-1">
+                  <span
+                    className={`inline-flex rounded-full px-2 py-1 text-[10px] font-medium ${getKelasBadgeClass(
+                      data.kelas,
+                    )}`}
+                  >
+                    {data.kelas}
+                  </span>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -119,7 +135,10 @@ export default function DetailModal({ data, onClose }: Props) {
             <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
               <DetailItem label="Nama" value={toTitleCase(data.nama)} />
 
-              <DetailItem label="Tempat Lahir" value={data.tempat_lahir} />
+              <DetailItem
+                label="Tempat Lahir"
+                value={data.tempat_lahir}
+              />
 
               <DetailItem
                 label="Tanggal Lahir"
@@ -153,7 +172,10 @@ export default function DetailModal({ data, onClose }: Props) {
 
               <DetailItem label="Nama Ibu" value={data.nama_ibu} />
 
-              <DetailItem label="No. HP Orang Tua" value={data.no_hp_ortu} />
+              <DetailItem
+                label="No. HP Orang Tua"
+                value={data.no_hp_ortu}
+              />
             </div>
           </section>
         </div>
