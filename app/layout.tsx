@@ -31,8 +31,8 @@ const poppins = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "KMM Pandak",
-  description: "Sistem Informasi Muda-Mudi Desa Pandak",
+  title: "REDESPA Pandak",
+  description: "Sistem Informasi Remaja Desa Pandak",
 };
 
 export default function RootLayout({

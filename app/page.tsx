@@ -73,11 +73,11 @@ export default function Home() {
         <header className="flex h-16 shrink-0 items-center justify-between">
           <div>
             <p className="text-sm font-semibold tracking-tight text-gray-900">
-              KMM
+              REDESPA
             </p>
 
             <p className="text-[9px] uppercase tracking-[0.12em] text-gray-400">
-              Desa Pandak
+              Remaja Desa Pandak
             </p>
           </div>
 
@@ -98,7 +98,7 @@ export default function Home() {
                 <span className="h-1.5 w-1.5 rounded-full bg-teal-600" />
 
                 <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-teal-700">
-                  Sistem Informasi Desa Pandak
+                  Sistem Informasi Remaja Desa Pandak
                 </span>
               </div>
 
@@ -153,8 +153,8 @@ export default function Home() {
                   </h2>
 
                   <p className="mt-3 max-w-sm text-xs leading-5 text-gray-500">
-                    KMM dirancang untuk membantu pengurus mengelola administrasi
-                    Muda-Mudi Desa Pandak tanpa proses yang rumit.
+                    REDESPA dirancang untuk membantu pengurus mengelola
+                    administrasi Muda-Mudi Desa Pandak tanpa proses yang rumit.
                   </p>
 
                   <div className="mt-7 grid grid-cols-3 border-y border-gray-200 py-4">
@@ -221,7 +221,7 @@ export default function Home() {
 
         {/* FOOTER */}
         <footer className="flex h-10 shrink-0 items-center justify-between text-[8px] text-gray-400">
-          <span>KMM · Desa Pandak</span>
+          <span>REDESPA · Remaja Desa Pandak</span>
 
           <span>2026</span>
         </footer>

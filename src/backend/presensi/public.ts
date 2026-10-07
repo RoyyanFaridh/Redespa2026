@@ -170,7 +170,7 @@ export async function scanMudamudiQR(
     return {
       success: false,
       type: "invalid_qr",
-      message: "QR Code bukan QR Muda-Mudi KMM Pandak.",
+      message: "QR Code bukan QR Muda-Mudi REDESPA Pandak.",
     };
   }
 

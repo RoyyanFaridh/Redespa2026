@@ -267,11 +267,11 @@ function Brand() {
 
       <div className="min-w-0">
         <h1 className="truncate text-[14px] font-semibold tracking-tight text-gray-900">
-          KMM
+          REDESPA
         </h1>
 
         <p className="truncate text-[9px] leading-4 text-gray-500">
-          Desa Pandak
+          Remaja Desa Pandak
         </p>
 
         <p className="truncate text-[9px] leading-3 text-gray-400">
@@ -519,10 +519,10 @@ export default function AdminSidebar() {
 
         <div className="ml-2.5 min-w-0">
           <p className="truncate text-[12px] font-semibold text-gray-900">
-            KMM
+            REDESPA
           </p>
 
-          <p className="truncate text-[9px] text-gray-500">Desa Pandak</p>
+          <p className="truncate text-[9px] text-gray-500">Remaja Desa Pandak</p>
         </div>
       </header>
 

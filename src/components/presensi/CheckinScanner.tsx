@@ -194,7 +194,7 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
     }
 
     /*
-     * Pastikan hanya QR Muda-Mudi KMM Pandak
+     * Pastikan hanya QR Muda-Mudi REDESPA Pandak
      * yang diproses.
      */
     if (!qrText.startsWith(MUDA_MUDI_QR_PREFIX)) {

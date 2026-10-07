@@ -61,10 +61,12 @@ export default function LoginPage() {
                 </div>
 
                 <div>
-                  <p className="text-sm font-semibold tracking-tight">KMM</p>
+                  <p className="text-sm font-semibold tracking-tight">
+                    REDESPA
+                  </p>
 
                   <p className="text-[9px] font-medium uppercase tracking-[0.14em] text-teal-100">
-                    Desa Pandak
+                    Remaja Desa Pandak
                   </p>
                 </div>
               </div>
@@ -77,7 +79,7 @@ export default function LoginPage() {
 
               <h1 className="mt-3 text-4xl font-semibold leading-[1.08] tracking-[-0.035em] xl:text-5xl">
                 Kelola Muda-Mudi
-                <span className="block text-teal-100">Desa Pandak.</span>
+                <span className="block text-teal-100">Remaja Desa Pandak.</span>
               </h1>
 
               <p className="mt-5 max-w-md text-xs leading-5 text-teal-100">
@@ -109,7 +111,7 @@ export default function LoginPage() {
 
             <div className="relative z-10">
               <p className="text-[9px] text-teal-200">
-                KMM · Sistem Informasi Muda-Mudi Desa Pandak
+                REDESPA · Sistem Informasi Remaja Desa Pandak
               </p>
             </div>
 
@@ -125,11 +127,11 @@ export default function LoginPage() {
               {/* MOBILE BRAND */}
               <div className="mb-10 lg:hidden">
                 <p className="text-sm font-semibold tracking-tight text-gray-900">
-                  KMM
+                  REDESPA
                 </p>
 
                 <p className="mt-0.5 text-[9px] font-medium uppercase tracking-[0.14em] text-gray-400">
-                  Desa Pandak
+                  Remaja Desa Pandak
                 </p>
               </div>
 
@@ -140,7 +142,7 @@ export default function LoginPage() {
                 </p>
 
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
-                  Masuk ke KMM
+                  Masuk ke REDESPA
                 </h2>
 
                 <p className="mt-2 text-xs leading-5 text-gray-400">
@@ -364,9 +366,9 @@ export default function LoginPage() {
               {/* BOTTOM INFO */}
               <div className="mt-8 border-t border-gray-100 pt-5">
                 <div className="flex items-center justify-between">
-                  <p className="text-[9px] text-gray-400">KMM</p>
+                  <p className="text-[9px] text-gray-400">REDESPA</p>
 
-                  <p className="text-[9px] text-gray-400">Desa Pandak · 2026</p>
+                  <p className="text-[9px] text-gray-400">Remaja Desa Pandak · 2026</p>
                 </div>
               </div>
             </div>

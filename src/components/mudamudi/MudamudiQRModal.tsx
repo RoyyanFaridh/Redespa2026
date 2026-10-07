@@ -91,7 +91,8 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
               </h2>
 
               <p className="mt-1 text-[10px] leading-4 text-gray-500">
-                QR personal yang digunakan untuk presensi kegiatan KMM Pandak.
+                QR personal yang digunakan untuk presensi kegiatan REDESPA
+                Pandak.
               </p>
             </div>
 
@@ -130,7 +131,7 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
                 <div className="flex h-full w-full flex-col px-[8%] py-[7%]">
                   <div className="text-center">
                     <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-teal-600">
-                      KMM PANDAK
+                      REDESPA
                     </p>
 
                     <h3 className="mt-1 text-[15px] font-semibold tracking-tight text-gray-900">
