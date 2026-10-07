@@ -17,11 +17,38 @@ type ActionResult = {
   errors?: Record<string, string>;
 };
 
+function calculateAge(tanggalLahir: string): number | null {
+  if (!tanggalLahir) {
+    return null;
+  }
+
+  const birthDate = new Date(tanggalLahir);
+
+  if (Number.isNaN(birthDate.getTime())) {
+    return null;
+  }
+
+  const today = new Date();
+
+  let age = today.getFullYear() - birthDate.getFullYear();
+
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+
+  if (
+    monthDifference < 0 ||
+    (monthDifference === 0 && today.getDate() < birthDate.getDate())
+  ) {
+    age--;
+  }
+
+  return age >= 0 ? age : null;
+}
+
 function validate(
   nama: string,
   kelompok: string,
   jenisKelamin: string,
-  tanggalLahir: string,
+  kelas: string,
 ): Record<string, string> {
   const errors: Record<string, string> = {};
 
@@ -49,21 +76,23 @@ function validate(
     errors.jenis_kelamin = "Jenis kelamin tidak valid";
   }
 
-  if (!tanggalLahir) {
-    errors.tanggal_lahir = "Tanggal lahir wajib diisi";
+  if (!kelas) {
+    errors.kelas = "Kelas wajib dipilih";
   }
 
   return errors;
 }
 
 function mapImportRow(row: ImportRow) {
+  const tanggalLahir = row.tanggal_lahir.trim();
+
   return {
     kelompok: row.kelompok.trim(),
     nama: row.nama.trim(),
     jenis_kelamin: row.jenis_kelamin.trim() || null,
     tempat_lahir: row.tempat_lahir.trim() || null,
-    tanggal_lahir: row.tanggal_lahir.trim() || null,
-    umur: row.umur ? Number(row.umur) : null,
+    tanggal_lahir: tanggalLahir || null,
+    umur: calculateAge(tanggalLahir),
     no_hp: row.no_hp.trim() || null,
     pekerjaan: row.pekerjaan.trim() || null,
     kelas: row.kelas.trim(),
@@ -99,7 +128,9 @@ export async function addMudamudi(formData: FormData): Promise<ActionResult> {
 
   const tanggalLahir = String(formData.get("tanggal_lahir") ?? "").trim();
 
-  const errors = validate(nama, kelompok, jenisKelamin, tanggalLahir);
+  const kelas = String(formData.get("kelas") ?? "").trim();
+
+  const errors = validate(nama, kelompok, jenisKelamin, kelas);
 
   if (Object.keys(errors).length > 0) {
     return {
@@ -108,7 +139,7 @@ export async function addMudamudi(formData: FormData): Promise<ActionResult> {
     };
   }
 
-  const kelas = String(formData.get("kelas") ?? "").trim();
+  const umur = calculateAge(tanggalLahir);
 
   const { data: existing, error: existingError } = await supabase
     .from("mudamudi")
@@ -141,7 +172,7 @@ export async function addMudamudi(formData: FormData): Promise<ActionResult> {
       jenis_kelamin: jenisKelamin,
       tempat_lahir: String(formData.get("tempat_lahir") ?? "").trim() || null,
       tanggal_lahir: tanggalLahir || null,
-      umur: formData.get("umur") ? Number(formData.get("umur")) : null,
+      umur,
       no_hp: String(formData.get("no_hp") ?? "").trim() || null,
       pekerjaan: String(formData.get("pekerjaan") ?? "").trim() || null,
       kelas,
@@ -185,7 +216,9 @@ export async function updateMudamudi(
 
   const tanggalLahir = String(formData.get("tanggal_lahir") ?? "").trim();
 
-  const errors = validate(nama, kelompok, jenisKelamin, tanggalLahir);
+  const kelas = String(formData.get("kelas") ?? "").trim();
+
+  const errors = validate(nama, kelompok, jenisKelamin, kelas);
 
   if (Object.keys(errors).length > 0) {
     return {
@@ -194,7 +227,7 @@ export async function updateMudamudi(
     };
   }
 
-  const kelas = String(formData.get("kelas") ?? "").trim();
+  const umur = calculateAge(tanggalLahir);
 
   const { data: existing, error: existingError } = await supabase
     .from("mudamudi")
@@ -228,7 +261,7 @@ export async function updateMudamudi(
       jenis_kelamin: jenisKelamin,
       tempat_lahir: String(formData.get("tempat_lahir") ?? "").trim() || null,
       tanggal_lahir: tanggalLahir || null,
-      umur: formData.get("umur") ? Number(formData.get("umur")) : null,
+      umur,
       no_hp: String(formData.get("no_hp") ?? "").trim() || null,
       pekerjaan: String(formData.get("pekerjaan") ?? "").trim() || null,
       kelas,

@@ -17,7 +17,7 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
 
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const qrValue = `SIKEMA:MUDA_MUDI:${data.qr_id}`;
+  const qrValue = `KMM_PANDAK:MUDA_MUDI:${data.qr_id}`;
 
   async function handleDownload() {
     if (!cardRef.current || isDownloading) {
@@ -43,7 +43,7 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
 
       const link = document.createElement("a");
 
-      link.download = `QR-SIKEMA-${safeName}.png`;
+      link.download = `QR-KMM-PANDAK-${safeName}.png`;
       link.href = dataUrl;
 
       document.body.appendChild(link);
@@ -91,8 +91,7 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
               </h2>
 
               <p className="mt-1 text-[10px] leading-4 text-gray-500">
-                QR personal yang digunakan untuk presensi kegiatan SIKEMA Desa
-                Pandak.
+                QR personal yang digunakan untuk presensi kegiatan KMM Pandak.
               </p>
             </div>
 
@@ -131,7 +130,7 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
                 <div className="flex h-full w-full flex-col px-[8%] py-[7%]">
                   <div className="text-center">
                     <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-teal-600">
-                      SIKEMA
+                      KMM PANDAK
                     </p>
 
                     <h3 className="mt-1 text-[15px] font-semibold tracking-tight text-gray-900">

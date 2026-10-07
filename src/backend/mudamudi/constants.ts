@@ -4,6 +4,7 @@ export const KELAS_OPTIONS = [
   "Pra Remaja",
   "Remaja",
   "Usia Nikah",
+  "MT",
 ];
 
 export const KELOMPOK_OPTIONS = [
@@ -15,4 +16,7 @@ export const KELOMPOK_OPTIONS = [
   "Payungan",
 ];
 
-export const JENIS_KELAMIN_OPTIONS = ["Laki-laki", "Perempuan"];
+export const JENIS_KELAMIN_OPTIONS = [
+  "Laki-laki",
+  "Perempuan",
+];

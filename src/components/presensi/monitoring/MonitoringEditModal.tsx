@@ -26,6 +26,7 @@ const STATUS_OPTIONS: {
   {
     value: "terlambat",
     label: "Terlambat",
+    
   },
   {
     value: "izin",

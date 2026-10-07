@@ -15,7 +15,7 @@ import type { PresensiStatus, PresensiMetode } from "./types";
 
 const HADIR_TOLERANCE_MINUTES = 10;
 
-const MUDA_MUDI_QR_PREFIX = "SIKEMA:MUDA_MUDI:";
+const MUDA_MUDI_QR_PREFIX = "KMM_PANDAK:MUDA_MUDI:";
 
 type Identity = {
   nama: string;
@@ -140,7 +140,7 @@ export async function getKegiatanById(
 
 /*
  * ============================================
- * NEW QR MUDAMUDI FLOW
+ * QR MUDAMUDI FLOW
  * ============================================
  */
 
@@ -170,12 +170,26 @@ export async function scanMudamudiQR(
     return {
       success: false,
       type: "invalid_qr",
-      message: "QR Code bukan QR Muda-Mudi SIKEMA.",
+      message: "QR Code bukan QR Muda-Mudi KMM Pandak.",
     };
   }
 
   const supabase = createAdminClient();
 
+  /*
+   * Cari Muda-Mudi berdasarkan qr_id.
+   *
+   * Struktur data saat ini:
+   * id
+   * nama
+   * kelompok
+   * kelas
+   * jenis_kelamin
+   * tanggal_lahir
+   * qr_id
+   *
+   * Tidak menggunakan desa maupun umur.
+   */
   const { data: mudamudiData, error: mudamudiError } = await supabase
     .from("mudamudi")
     .select(
@@ -211,6 +225,9 @@ export async function scanMudamudiQR(
 
   const mudamudi = mudamudiData as Mudamudi;
 
+  /*
+   * Cari kegiatan.
+   */
   const { data: kegiatanData, error: kegiatanError } = await supabase
     .from("kegiatan")
     .select(
@@ -251,6 +268,9 @@ export async function scanMudamudiQR(
 
   const kegiatan = kegiatanData as Kegiatan;
 
+  /*
+   * Pastikan kegiatan sedang aktif.
+   */
   const kegiatanAktif = isKegiatanAktif(
     kegiatan.tanggal_mulai,
     kegiatan.tanggal_selesai,
@@ -268,6 +288,9 @@ export async function scanMudamudiQR(
     };
   }
 
+  /*
+   * Pastikan Muda-Mudi termasuk sasaran kegiatan.
+   */
   if (!isMudamudiTargeted(kegiatan, mudamudi)) {
     return {
       success: false,
@@ -278,6 +301,9 @@ export async function scanMudamudiQR(
     };
   }
 
+  /*
+   * Cek apakah Muda-Mudi sudah melakukan presensi.
+   */
   const { data: existingPresensi, error: existingError } = await supabase
     .from("presensi")
     .select("id, status, waktu_checkin")
@@ -310,6 +336,9 @@ export async function scanMudamudiQR(
     };
   }
 
+  /*
+   * Tentukan waktu dan status presensi.
+   */
   const waktuCheckin = new Date();
 
   const status = determinePresensiStatus(
@@ -318,6 +347,9 @@ export async function scanMudamudiQR(
     waktuCheckin,
   );
 
+  /*
+   * Simpan presensi.
+   */
   const { data: presensiData, error: presensiError } = await supabase
     .from("presensi")
     .insert({

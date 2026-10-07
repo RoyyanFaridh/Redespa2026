@@ -18,7 +18,6 @@ type Kegiatan = {
 type Mudamudi = {
   id: number;
   nama: string;
-  desa: string;
   kelompok: string;
   kelas: string;
   jenis_kelamin: string | null;
@@ -55,17 +54,27 @@ type CheckinScannerProps = {
   kegiatanId: number;
 };
 
-const QR_REGION_ID = "sikema-mudamudi-qr-reader";
+const QR_REGION_ID = "kmm-pandak-mudamudi-qr-reader";
 
 const SCAN_COOLDOWN = 3000;
 const RESULT_DISPLAY_DURATION = 3000;
+
+/*
+ * HC-P10 bekerja sebagai USB HID keyboard.
+ *
+ * Beberapa scanner mengirim Enter setelah QR selesai,
+ * tetapi tidak semua konfigurasi scanner pasti mengirim Enter.
+ *
+ * Karena itu kita menggunakan timeout pendek sebagai fallback.
+ */
+const HID_SCAN_TIMEOUT = 120;
 
 const MOBILE_QRBOX_SIZE = 220;
 const DESKTOP_QRBOX_SIZE = 280;
 
 const FPS = 10;
 
-const MUDA_MUDI_QR_PREFIX = "SIKEMA:MUDA_MUDI:";
+const MUDA_MUDI_QR_PREFIX = "KMM_PANDAK:MUDA_MUDI:";
 
 export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -80,13 +89,25 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
   const resultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /*
+   * Buffer untuk menangkap input dari HC-P10.
+   *
+   * HC-P10 diperlakukan browser sebagai keyboard.
+   *
+   * Contoh:
+   *
+   * K → M → M → _ → P → A → N → D → A → K → ...
+   *
+   * seluruh karakter akan dikumpulkan di sini.
+   */
+  const hidBufferRef = useRef("");
+
+  const hidTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /*
    * Menyimpan breakpoint kamera terakhir.
    *
    * false = mobile
    * true  = desktop
-   *
-   * Kita hanya restart scanner ketika breakpoint berubah,
-   * bukan setiap window resize.
    */
   const desktopModeRef = useRef<boolean | null>(null);
 
@@ -97,9 +118,35 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
 
   const [isStarting, setIsStarting] = useState(true);
   const [isScanning, setIsScanning] = useState(false);
+
+  /*
+   * Scanner fisik selalu siap selama halaman aktif.
+   *
+   * HC-P10 tidak memerlukan permission seperti kamera.
+   */
+  const [isPhysicalScannerReady, setIsPhysicalScannerReady] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [kegiatan, setKegiatan] = useState<Kegiatan | null>(null);
+
+  /*
+   * Membersihkan timeout HID.
+   */
+  const clearHidTimeout = () => {
+    if (hidTimeoutRef.current) {
+      clearTimeout(hidTimeoutRef.current);
+      hidTimeoutRef.current = null;
+    }
+  };
+
+  /*
+   * Membersihkan buffer HC-P10.
+   */
+  const clearHidBuffer = () => {
+    hidBufferRef.current = "";
+    clearHidTimeout();
+  };
 
   const stopScanner = async () => {
     const scanner = scannerRef.current;
@@ -128,7 +175,14 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
     scannerRef.current = null;
   };
 
+  /*
+   * Memproses QR baik dari kamera maupun HC-P10.
+   *
+   * Semua sumber scanner berakhir di fungsi yang sama.
+   */
   const handleScan = async (decodedText: string) => {
+    console.log("[QR TERDETEKSI]", decodedText);
+
     if (!mountedRef.current) {
       return;
     }
@@ -139,16 +193,27 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
       return;
     }
 
+    /*
+     * Pastikan hanya QR Muda-Mudi KMM Pandak
+     * yang diproses.
+     */
     if (!qrText.startsWith(MUDA_MUDI_QR_PREFIX)) {
       return;
     }
 
     const now = Date.now();
 
+    /*
+     * Cooldown global untuk kamera dan scanner fisik.
+     */
     if (now - lastScannedAtRef.current < SCAN_COOLDOWN) {
       return;
     }
 
+    /*
+     * Mencegah QR yang sama diproses berulang kali
+     * dalam waktu singkat.
+     */
     if (
       lastScannedQRRef.current === qrText &&
       now - lastScannedAtRef.current < RESULT_DISPLAY_DURATION + SCAN_COOLDOWN
@@ -156,11 +221,15 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
       return;
     }
 
+    /*
+     * Jangan proses dua QR sekaligus.
+     */
     if (processingRef.current) {
       return;
     }
 
     processingRef.current = true;
+
     lastScannedQRRef.current = qrText;
     lastScannedAtRef.current = now;
 
@@ -220,6 +289,125 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
     }
   };
 
+  /*
+   * Menyelesaikan satu hasil scan dari HC-P10.
+   */
+  const processHidBuffer = () => {
+    const qrText = hidBufferRef.current.trim();
+
+    clearHidBuffer();
+
+    if (!qrText) {
+      return;
+    }
+
+    /*
+     * Hanya teruskan payload yang memang memiliki
+     * prefix QR Muda-Mudi.
+     */
+    if (!qrText.startsWith(MUDA_MUDI_QR_PREFIX)) {
+      return;
+    }
+
+    console.log("[HC-P10 TERDETEKSI]", qrText);
+
+    void handleScan(qrText);
+  };
+
+  /*
+   * Menangkap input keyboard dari HC-P10.
+   *
+   * HC-P10 USB HID akan dianggap browser sebagai keyboard.
+   *
+   * Contoh:
+   *
+   * H → A → L → O → Enter
+   *
+   * atau:
+   *
+   * H → A → L → O
+   *        ↓
+   * timeout
+   *        ↓
+   * diproses
+   */
+  useEffect(() => {
+    if (!kegiatan) {
+      return;
+    }
+
+    const handleHidKeyDown = (event: KeyboardEvent) => {
+      if (!mountedRef.current) {
+        return;
+      }
+
+      /*
+       * Enter menandakan scanner selesai mengirim
+       * data pada konfigurasi HC-P10 yang memakai suffix Enter.
+       */
+      if (event.key === "Enter") {
+        if (hidBufferRef.current) {
+          event.preventDefault();
+          processHidBuffer();
+        }
+
+        return;
+      }
+
+      /*
+       * Abaikan modifier key.
+       *
+       * Scanner biasanya mengirim karakter biasa.
+       */
+      if (
+        event.key === "Shift" ||
+        event.key === "Control" ||
+        event.key === "Alt" ||
+        event.key === "Meta" ||
+        event.key === "Tab" ||
+        event.key === "Escape"
+      ) {
+        return;
+      }
+
+      /*
+       * Kita hanya menerima satu karakter.
+       */
+      if (event.key.length !== 1) {
+        return;
+      }
+
+      /*
+       * Tambahkan karakter ke buffer.
+       */
+      hidBufferRef.current += event.key;
+
+      /*
+       * Reset timeout setiap kali karakter baru diterima.
+       *
+       * Dengan demikian selama HC-P10 masih mengirim
+       * karakter, timeout tidak akan mengeksekusi.
+       */
+      clearHidTimeout();
+
+      hidTimeoutRef.current = setTimeout(() => {
+        processHidBuffer();
+      }, HID_SCAN_TIMEOUT);
+    };
+
+    window.addEventListener("keydown", handleHidKeyDown);
+
+    setIsPhysicalScannerReady(true);
+
+    return () => {
+      window.removeEventListener("keydown", handleHidKeyDown);
+
+      clearHidBuffer();
+
+      setIsPhysicalScannerReady(false);
+    };
+  }, [kegiatan]);
+
   const startScanner = async (force = false) => {
     if (!mountedRef.current) {
       return;
@@ -246,7 +434,7 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
       }
 
       /*
-       * Pastikan scanner lama benar-benar dihentikan
+       * Pastikan scanner kamera lama benar-benar dihentikan
        * sebelum membuat instance baru.
        */
       if (scannerRef.current) {
@@ -300,7 +488,7 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
         { facingMode: "environment" },
         cameraConfig,
         (decodedText) => {
-          handleScan(decodedText);
+          void handleScan(decodedText);
         },
         () => {},
       );
@@ -355,7 +543,7 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
   /*
    * Restart kamera ketika berpindah:
    *
-   * Mobile  <-> Desktop
+   * Mobile <-> Desktop
    *
    * Kita TIDAK restart pada setiap resize pixel.
    */
@@ -374,7 +562,8 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
       const isDesktop = mediaQuery.matches;
 
       /*
-       * Kalau masih di mode yang sama, tidak perlu restart.
+       * Kalau masih di mode yang sama,
+       * tidak perlu restart.
        */
       if (desktopModeRef.current === isDesktop) {
         return;
@@ -389,7 +578,7 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
           return;
         }
 
-        startScanner(true);
+        void startScanner(true);
       }, 150);
     };
 
@@ -400,6 +589,9 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
     };
   }, [kegiatan]);
 
+  /*
+   * Memuat data kegiatan.
+   */
   useEffect(() => {
     mountedRef.current = true;
 
@@ -428,7 +620,7 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
       }
     };
 
-    loadKegiatan();
+    void loadKegiatan();
 
     return () => {
       mountedRef.current = false;
@@ -438,8 +630,11 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
       desktopModeRef.current = null;
       restartingRef.current = false;
 
+      clearHidBuffer();
+
       if (resultTimeoutRef.current) {
         clearTimeout(resultTimeoutRef.current);
+
         resultTimeoutRef.current = null;
       }
 
@@ -467,17 +662,20 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
         scannerRef.current = null;
       };
 
-      cleanup();
+      void cleanup();
     };
   }, [kegiatanId]);
 
+  /*
+   * Mulai kamera setelah data kegiatan tersedia.
+   */
   useEffect(() => {
     if (!kegiatan) {
       return;
     }
 
     const timer = setTimeout(() => {
-      startScanner();
+      void startScanner();
     }, 100);
 
     return () => {
@@ -511,7 +709,8 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
             </h1>
 
             <p className="mt-1 text-[10px] leading-4 text-gray-500 sm:text-xs">
-              Gunakan kamera untuk mencatat kehadiran Muda-Mudi pada kegiatan.
+              Gunakan scanner fisik atau kamera untuk mencatat kehadiran
+              Muda-Mudi pada kegiatan.
             </p>
           </header>
 
@@ -568,23 +767,47 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
               </h1>
 
               <p className="mt-1 max-w-xl text-[10px] leading-4 text-gray-500 sm:text-xs">
-                Gunakan kamera untuk mencatat kehadiran Muda-Mudi pada kegiatan
-                yang dipilih.
+                Gunakan scanner fisik atau kamera untuk mencatat kehadiran
+                Muda-Mudi pada kegiatan yang dipilih.
               </p>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2 text-[9px]">
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  isScanning ? "animate-pulse bg-emerald-500" : "bg-gray-300"
-                }`}
-              />
+            <div className="flex flex-wrap items-center gap-3 text-[9px]">
+              {/* Status scanner fisik */}
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    isPhysicalScannerReady
+                      ? "animate-pulse bg-emerald-500"
+                      : "bg-gray-300"
+                  }`}
+                />
 
-              <span
-                className={isScanning ? "text-emerald-600" : "text-gray-400"}
-              >
-                {isScanning ? "Scanner aktif" : "Menyiapkan kamera"}
-              </span>
+                <span
+                  className={
+                    isPhysicalScannerReady
+                      ? "text-emerald-600"
+                      : "text-gray-400"
+                  }
+                >
+                  Scanner fisik {isPhysicalScannerReady ? "siap" : "menyiapkan"}
+                </span>
+              </div>
+
+              {/* Status kamera */}
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    isScanning ? "animate-pulse bg-blue-500" : "bg-gray-300"
+                  }`}
+                />
+
+                <span
+                  className={isScanning ? "text-blue-600" : "text-gray-400"}
+                >
+                  Kamera {isScanning ? "aktif" : "menyiapkan"}
+                </span>
+              </div>
             </div>
           </div>
         </header>
@@ -635,7 +858,94 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
             </div>
           </section>
 
-          {/* Scanner */}
+          {/* Status metode scanner */}
+          <section className="rounded-xl border border-gray-200 bg-white">
+            <div className="border-b border-gray-100 px-4 py-3 sm:px-5">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-gray-400">
+                Metode Scanner
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2">
+              {/* Scanner fisik */}
+              <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 sm:border-b-0 sm:border-r sm:px-5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4 7V5a1 1 0 011-1h2M17 4h2a1 1 0 011 1v2M20 17v2a1 1 0 01-1 1h-2M7 20H5a1 1 0 01-1-1v-2"
+                    />
+
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M8 8h2v2H8zM14 8h2v2h-2zM8 14h2v2H8zM14 14h2v2h-2z"
+                    />
+                  </svg>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold text-gray-900">
+                    Scanner fisik
+                  </p>
+
+                  <p className="mt-0.5 text-[9px] leading-4 text-gray-400">
+                    HC-P10 siap menerima QR melalui USB.
+                  </p>
+                </div>
+
+                <span className="ml-auto shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-[8px] font-semibold text-emerald-600">
+                  Utama
+                </span>
+              </div>
+
+              {/* Kamera */}
+              <div className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4 7h3l1.5-2h3L13 7h3a3 3 0 013 3v6a3 3 0 01-3 3H8a4 4 0 01-4-4V7z"
+                    />
+
+                    <circle cx="12" cy="13" r="3" />
+                  </svg>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold text-gray-900">
+                    Kamera
+                  </p>
+
+                  <p className="mt-0.5 text-[9px] leading-4 text-gray-400">
+                    Alternatif jika scanner fisik tidak tersedia.
+                  </p>
+                </div>
+
+                <span className="ml-auto shrink-0 rounded-full bg-blue-50 px-2 py-1 text-[8px] font-semibold text-blue-600">
+                  Fallback
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {/* Scanner kamera */}
           <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
             <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 sm:px-5">
               <div className="min-w-0">
@@ -644,12 +954,12 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
                 </p>
 
                 <p className="mt-0.5 text-[9px] leading-4 text-gray-400 sm:text-[10px]">
-                  Arahkan QR personal Muda-Mudi ke kamera.
+                  Kamera tetap aktif sebagai alternatif scanner fisik.
                 </p>
               </div>
 
               {isScanning && (
-                <span className="shrink-0 text-[9px] font-medium text-emerald-600">
+                <span className="shrink-0 text-[9px] font-medium text-blue-600">
                   Siap scan
                 </span>
               )}
@@ -705,7 +1015,7 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
                           </h3>
 
                           <p className="mt-1 text-[10px] text-gray-500">
-                            {result.mudamudi.desa} · {result.mudamudi.kelompok}
+                            {result.mudamudi.kelompok} · {result.mudamudi.kelas}
                           </p>
 
                           <div className="mt-3 inline-flex rounded-md bg-teal-50 px-2.5 py-1 text-[9px] font-semibold text-teal-700">
@@ -784,12 +1094,12 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
 
                   <div className="min-w-0">
                     <p className="text-[10px] font-semibold text-teal-800">
-                      Arahkan QR Muda-Mudi ke kamera
+                      Scanner siap digunakan
                     </p>
 
                     <p className="mt-0.5 text-[9px] leading-4 text-teal-600">
-                      Posisikan QR di dalam kotak. Scanner akan tetap aktif
-                      untuk peserta berikutnya.
+                      Arahkan QR Muda-Mudi ke HC-P10. Kamera juga dapat
+                      digunakan sebagai alternatif.
                     </p>
                   </div>
                 </div>
@@ -816,7 +1126,7 @@ export default function CheckinScanner({ kegiatanId }: CheckinScannerProps) {
 
                   <button
                     type="button"
-                    onClick={() => startScanner(true)}
+                    onClick={() => void startScanner(true)}
                     className="mt-3 w-full rounded-lg bg-teal-600 px-3 py-2 text-[10px] font-semibold text-white transition-colors hover:bg-teal-700 active:bg-teal-800 sm:w-auto sm:px-4"
                   >
                     Coba Lagi

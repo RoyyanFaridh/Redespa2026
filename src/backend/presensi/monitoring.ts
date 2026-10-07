@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "../supabase/server";
+import { requireAdmin } from "../auth/admin";
+import { createAdminClient } from "../supabase/admin";
 
 import {
   MonitoringPeserta,
@@ -37,15 +38,14 @@ function emptyResult(error: string) {
 }
 
 export async function getMonitoringPresensi(kegiatanId: number) {
-  const supabase = await createClient();
+  await requireAdmin();
+
+  const supabase = createAdminClient();
 
   if (!Number.isInteger(kegiatanId) || kegiatanId <= 0) {
     return emptyResult("Kegiatan tidak valid");
   }
 
-  /*
-   * Ambil hanya data kegiatan yang benar-benar diperlukan.
-   */
   const { data: kegiatan, error: kegiatanError } = await supabase
     .from("kegiatan")
     .select(
@@ -76,14 +76,6 @@ export async function getMonitoringPresensi(kegiatanId: number) {
 
   const kegiatanMonitoring = kegiatan as KegiatanMonitoring;
 
-  /*
-   * Query Muda-Mudi langsung berdasarkan target kegiatan.
-   *
-   * NULL / array kosong = semua.
-   *
-   * Project ini khusus Desa Pandak, sehingga tidak ada
-   * filter desa.
-   */
   let mudamudiQuery = supabase
     .from("mudamudi")
     .select(
@@ -110,12 +102,6 @@ export async function getMonitoringPresensi(kegiatanId: number) {
     );
   }
 
-  /*
-   * Muda-Mudi dan presensi dapat diambil bersamaan.
-   *
-   * Presensi dibatasi hanya untuk kegiatan yang sedang
-   * dimonitor.
-   */
   const [mudamudiResult, presensiResult] = await Promise.all([
     mudamudiQuery,
 
@@ -152,13 +138,6 @@ export async function getMonitoringPresensi(kegiatanId: number) {
 
   const mudamudiSasaran = (mudamudiResult.data ?? []) as MudamudiMonitoring[];
 
-  /*
-   * Buat map presensi berdasarkan ID Muda-Mudi.
-   *
-   * Karena database memiliki UNIQUE(kegiatan_id, mudamudi_id),
-   * satu Muda-Mudi maksimal memiliki satu presensi
-   * untuk satu kegiatan.
-   */
   const presensiMap = new Map<
     number,
     {
@@ -180,11 +159,6 @@ export async function getMonitoringPresensi(kegiatanId: number) {
     });
   }
 
-  /*
-   * Gabungkan peserta target dengan data presensinya.
-   *
-   * Tidak ada presensi = Belum Hadir.
-   */
   const peserta: MonitoringPeserta[] = mudamudiSasaran.map((item) => {
     const presensi = presensiMap.get(item.id);
 
@@ -217,9 +191,6 @@ export async function getMonitoringPresensi(kegiatanId: number) {
     };
   });
 
-  /*
-   * Hitung summary dalam satu loop.
-   */
   let totalHadir = 0;
   let totalTerlambat = 0;
   let totalIzin = 0;

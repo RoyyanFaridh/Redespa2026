@@ -15,6 +15,9 @@ export function getKelasBadgeClass(kelas: string): string {
     case "Usia Nikah":
       return "border-orange-200 bg-orange-50 text-orange-600";
 
+    case "MT":
+      return "border-violet-200 bg-violet-50 text-violet-600";
+
     default:
       return "border-gray-200 bg-gray-50 text-gray-500";
   }

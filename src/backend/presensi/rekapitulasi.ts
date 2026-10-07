@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "../supabase/server";
+import { requireAdmin } from "../auth/admin";
+import { createAdminClient } from "../supabase/admin";
 
 import { PresensiMetode, PresensiStatus, RekapitulasiPresensi } from "./types";
 
@@ -77,7 +78,9 @@ export async function getRekapitulasiPresensi({
   kelompok,
   kelas,
 }: GetRekapitulasiParams) {
-  const supabase = await createClient();
+  await requireAdmin();
+
+  const supabase = createAdminClient();
 
   const safePage = Math.max(1, Math.floor(page));
 
@@ -182,6 +185,7 @@ export async function getRekapitulasiPresensi({
   /*
    * Kegiatan dan Muda-Mudi bisa diambil bersamaan.
    */
+
   const [mudamudiResult, kegiatanResult] = await Promise.all([
     mudamudiQuery,
     kegiatanQuery,

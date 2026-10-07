@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Mudamudi, FieldErrors } from "../../backend/mudamudi/types";
+import { useEffect, useState } from "react";
+import type { Mudamudi, FieldErrors } from "../../backend/mudamudi/types";
 import {
   KELOMPOK_OPTIONS,
   JENIS_KELAMIN_OPTIONS,
+  KELAS_OPTIONS,
 } from "../../backend/mudamudi/constants";
 import ModalWrapper from "./ModalWrapper";
 
@@ -32,44 +33,24 @@ function calculateAge(tanggalLahir: string): number | null {
 
   let age = today.getFullYear() - birthDate.getFullYear();
 
-  const monthDifference = today.getMonth() - birthDate.getMonth();
+  const currentMonth = today.getMonth();
+  const birthMonth = birthDate.getMonth();
+
+  const currentDate = today.getDate();
+  const birthDateNumber = birthDate.getDate();
 
   if (
-    monthDifference < 0 ||
-    (monthDifference === 0 && today.getDate() < birthDate.getDate())
+    currentMonth < birthMonth ||
+    (currentMonth === birthMonth && currentDate < birthDateNumber)
   ) {
     age--;
   }
 
-  return age >= 0 ? age : null;
-}
-
-function calculateKelas(umur: number | null): string {
-  if (umur === null) {
-    return "";
+  if (age < 0) {
+    return null;
   }
 
-  if (umur >= 5 && umur <= 6) {
-    return "PAUD";
-  }
-
-  if (umur >= 7 && umur <= 12) {
-    return "Caberawit";
-  }
-
-  if (umur >= 13 && umur <= 15) {
-    return "Pra Remaja";
-  }
-
-  if (umur >= 16 && umur <= 18) {
-    return "Remaja";
-  }
-
-  if (umur >= 19) {
-    return "Usia Nikah";
-  }
-
-  return "";
+  return age;
 }
 
 export default function MudamudiFormModal({
@@ -80,14 +61,18 @@ export default function MudamudiFormModal({
   onSubmit,
   onClose,
 }: Props) {
+  const [kelompok, setKelompok] = useState(initialData?.kelompok ?? "");
+  const [kelas, setKelas] = useState(initialData?.kelas ?? "");
   const [tanggalLahir, setTanggalLahir] = useState(
     initialData?.tanggal_lahir ?? "",
   );
+  const [umur, setUmur] = useState<number | null>(() =>
+    calculateAge(initialData?.tanggal_lahir ?? ""),
+  );
 
-  const [kelompok, setKelompok] = useState(initialData?.kelompok ?? "");
-
-  const umur = calculateAge(tanggalLahir);
-  const kelas = calculateKelas(umur);
+  useEffect(() => {
+    setUmur(calculateAge(tanggalLahir));
+  }, [tanggalLahir]);
 
   return (
     <ModalWrapper onClose={onClose} size="lg">
@@ -209,7 +194,7 @@ export default function MudamudiFormModal({
               htmlFor="nama"
               className="mb-1.5 block text-[11px] font-medium text-gray-400"
             >
-              Nama
+              Nama <span className="text-red-500">*</span>
             </label>
 
             <input
@@ -238,7 +223,7 @@ export default function MudamudiFormModal({
               htmlFor="kelompok"
               className="mb-1.5 block text-[11px] font-medium text-gray-400"
             >
-              Kelompok
+              Kelompok <span className="text-red-500">*</span>
             </label>
 
             <div className="relative">
@@ -299,7 +284,7 @@ export default function MudamudiFormModal({
                 htmlFor="jenis_kelamin"
                 className="mb-1.5 block text-[11px] font-medium text-gray-400"
               >
-                Jenis Kelamin
+                Jenis Kelamin <span className="text-red-500">*</span>
               </label>
 
               <div className="relative">
@@ -368,6 +353,7 @@ export default function MudamudiFormModal({
                 type="date"
                 value={tanggalLahir}
                 onChange={(e) => setTanggalLahir(e.target.value)}
+                max={new Date().toISOString().split("T")[0]}
                 className={`h-9.75 w-full rounded-lg border bg-white px-3 text-[11px] text-gray-700 outline-none transition focus:ring-2 ${
                   fieldErrors.tanggal_lahir
                     ? "border-red-300 focus:border-red-400 focus:ring-red-50"
@@ -394,18 +380,19 @@ export default function MudamudiFormModal({
                 Umur
               </label>
 
-              <input
-                id="umur"
-                name="umur"
-                type="number"
-                value={umur ?? ""}
-                readOnly
-                tabIndex={-1}
-                className="h-9.75 w-full cursor-default rounded-lg border border-gray-200 bg-gray-50 px-3 text-[11px] text-gray-600 outline-none"
-              />
+              <div className="relative">
+                <input
+                  id="umur"
+                  type="text"
+                  value={umur !== null ? `${umur} tahun` : "-"}
+                  readOnly
+                  aria-readonly="true"
+                  className="h-9.75 w-full cursor-default rounded-lg border border-gray-200 bg-gray-50 px-3 text-[11px] text-gray-600 outline-none"
+                />
+              </div>
 
-              <p className="mt-1 text-[9px] leading-3 text-gray-400">
-                Dihitung otomatis dari tanggal lahir.
+              <p className="mt-1 text-[9px] leading-3.5 text-gray-400">
+                Otomatis berdasarkan tanggal lahir
               </p>
             </div>
 
@@ -415,23 +402,57 @@ export default function MudamudiFormModal({
                 htmlFor="kelas"
                 className="mb-1.5 block text-[11px] font-medium text-gray-400"
               >
-                Kelas
+                Kelas <span className="text-red-500">*</span>
               </label>
 
-              <input
-                id="kelas"
-                name="kelas"
-                type="text"
-                value={kelas}
-                readOnly
-                tabIndex={-1}
-                placeholder="Akan ditentukan otomatis"
-                className="h-9.75 w-full cursor-default rounded-lg border border-gray-200 bg-gray-50 px-3 text-[11px] text-gray-600 outline-none"
-              />
+              <div className="relative">
+                <select
+                  id="kelas"
+                  name="kelas"
+                  value={kelas}
+                  onChange={(e) => setKelas(e.target.value)}
+                  className={`h-9.75 w-full appearance-none rounded-lg border bg-white px-3 pr-8 text-[11px] outline-none transition focus:ring-2 ${
+                    kelas ? "text-gray-700" : "text-gray-500"
+                  } ${
+                    fieldErrors.kelas
+                      ? "border-red-300 focus:border-red-400 focus:ring-red-50"
+                      : "border-gray-200 focus:border-teal-400 focus:ring-teal-50"
+                  }`}
+                >
+                  <option value="" disabled>
+                    Pilih Kelas
+                  </option>
 
-              <p className="mt-1 text-[9px] leading-3 text-gray-400">
-                Ditentukan otomatis berdasarkan umur.
-              </p>
+                  {KELAS_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-gray-500">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-3.5 w-3.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m6 9 6 6 6-6"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {fieldErrors.kelas && (
+                <p className="mt-1 text-[10px] text-red-500">
+                  {fieldErrors.kelas}
+                </p>
+              )}
             </div>
           </div>
 
@@ -530,6 +551,7 @@ export default function MudamudiFormModal({
             </h3>
 
             <div className="space-y-4">
+              {/* NAMA AYAH + NAMA IBU */}
               <div className="grid grid-cols-2 gap-3">
                 {/* NAMA AYAH */}
                 <div>
