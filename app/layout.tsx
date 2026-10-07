@@ -31,7 +31,7 @@ const poppins = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "SIMUDA Pandak",
+  title: "KMM Pandak",
   description: "Sistem Informasi Muda-Mudi Desa Pandak",
 };
 

@@ -267,7 +267,7 @@ function Brand() {
 
       <div className="min-w-0">
         <h1 className="truncate text-[14px] font-semibold tracking-tight text-gray-900">
-          SIMUDA
+          KMM
         </h1>
 
         <p className="truncate text-[9px] leading-4 text-gray-500">
@@ -519,7 +519,7 @@ export default function AdminSidebar() {
 
         <div className="ml-2.5 min-w-0">
           <p className="truncate text-[12px] font-semibold text-gray-900">
-            SIMUDA
+            KMM
           </p>
 
           <p className="truncate text-[9px] text-gray-500">Desa Pandak</p>

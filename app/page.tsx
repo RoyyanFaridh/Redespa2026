@@ -73,7 +73,7 @@ export default function Home() {
         <header className="flex h-16 shrink-0 items-center justify-between">
           <div>
             <p className="text-sm font-semibold tracking-tight text-gray-900">
-              SIMUDA
+              KMM
             </p>
 
             <p className="text-[9px] uppercase tracking-[0.12em] text-gray-400">
@@ -153,8 +153,8 @@ export default function Home() {
                   </h2>
 
                   <p className="mt-3 max-w-sm text-xs leading-5 text-gray-500">
-                    SIMUDA dirancang untuk membantu pengurus mengelola
-                    administrasi Muda-Mudi Desa Pandak tanpa proses yang rumit.
+                    KMM dirancang untuk membantu pengurus mengelola administrasi
+                    Muda-Mudi Desa Pandak tanpa proses yang rumit.
                   </p>
 
                   <div className="mt-7 grid grid-cols-3 border-y border-gray-200 py-4">
@@ -221,7 +221,7 @@ export default function Home() {
 
         {/* FOOTER */}
         <footer className="flex h-10 shrink-0 items-center justify-between text-[8px] text-gray-400">
-          <span>SIMUDA · Desa Pandak</span>
+          <span>KMM · Desa Pandak</span>
 
           <span>2026</span>
         </footer>

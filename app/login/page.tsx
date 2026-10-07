@@ -61,7 +61,7 @@ export default function LoginPage() {
                 </div>
 
                 <div>
-                  <p className="text-sm font-semibold tracking-tight">SIMUDA</p>
+                  <p className="text-sm font-semibold tracking-tight">KMM</p>
 
                   <p className="text-[9px] font-medium uppercase tracking-[0.14em] text-teal-100">
                     Desa Pandak
@@ -109,7 +109,7 @@ export default function LoginPage() {
 
             <div className="relative z-10">
               <p className="text-[9px] text-teal-200">
-                SIMUDA · Sistem Informasi Muda-Mudi Desa Pandak
+                KMM · Sistem Informasi Muda-Mudi Desa Pandak
               </p>
             </div>
 
@@ -125,7 +125,7 @@ export default function LoginPage() {
               {/* MOBILE BRAND */}
               <div className="mb-10 lg:hidden">
                 <p className="text-sm font-semibold tracking-tight text-gray-900">
-                  SIMUDA
+                  KMM
                 </p>
 
                 <p className="mt-0.5 text-[9px] font-medium uppercase tracking-[0.14em] text-gray-400">
@@ -140,7 +140,7 @@ export default function LoginPage() {
                 </p>
 
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
-                  Masuk ke SIMUDA
+                  Masuk ke KMM
                 </h2>
 
                 <p className="mt-2 text-xs leading-5 text-gray-400">
@@ -364,7 +364,7 @@ export default function LoginPage() {
               {/* BOTTOM INFO */}
               <div className="mt-8 border-t border-gray-100 pt-5">
                 <div className="flex items-center justify-between">
-                  <p className="text-[9px] text-gray-400">SIMUDA</p>
+                  <p className="text-[9px] text-gray-400">KMM</p>
 
                   <p className="text-[9px] text-gray-400">Desa Pandak · 2026</p>
                 </div>
