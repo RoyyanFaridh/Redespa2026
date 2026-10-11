@@ -26,32 +26,79 @@ export default function ExportModal({ allData, onClose }: Props) {
   );
 
   const [selectedKelompok, setSelectedKelompok] = useState<string[]>([]);
-
   const [selectedKelas, setSelectedKelas] = useState<string[]>([]);
 
-  async function handleExport(e: React.FormEvent) {
+  const [isExporting, setIsExporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleExport(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const filtered = allData.filter((s) => {
-      const matchJenisKelamin =
-        selectedJenisKelamin.length === 0 ||
-        (s.jenis_kelamin !== null &&
-          selectedJenisKelamin.includes(s.jenis_kelamin));
+    if (isExporting) {
+      return;
+    }
 
-      const matchKelompok =
-        selectedKelompok.length === 0 || selectedKelompok.includes(s.kelompok);
+    setIsExporting(true);
+    setError(null);
 
-      const matchKelas =
-        selectedKelas.length === 0 || selectedKelas.includes(s.kelas);
+    try {
+      const filtered = allData.filter((s) => {
+        const matchJenisKelamin =
+          selectedJenisKelamin.length === 0 ||
+          (s.jenis_kelamin !== null &&
+            selectedJenisKelamin.includes(s.jenis_kelamin));
 
-      return matchJenisKelamin && matchKelompok && matchKelas;
-    });
+        const matchKelompok =
+          selectedKelompok.length === 0 ||
+          selectedKelompok.includes(s.kelompok);
 
-    await exportMudamudiToExcel({
-      data: filtered,
-    });
+        const matchKelas =
+          selectedKelas.length === 0 || selectedKelas.includes(s.kelas);
 
-    onClose();
+        return matchJenisKelamin && matchKelompok && matchKelas;
+      });
+
+      if (filtered.length === 0) {
+        setError("Tidak ada data yang sesuai dengan filter yang dipilih.");
+        return;
+      }
+
+      const blob = await exportMudamudiToExcel({
+        data: filtered,
+      });
+
+      // Buat URL sementara untuk file Excel.
+      const url = URL.createObjectURL(blob);
+
+      try {
+        const link = document.createElement("a");
+
+        const tanggal = new Date().toLocaleDateString("sv-SE");
+
+        link.href = url;
+        link.download = `Data-Muda-Mudi-${tanggal}.xlsx`;
+        link.style.display = "none";
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } finally {
+        // Beri waktu browser memulai proses download.
+        window.setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      }
+
+      onClose();
+    } catch (err) {
+      console.error("[ExportModal] Gagal mengekspor Excel:", err);
+
+      setError(
+        "Export Excel gagal. Silakan coba lagi. Jika masalah berlanjut, periksa console browser.",
+      );
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   return (
@@ -72,7 +119,7 @@ export default function ExportModal({ allData, onClose }: Props) {
               </h2>
 
               <p className="mt-0.5 text-[10px] leading-4 text-gray-400">
-                Pilih data yang ingin diexport ke Excel
+                Pilih data yang ingin diekspor ke Excel
               </p>
             </div>
           </div>
@@ -81,7 +128,8 @@ export default function ExportModal({ allData, onClose }: Props) {
             type="button"
             onClick={onClose}
             aria-label="Tutup"
-            className="ml-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+            disabled={isExporting}
+            className="ml-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -124,22 +172,43 @@ export default function ExportModal({ allData, onClose }: Props) {
             onChange={setSelectedKelas}
             colorClass="border-orange-400 bg-orange-50 text-orange-700"
           />
+
+          {error && (
+            <div
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5"
+            >
+              <p className="text-[11px] leading-5 text-red-700">{error}</p>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50/50 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="h-9 rounded-lg border border-gray-200 bg-white px-4 text-[11px] font-medium text-gray-600 transition hover:bg-gray-50 active:scale-[0.98]"
+            disabled={isExporting}
+            className="h-9 rounded-lg border border-gray-200 bg-white px-4 text-[11px] font-medium text-gray-600 transition hover:bg-gray-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Batal
           </button>
 
           <button
             type="submit"
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[#171717] px-5 text-[11px] font-medium text-white transition hover:bg-gray-800 active:scale-[0.98]"
+            disabled={isExporting}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[#171717] px-5 text-[11px] font-medium text-white transition hover:bg-gray-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Export Excel
+            {isExporting ? (
+              <>
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Memproses...
+              </>
+            ) : (
+              <>
+                <DownloadIcon className="h-3.5 w-3.5" />
+                Export Excel
+              </>
+            )}
           </button>
         </div>
       </form>
