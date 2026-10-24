@@ -1,11 +1,11 @@
 "use server";
 
 import { requireAdmin } from "../auth/admin";
-import { createClient } from "../supabase/server";
+import { createAdminClient } from "../supabase/admin";
 
 import { isMudamudiTargeted } from "./target";
 
-import { PresensiStatus } from "./types";
+import type { PresensiStatus } from "./types";
 
 type UpdatePresensiStatusInput = {
   presensiId: number | null;
@@ -13,6 +13,16 @@ type UpdatePresensiStatusInput = {
   mudamudiId: number;
   status: PresensiStatus;
   keterangan?: string | null;
+};
+
+type PresensiRow = {
+  id: number;
+  kegiatan_id: number;
+  mudamudi_id: number;
+  waktu_checkin: string | null;
+  status: string;
+  metode: string;
+  keterangan: string | null;
 };
 
 const VALID_STATUSES: PresensiStatus[] = [
@@ -37,20 +47,36 @@ function normalizeKeterangan(keterangan?: string | null) {
   return value ? value.slice(0, 500) : null;
 }
 
+function successResult(presensi: PresensiRow) {
+  return {
+    success: true as const,
+    data: {
+      presensiId: presensi.id,
+      kegiatanId: presensi.kegiatan_id,
+      mudamudiId: presensi.mudamudi_id,
+      waktuCheckin: presensi.waktu_checkin,
+      status: presensi.status as PresensiStatus,
+      metode: presensi.metode as "qr" | "manual",
+      keterangan: presensi.keterangan,
+    },
+  };
+}
+
+function errorResult(error: string) {
+  return {
+    success: false as const,
+    error,
+  };
+}
+
 async function validateTarget(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof createAdminClient>,
   kegiatanId: number,
   mudamudiId: number,
 ) {
   const { data: kegiatan, error: kegiatanError } = await supabase
     .from("kegiatan")
-    .select(
-      `
-        id,
-        kelas,
-        jenis_kelamin
-      `,
-    )
+    .select("id, kelas, jenis_kelamin")
     .eq("id", kegiatanId)
     .maybeSingle();
 
@@ -58,27 +84,21 @@ async function validateTarget(
     console.error("Gagal mengambil sasaran kegiatan:", kegiatanError);
 
     return {
-      valid: false,
+      valid: false as const,
       error: "Gagal memeriksa sasaran kegiatan.",
     };
   }
 
   if (!kegiatan) {
     return {
-      valid: false,
+      valid: false as const,
       error: "Kegiatan tidak ditemukan.",
     };
   }
 
   const { data: mudamudi, error: mudamudiError } = await supabase
     .from("mudamudi")
-    .select(
-      `
-        id,
-        kelas,
-        jenis_kelamin
-      `,
-    )
+    .select("id, kelas, jenis_kelamin")
     .eq("id", mudamudiId)
     .maybeSingle();
 
@@ -86,66 +106,59 @@ async function validateTarget(
     console.error("Gagal mengambil data Muda-Mudi:", mudamudiError);
 
     return {
-      valid: false,
+      valid: false as const,
       error: "Gagal memeriksa data Muda-Mudi.",
     };
   }
 
   if (!mudamudi) {
     return {
-      valid: false,
+      valid: false as const,
       error: "Muda-Mudi tidak ditemukan.",
     };
   }
 
   if (!isMudamudiTargeted(kegiatan, mudamudi)) {
     return {
-      valid: false,
+      valid: false as const,
       error: "Muda-Mudi tidak termasuk sasaran kegiatan.",
     };
   }
 
   return {
-    valid: true,
+    valid: true as const,
   };
 }
 
-export async function updatePresensiStatus(input: UpdatePresensiStatusInput) {
+export async function updatePresensiStatus(
+  input: UpdatePresensiStatusInput,
+) {
+  // Pastikan pengguna terautentikasi dan memiliki hak admin.
   await requireAdmin();
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
+  // 1. Validasi input.
   if (
     input.presensiId !== null &&
     (!Number.isInteger(input.presensiId) || input.presensiId <= 0)
   ) {
-    return {
-      success: false,
-      error: "Presensi tidak valid.",
-    };
+    return errorResult("Presensi tidak valid.");
   }
 
   if (!Number.isInteger(input.kegiatanId) || input.kegiatanId <= 0) {
-    return {
-      success: false,
-      error: "Kegiatan tidak valid.",
-    };
+    return errorResult("Kegiatan tidak valid.");
   }
 
   if (!Number.isInteger(input.mudamudiId) || input.mudamudiId <= 0) {
-    return {
-      success: false,
-      error: "Muda-Mudi tidak valid.",
-    };
+    return errorResult("Muda-Mudi tidak valid.");
   }
 
   if (!VALID_STATUSES.includes(input.status)) {
-    return {
-      success: false,
-      error: "Status presensi tidak valid.",
-    };
+    return errorResult("Status presensi tidak valid.");
   }
 
+  // 2. Pastikan kegiatan dan peserta valid serta peserta termasuk sasaran.
   const targetValidation = await validateTarget(
     supabase,
     input.kegiatanId,
@@ -153,22 +166,24 @@ export async function updatePresensiStatus(input: UpdatePresensiStatusInput) {
   );
 
   if (!targetValidation.valid) {
-    return {
-      success: false,
-      error: targetValidation.error,
-    };
+    return errorResult(targetValidation.error);
   }
 
   const keterangan = normalizeKeterangan(input.keterangan);
 
   /*
-   * ============================================
-   * 1. PRESENSI SUDAH ADA
-   * ============================================
+   * 3. Cari presensi yang sudah ada.
+   *
+   * Prioritas:
+   * - Cari berdasarkan presensiId jika tersedia.
+   * - Jika ID tidak ditemukan, cari berdasarkan kegiatanId + mudamudiId.
+   * - Jika ditemukan berdasarkan ID tetapi milik peserta/kegiatan lain,
+   *   hentikan proses untuk mencegah perubahan data yang salah.
    */
+  let existingPresensi: PresensiRow | null = null;
 
   if (input.presensiId !== null) {
-    const { data: existingPresensi, error: checkError } = await supabase
+    const { data, error } = await supabase
       .from("presensi")
       .select(
         `
@@ -184,39 +199,30 @@ export async function updatePresensiStatus(input: UpdatePresensiStatusInput) {
       .eq("id", input.presensiId)
       .maybeSingle();
 
-    if (checkError) {
-      console.error("Gagal memeriksa presensi:", checkError);
+    if (error) {
+      console.error("Gagal memeriksa presensi berdasarkan ID:", error);
 
-      return {
-        success: false,
-        error: "Gagal memeriksa data presensi.",
-      };
+      return errorResult("Gagal memeriksa data presensi.");
     }
 
-    if (!existingPresensi) {
-      return {
-        success: false,
-        error: "Data presensi tidak ditemukan.",
-      };
-    }
+    if (data) {
+      if (
+        data.kegiatan_id !== input.kegiatanId ||
+        data.mudamudi_id !== input.mudamudiId
+      ) {
+        return errorResult(
+          "Data presensi tidak sesuai dengan peserta atau kegiatan.",
+        );
+      }
 
-    if (
-      existingPresensi.kegiatan_id !== input.kegiatanId ||
-      existingPresensi.mudamudi_id !== input.mudamudiId
-    ) {
-      return {
-        success: false,
-        error: "Data presensi tidak sesuai dengan peserta atau kegiatan.",
-      };
+      existingPresensi = data as PresensiRow;
     }
+  }
 
-    const { data: updatedPresensi, error: updateError } = await supabase
+  // Fallback untuk ID yang sudah tidak ditemukan atau tidak dikirim.
+  if (!existingPresensi) {
+    const { data, error } = await supabase
       .from("presensi")
-      .update({
-        status: input.status,
-        keterangan,
-      })
-      .eq("id", input.presensiId)
       .select(
         `
           id,
@@ -228,77 +234,37 @@ export async function updatePresensiStatus(input: UpdatePresensiStatusInput) {
           keterangan
         `,
       )
-      .single();
+      .eq("kegiatan_id", input.kegiatanId)
+      .eq("mudamudi_id", input.mudamudiId)
+      .maybeSingle();
 
-    if (updateError) {
-      console.error("Gagal memperbarui presensi:", updateError);
+    if (error) {
+      console.error("Gagal memeriksa presensi peserta:", error);
 
-      return {
-        success: false,
-        error: "Status dan keterangan gagal diperbarui.",
-      };
+      return errorResult("Gagal memeriksa data presensi peserta.");
     }
 
-    return {
-      success: true,
-
-      data: {
-        presensiId: updatedPresensi.id,
-        kegiatanId: updatedPresensi.kegiatan_id,
-        mudamudiId: updatedPresensi.mudamudi_id,
-        waktuCheckin: updatedPresensi.waktu_checkin,
-        status: updatedPresensi.status as PresensiStatus,
-        metode: updatedPresensi.metode,
-        keterangan: updatedPresensi.keterangan,
-      },
-    };
+    if (data) {
+      existingPresensi = data as PresensiRow;
+    }
   }
 
   /*
-   * ============================================
-   * 2. BELUM ADA PRESENSI
-   * ============================================
+   * 4. Jika presensi sudah ada, perbarui status dan keterangan.
+   *
+   * waktu_checkin dan metode dipertahankan agar perubahan status
+   * tidak mengubah riwayat waktu maupun metode pencatatan sebelumnya.
    */
-
-  const { data: existingByParticipant, error: existingError } = await supabase
-    .from("presensi")
-    .select(
-      `
-        id,
-        kegiatan_id,
-        mudamudi_id,
-        waktu_checkin,
-        status,
-        metode,
-        keterangan
-      `,
-    )
-    .eq("kegiatan_id", input.kegiatanId)
-    .eq("mudamudi_id", input.mudamudiId)
-    .maybeSingle();
-
-  if (existingError) {
-    console.error("Gagal memeriksa presensi peserta:", existingError);
-
-    return {
-      success: false,
-      error: "Gagal memeriksa data presensi peserta.",
-    };
-  }
-
-  /*
-   * Jika ternyata presensi sudah dibuat oleh proses lain,
-   * update record tersebut.
-   */
-
-  if (existingByParticipant) {
+  if (existingPresensi) {
     const { data: updatedPresensi, error: updateError } = await supabase
       .from("presensi")
       .update({
         status: input.status,
         keterangan,
       })
-      .eq("id", existingByParticipant.id)
+      .eq("id", existingPresensi.id)
+      .eq("kegiatan_id", input.kegiatanId)
+      .eq("mudamudi_id", input.mudamudiId)
       .select(
         `
           id,
@@ -310,32 +276,31 @@ export async function updatePresensiStatus(input: UpdatePresensiStatusInput) {
           keterangan
         `,
       )
-      .single();
+      .maybeSingle();
 
     if (updateError) {
-      console.error("Gagal memperbarui presensi peserta:", updateError);
+      console.error("Gagal memperbarui presensi:", {
+        code: updateError.code,
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint,
+      });
 
-      return {
-        success: false,
-        error: "Status dan keterangan gagal diperbarui.",
-      };
+      return errorResult("Status dan keterangan gagal diperbarui.");
     }
 
-    return {
-      success: true,
+    if (!updatedPresensi) {
+      return errorResult(
+        "Data presensi tidak ditemukan saat proses pembaruan.",
+      );
+    }
 
-      data: {
-        presensiId: updatedPresensi.id,
-        kegiatanId: updatedPresensi.kegiatan_id,
-        mudamudiId: updatedPresensi.mudamudi_id,
-        waktuCheckin: updatedPresensi.waktu_checkin,
-        status: updatedPresensi.status as PresensiStatus,
-        metode: updatedPresensi.metode,
-        keterangan: updatedPresensi.keterangan,
-      },
-    };
+    return successResult(updatedPresensi as PresensiRow);
   }
 
+  /*
+   * 5. Jika belum ada presensi, buat presensi manual.
+   */
   const waktuCheckin = getWaktuCheckin(input.status);
 
   const { data: newPresensi, error: insertError } = await supabase
@@ -359,35 +324,104 @@ export async function updatePresensiStatus(input: UpdatePresensiStatusInput) {
         keterangan
       `,
     )
-    .single();
+    .maybeSingle();
 
   if (insertError) {
-    console.error("Gagal membuat presensi manual:", insertError);
+    console.error("Gagal membuat presensi manual:", {
+      code: insertError.code,
+      message: insertError.message,
+      details: insertError.details,
+      hint: insertError.hint,
+    });
 
+    /*
+     * Jika terjadi konflik karena presensi dibuat bersamaan,
+     * ambil data yang sudah ada lalu perbarui statusnya.
+     */
     if (insertError.code === "23505") {
-      return {
-        success: false,
-        error: "Peserta sudah memiliki presensi pada kegiatan ini.",
-      };
+      const { data: concurrentPresensi, error: concurrentError } =
+        await supabase
+          .from("presensi")
+          .select(
+            `
+              id,
+              kegiatan_id,
+              mudamudi_id,
+              waktu_checkin,
+              status,
+              metode,
+              keterangan
+            `,
+          )
+          .eq("kegiatan_id", input.kegiatanId)
+          .eq("mudamudi_id", input.mudamudiId)
+          .maybeSingle();
+
+      if (concurrentError) {
+        console.error(
+          "Gagal mengambil presensi setelah konflik:",
+          concurrentError,
+        );
+
+        return errorResult(
+          "Presensi mengalami konflik. Silakan muat ulang data dan coba lagi.",
+        );
+      }
+
+      if (!concurrentPresensi) {
+        return errorResult(
+          "Presensi mengalami konflik. Silakan muat ulang data dan coba lagi.",
+        );
+      }
+
+      const { data: updatedPresensi, error: updateError } = await supabase
+        .from("presensi")
+        .update({
+          status: input.status,
+          keterangan,
+        })
+        .eq("id", concurrentPresensi.id)
+        .eq("kegiatan_id", input.kegiatanId)
+        .eq("mudamudi_id", input.mudamudiId)
+        .select(
+          `
+            id,
+            kegiatan_id,
+            mudamudi_id,
+            waktu_checkin,
+            status,
+            metode,
+            keterangan
+          `,
+        )
+        .maybeSingle();
+
+      if (updateError) {
+        console.error(
+          "Gagal memperbarui presensi setelah konflik:",
+          updateError,
+        );
+
+        return errorResult("Status dan keterangan gagal diperbarui.");
+      }
+
+      if (!updatedPresensi) {
+        return errorResult(
+          "Presensi tidak berhasil diperbarui setelah konflik.",
+        );
+      }
+
+      return successResult(updatedPresensi as PresensiRow);
     }
 
-    return {
-      success: false,
-      error: "Presensi manual gagal dibuat.",
-    };
+    return errorResult(
+      "Presensi manual gagal dibuat. Periksa log server untuk detail kesalahan.",
+    );
   }
 
-  return {
-    success: true,
+  if (!newPresensi) {
+    return errorResult("Presensi manual gagal dibuat.");
+  }
 
-    data: {
-      presensiId: newPresensi.id,
-      kegiatanId: newPresensi.kegiatan_id,
-      mudamudiId: newPresensi.mudamudi_id,
-      waktuCheckin: newPresensi.waktu_checkin,
-      status: newPresensi.status as PresensiStatus,
-      metode: newPresensi.metode,
-      keterangan: newPresensi.keterangan,
-    },
-  };
+  return successResult(newPresensi as PresensiRow);
 }
