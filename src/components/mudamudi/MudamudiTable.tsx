@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Mudamudi } from "../../backend/mudamudi/types";
@@ -7,32 +8,25 @@ import MudamudiTableView from "./MudamudiTableView";
 type Props = {
   data: Mudamudi[];
   totalCount: number;
+
   search: string;
-  setSearch: (v: string) => void;
-
-  filterDesa: string[];
-  setFilterDesa: (v: string[]) => void;
-
-  filterJenjang: string[];
-  setFilterJenjang: (v: string[]) => void;
+  setSearch: (value: string) => void;
 
   filterKelas: string[];
-  setFilterKelas: (v: string[]) => void;
+  setFilterKelas: (values: string[]) => void;
 
   filterKelompok: string[];
-  setFilterKelompok: (v: string[]) => void;
+  setFilterKelompok: (values: string[]) => void;
 
   filterJenisKelamin: string[];
-  setFilterJenisKelamin: (v: string[]) => void;
+  setFilterJenisKelamin: (values: string[]) => void;
 
-  kelompokFilterOptions: string[];
   hasActiveFilters: boolean;
 
   sortConfig: Parameters<typeof SearchFilterBar>[0]["sortConfig"];
   setSortConfig: Parameters<typeof SearchFilterBar>[0]["setSortConfig"];
 
   onReset: () => void;
-  adminDesa: string | null;
 
   sortIndicator: Parameters<typeof MudamudiTableView>[0]["sortIndicator"];
   toggleSort: Parameters<typeof MudamudiTableView>[0]["toggleSort"];
@@ -50,10 +44,6 @@ export default function MudamudiTable({
   totalCount,
   search,
   setSearch,
-  filterDesa,
-  setFilterDesa,
-  filterJenjang,
-  setFilterJenjang,
   filterKelas,
   setFilterKelas,
   filterKelompok,
@@ -64,7 +54,6 @@ export default function MudamudiTable({
   sortConfig,
   setSortConfig,
   onReset,
-  adminDesa,
   sortIndicator,
   toggleSort,
   filterKey,
@@ -78,21 +67,16 @@ export default function MudamudiTable({
       <SearchFilterBar
         search={search}
         setSearch={setSearch}
-        filterDesa={filterDesa}
-        setFilterDesa={setFilterDesa}
+        filterKelas={filterKelas}
+        setFilterKelas={setFilterKelas}
         filterKelompok={filterKelompok}
         setFilterKelompok={setFilterKelompok}
         filterJenisKelamin={filterJenisKelamin}
         setFilterJenisKelamin={setFilterJenisKelamin}
-        filterJenjang={filterJenjang}
-        setFilterJenjang={setFilterJenjang}
-        filterKelas={filterKelas}
-        setFilterKelas={setFilterKelas}
         sortConfig={sortConfig}
         setSortConfig={setSortConfig}
         hasActiveFilters={hasActiveFilters}
         onReset={onReset}
-        adminDesa={adminDesa}
       />
 
       <MudamudiTableView

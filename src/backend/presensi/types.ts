@@ -1,4 +1,9 @@
-export type PresensiStatus = "hadir" | "terlambat" | "izin" | "sakit" | "alpa";
+export type PresensiStatus =
+  | "hadir"
+  | "terlambat"
+  | "izin"
+  | "sakit"
+  | "alpa";
 
 export type PresensiMetode = "qr" | "manual";
 
@@ -47,7 +52,6 @@ export type SubmitPresensiResult = {
     id: number;
     nama: string;
     kelas: string;
-    desa: string;
     kelompok: string;
     jenisKelamin: string | null;
   };
@@ -57,9 +61,8 @@ export type MonitoringPeserta = {
   presensi_id: number | null;
   mudamudi_id: number;
   nama: string;
-  desa: string;
   kelompok: string;
-  kelas: string;
+  kelas: string[];
   jenis_kelamin: string | null;
   waktu_checkin: string | null;
   status: PresensiStatus | null;
@@ -95,9 +98,8 @@ export type UpdatePresensiStatusInput = {
 export type RekapitulasiMudaMudi = {
   id: number;
   nama: string;
-  desa: string;
-  kelompok: string;
-  kelas: string;
+  kelompok: string | null;
+  kelas: string[];
   jenis_kelamin: string | null;
 };
 
@@ -111,7 +113,6 @@ export type RekapitulasiKegiatan = {
   jam_mulai: string;
   jam_selesai: string;
   lokasi: string;
-  desa: string[] | null;
   kelompok: string[] | null;
   kelas: string[] | null;
   jenis_kelamin: string | null;
@@ -134,26 +135,26 @@ export type RekapitulasiPresensi = {
 
 export type DeviceCheckResult =
   | {
-      status: "known";
-      mudamudi: {
-        id: number;
-        nama: string;
-      };
-    }
-  | {
-      status: "unknown";
+    status: "known";
+    mudamudi: {
+      id: number;
+      nama: string;
     };
+  }
+  | {
+    status: "unknown";
+  };
 
 export type IdentityVerificationResult =
   | {
-      success: true;
-      mudamudi: {
-        id: number;
-        nama: string;
-      };
-      deviceToken: string;
-    }
-  | {
-      success: false;
-      error: string;
+    success: true;
+    mudamudi: {
+      id: number;
+      nama: string;
     };
+    deviceToken: string;
+  }
+  | {
+    success: false;
+    error: string;
+  };

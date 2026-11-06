@@ -1,3 +1,4 @@
+
 "use server";
 
 import { createAdminClient } from "../supabase/admin";
@@ -7,7 +8,7 @@ import { isMudamudiTargeted } from "./target";
 import type { PresensiStatus, PresensiMetode } from "./types";
 
 const HADIR_TOLERANCE_MINUTES = 10;
-const MUDA_MUDI_QR_PREFIX = "SIKEMA:MUDA_MUDI:";
+const MUDA_MUDI_QR_PREFIX = "KMM_PANDAK:MUDA_MUDI:";
 
 type Kegiatan = {
   id: number;
@@ -17,7 +18,6 @@ type Kegiatan = {
   jam_mulai: string;
   jam_selesai: string;
   lokasi: string;
-  desa: string[] | null;
   kelompok: string[] | null;
   kelas: string[] | null;
   jenis_kelamin: string | null;
@@ -26,40 +26,39 @@ type Kegiatan = {
 type Mudamudi = {
   id: number;
   nama: string;
-  desa: string;
-  kelompok: string;
-  kelas: string;
+  kelompok: string | null;
+  kelas: string[];
   jenis_kelamin: string | null;
   tahun_lahir: number | null;
 };
 
 export type ScanMudamudiQRResult =
   | {
-      success: true;
-      type: "success";
-      message: string;
-      presensiId: number;
-      waktuCheckin: string;
-      status: PresensiStatus;
-      metode: PresensiMetode;
-      kegiatan: Kegiatan;
-      mudamudi: Mudamudi;
-    }
+    success: true;
+    type: "success";
+    message: string;
+    presensiId: number;
+    waktuCheckin: string;
+    status: PresensiStatus;
+    metode: PresensiMetode;
+    kegiatan: Kegiatan;
+    mudamudi: Mudamudi;
+  }
   | {
-      success: false;
-      type:
-        | "invalid_qr"
-        | "mudamudi_not_found"
-        | "kegiatan_not_found"
-        | "kegiatan_inactive"
-        | "not_target"
-        | "already_present"
-        | "not_authorized"
-        | "database_error";
-      message: string;
-      mudamudi?: Mudamudi;
-      kegiatan?: Kegiatan;
-    };
+    success: false;
+    type:
+    | "invalid_qr"
+    | "mudamudi_not_found"
+    | "kegiatan_not_found"
+    | "kegiatan_inactive"
+    | "not_target"
+    | "already_present"
+    | "not_authorized"
+    | "database_error";
+    message: string;
+    mudamudi?: Mudamudi;
+    kegiatan?: Kegiatan;
+  };
 
 function parseMudamudiQR(qrText: string): string | null {
   const value = qrText.trim();
@@ -91,36 +90,9 @@ function determinePresensiStatus(
     waktuMulai.getTime() + HADIR_TOLERANCE_MINUTES * 60 * 1000,
   );
 
-  return waktuCheckin.getTime() <= batasHadir.getTime() ? "hadir" : "terlambat";
-}
-
-function canAccessKegiatan(
-  kegiatan: Kegiatan,
-  desaAdmin: string | null,
-  isSuperAdmin: boolean,
-): boolean {
-  if (isSuperAdmin) {
-    return true;
-  }
-
-  if (!desaAdmin || !Array.isArray(kegiatan.desa)) {
-    return false;
-  }
-
-  return (
-    kegiatan.desa.length > 0 &&
-    kegiatan.desa.every(
-      (desa) => typeof desa === "string" && desa === desaAdmin,
-    )
-  );
-}
-
-function canAccessMudamudi(
-  mudamudi: Pick<Mudamudi, "desa">,
-  desaAdmin: string | null,
-  isSuperAdmin: boolean,
-): boolean {
-  return isSuperAdmin || (!!desaAdmin && mudamudi.desa === desaAdmin);
+  return waktuCheckin.getTime() <= batasHadir.getTime()
+    ? "hadir"
+    : "terlambat";
 }
 
 async function getKegiatanByIdInternal(
@@ -143,7 +115,6 @@ async function getKegiatanByIdInternal(
         jam_mulai,
         jam_selesai,
         lokasi,
-        desa,
         kelompok,
         kelas,
         jenis_kelamin
@@ -163,26 +134,16 @@ async function getKegiatanByIdInternal(
 export async function getKegiatanById(
   kegiatanId: number,
 ): Promise<Kegiatan | null> {
-  const { profile, isSuperAdmin } = await requireAdmin();
+  await requireAdmin();
 
-  const kegiatan = await getKegiatanByIdInternal(kegiatanId);
-
-  if (!kegiatan) {
-    return null;
-  }
-
-  if (!canAccessKegiatan(kegiatan, profile.desa, isSuperAdmin)) {
-    return null;
-  }
-
-  return kegiatan;
+  return getKegiatanByIdInternal(kegiatanId);
 }
 
 export async function scanMudamudiQR(
   qrText: string,
   kegiatanId: number,
 ): Promise<ScanMudamudiQRResult> {
-  const { profile, isSuperAdmin } = await requireAdmin();
+  await requireAdmin();
 
   if (typeof qrText !== "string" || !qrText.trim()) {
     return {
@@ -206,7 +167,7 @@ export async function scanMudamudiQR(
     return {
       success: false,
       type: "invalid_qr",
-      message: "QR Code bukan QR Muda-Mudi SIKEMA.",
+      message: "QR Code bukan QR Muda-Mudi KMM Pandak.",
     };
   }
 
@@ -223,7 +184,6 @@ export async function scanMudamudiQR(
         jam_mulai,
         jam_selesai,
         lokasi,
-        desa,
         kelompok,
         kelas,
         jenis_kelamin
@@ -252,21 +212,12 @@ export async function scanMudamudiQR(
 
   const kegiatan = kegiatanData as Kegiatan;
 
-  if (!canAccessKegiatan(kegiatan, profile.desa, isSuperAdmin)) {
-    return {
-      success: false,
-      type: "not_authorized",
-      message: "Kamu tidak memiliki akses untuk presensi kegiatan ini.",
-    };
-  }
-
   const { data: mudamudiData, error: mudamudiError } = await supabase
     .from("mudamudi")
     .select(
       `
         id,
         nama,
-        desa,
         kelompok,
         kelas,
         jenis_kelamin,
@@ -295,14 +246,6 @@ export async function scanMudamudiQR(
   }
 
   const mudamudi = mudamudiData as Mudamudi;
-
-  if (!canAccessMudamudi(mudamudi, profile.desa, isSuperAdmin)) {
-    return {
-      success: false,
-      type: "not_authorized",
-      message: "Kamu tidak memiliki akses untuk memproses peserta ini.",
-    };
-  }
 
   if (
     !isKegiatanAktif(

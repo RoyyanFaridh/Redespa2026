@@ -8,6 +8,7 @@ import type {
   RekapitulasiMudaMudi,
 } from "../../../backend/presensi/types";
 
+import { isMudamudiTargeted } from "../../../backend/presensi/target";
 import { formatRentangTanggal } from "../../../backend/kegiatan/format";
 import Pagination from "./Pagination";
 import RekapitulasiLegend from "./RekapitulasiLegend";
@@ -110,10 +111,6 @@ const SUMMARY_COLUMNS = [
   },
 ] as const;
 
-/**
- * Menentukan apakah kegiatan sudah melewati tanggal dan jam selesai.
- * Tanggal dan jam diperlakukan sebagai waktu lokal perangkat.
- */
 function isKegiatanSelesai(kegiatan: RekapitulasiKegiatan): boolean {
   const { tanggal_selesai, jam_selesai } = kegiatan;
 
@@ -137,7 +134,6 @@ function isKegiatanSelesai(kegiatan: RekapitulasiKegiatan): boolean {
   const menit = Number(jamValid[2]);
   const detik = Number(jamValid[3] ?? "0");
 
-  // Validasi nilai kalender dan jam untuk menghindari tanggal tidak valid.
   const tanggalPemeriksaan = new Date(tahun, bulan - 1, hari);
 
   const tanggalBenar =
@@ -160,32 +156,6 @@ function isKegiatanSelesai(kegiatan: RekapitulasiKegiatan): boolean {
   const waktuSelesai = new Date(tahun, bulan - 1, hari, jam, menit, detik);
 
   return Date.now() >= waktuSelesai.getTime();
-}
-
-function isMudamudiTargeted(
-  kegiatan: RekapitulasiKegiatan,
-  mudamudi: RekapitulasiMudaMudi,
-): boolean {
-  const matchesDesa =
-    !kegiatan.desa ||
-    kegiatan.desa.length === 0 ||
-    kegiatan.desa.includes(mudamudi.desa);
-
-  const matchesKelompok =
-    !kegiatan.kelompok ||
-    kegiatan.kelompok.length === 0 ||
-    kegiatan.kelompok.includes(mudamudi.kelompok);
-
-  const matchesKelas =
-    !kegiatan.kelas ||
-    kegiatan.kelas.length === 0 ||
-    kegiatan.kelas.includes(mudamudi.kelas);
-
-  const matchesJenisKelamin =
-    !kegiatan.jenis_kelamin ||
-    kegiatan.jenis_kelamin === mudamudi.jenis_kelamin;
-
-  return matchesDesa && matchesKelompok && matchesKelas && matchesJenisKelamin;
 }
 
 function getStatusStyle(status: RekapitulasiStatus) {
@@ -228,7 +198,6 @@ export default function RekapitulasiTable({
     const statusPresensi = attendanceMap.get(key);
     const kegiatanSelesai = isKegiatanSelesai(kegiatanItem);
 
-    // Peserta di luar sasaran kegiatan tidak memiliki kewajiban presensi.
     if (
       statusPresensi === "tidak_berlaku" ||
       !isMudamudiTargeted(kegiatanItem, mudamudi)
@@ -236,23 +205,14 @@ export default function RekapitulasiTable({
       return "tidak_berlaku";
     }
 
-    /*
-     * Jika backend mengirim Alpa untuk peserta yang belum memiliki
-     * presensi, jangan tampilkan Alpa sebelum kegiatan selesai.
-     *
-     * Catatan: ini merupakan pengaman tampilan. Sumber data backend
-     * tetap perlu dipastikan agar tidak membuat Alpa secara prematur.
-     */
     if (statusPresensi === "alpa" && !kegiatanSelesai) {
       return "belum_hadir";
     }
 
-    // Status presensi yang sudah tercatat tetap menjadi sumber utama.
     if (statusPresensi) {
       return statusPresensi;
     }
 
-    // Peserta sasaran yang belum tercatat: tentukan dari waktu selesai.
     return kegiatanSelesai ? "alpa" : "belum_hadir";
   }
 
@@ -435,9 +395,8 @@ export default function RekapitulasiTable({
                   <th
                     key={column.key}
                     title={column.title}
-                    className={`sticky z-40 w-10 min-w-10 border-b border-gray-200 bg-gray-50 px-1 py-3 text-center text-[10px] font-semibold ${
-                      column.key === "belumHadir" ? "border-l" : ""
-                    } ${column.headerClassName}`}
+                    className={`sticky z-40 w-10 min-w-10 border-b border-gray-200 bg-gray-50 px-1 py-3 text-center text-[10px] font-semibold ${column.key === "belumHadir" ? "border-l" : ""
+                      } ${column.headerClassName}`}
                     style={{ right: `${rightOffset}px` }}
                   >
                     {column.label}
@@ -460,10 +419,8 @@ export default function RekapitulasiTable({
                     <div className="whitespace-nowrap text-[11px] font-semibold text-gray-800">
                       {item.nama}
                     </div>
-                    <div className="mt-1 flex items-center gap-1.5 whitespace-nowrap text-[9px] text-gray-400">
-                      <span>{item.desa}</span>
-                      <span className="text-gray-300">•</span>
-                      <span>{item.kelompok}</span>
+                    <div className="mt-1 whitespace-nowrap text-[9px] text-gray-400">
+                      {item.kelompok ?? "Kelompok belum ditentukan"}
                     </div>
                   </td>
 
@@ -498,11 +455,10 @@ export default function RekapitulasiTable({
                         className="border-b border-gray-100 px-3 py-2.5 text-center"
                       >
                         <span
-                          className={`mx-auto block h-2.5 w-2.5 rounded-full ring-2 ring-offset-1 ring-offset-white ${
-                            belumHadir
+                          className={`mx-auto block h-2.5 w-2.5 rounded-full ring-2 ring-offset-1 ring-offset-white ${belumHadir
                               ? "border border-gray-300 bg-white ring-gray-100"
                               : (statusStyle?.className ?? "")
-                          }`}
+                            }`}
                           title={
                             belumHadir
                               ? "Belum Hadir"
@@ -526,9 +482,8 @@ export default function RekapitulasiTable({
                     return (
                       <td
                         key={column.key}
-                        className={`sticky z-30 w-10 min-w-10 border-b border-gray-100 bg-white px-1 py-2.5 text-center transition-colors group-hover:bg-teal-50/40 ${
-                          column.key === "belumHadir" ? "border-l" : ""
-                        }`}
+                        className={`sticky z-30 w-10 min-w-10 border-b border-gray-100 bg-white px-1 py-2.5 text-center transition-colors group-hover:bg-teal-50/40 ${column.key === "belumHadir" ? "border-l" : ""
+                          }`}
                         style={{ right: `${rightOffset}px` }}
                       >
                         <span
@@ -559,9 +514,8 @@ export default function RekapitulasiTable({
                 <th
                   key={column.key}
                   title={column.title}
-                  className={`w-9 border-b border-gray-200 bg-gray-50 px-0.5 py-3 text-center text-[10px] font-semibold ${column.headerClassName} ${
-                    column.key === "belumHadir" ? "border-l" : ""
-                  }`}
+                  className={`w-9 border-b border-gray-200 bg-gray-50 px-0.5 py-3 text-center text-[10px] font-semibold ${column.headerClassName} ${column.key === "belumHadir" ? "border-l" : ""
+                    }`}
                 >
                   {column.label}
                 </th>
@@ -582,19 +536,16 @@ export default function RekapitulasiTable({
                     <div className="truncate text-[11px] font-semibold text-gray-800">
                       {item.nama}
                     </div>
-                    <div className="mt-1 flex min-w-0 items-center gap-1 truncate text-[9px] text-gray-400">
-                      <span className="truncate">{item.desa}</span>
-                      <span className="shrink-0 text-gray-300">•</span>
-                      <span className="truncate">{item.kelompok}</span>
+                    <div className="mt-1 truncate text-[9px] text-gray-400">
+                      {item.kelompok ?? "Kelompok belum ditentukan"}
                     </div>
                   </td>
 
                   {SUMMARY_COLUMNS.map((column) => (
                     <td
                       key={column.key}
-                      className={`w-9 border-b border-gray-100 px-0.5 py-3 text-center ${
-                        column.key === "belumHadir" ? "border-l" : ""
-                      }`}
+                      className={`w-9 border-b border-gray-100 px-0.5 py-3 text-center ${column.key === "belumHadir" ? "border-l" : ""
+                        }`}
                     >
                       <span
                         className={`text-[10px] font-semibold tabular-nums ${column.textClassName}`}

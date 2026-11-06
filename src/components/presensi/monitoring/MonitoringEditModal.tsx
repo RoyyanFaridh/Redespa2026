@@ -1,3 +1,4 @@
+
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
@@ -19,27 +20,27 @@ const STATUS_OPTIONS: {
   value: PresensiStatus;
   label: string;
 }[] = [
-  {
-    value: "hadir",
-    label: "Hadir",
-  },
-  {
-    value: "terlambat",
-    label: "Terlambat",
-  },
-  {
-    value: "izin",
-    label: "Izin",
-  },
-  {
-    value: "sakit",
-    label: "Sakit",
-  },
-  {
-    value: "alpa",
-    label: "Alpa",
-  },
-];
+    {
+      value: "hadir",
+      label: "Hadir",
+    },
+    {
+      value: "terlambat",
+      label: "Terlambat",
+    },
+    {
+      value: "izin",
+      label: "Izin",
+    },
+    {
+      value: "sakit",
+      label: "Sakit",
+    },
+    {
+      value: "alpa",
+      label: "Alpa",
+    },
+  ];
 
 function getInitialStatus(status: PresensiStatus | null): PresensiStatus | "" {
   return status ?? "";
@@ -136,9 +137,7 @@ export default function MonitoringEditModal({
                 Edit Status Presensi
               </h2>
 
-              <p className="text-[10px] text-[#78827C]">
-                {peserta.nama}
-              </p>
+              <p className="text-[10px] text-[#78827C]">{peserta.nama}</p>
             </div>
           </div>
 
@@ -183,15 +182,6 @@ export default function MonitoringEditModal({
 
               <div className="rounded-xl border border-[#E5EAE6] bg-[#F5F7F5] p-3.5">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                  <div className="min-w-0">
-                    <p className="text-[9px] font-semibold uppercase tracking-wider text-[#78827C]">
-                      Desa
-                    </p>
-                    <p className="mt-0.5 truncate text-xs font-medium text-[#202824]">
-                      {peserta.desa}
-                    </p>
-                  </div>
-
                   <div className="min-w-0">
                     <p className="text-[9px] font-semibold uppercase tracking-wider text-[#78827C]">
                       Kelompok
@@ -240,13 +230,11 @@ export default function MonitoringEditModal({
                   }
                   disabled={loading}
                   required
-                  className={`h-10 w-full appearance-none rounded-xl border bg-white px-3 pr-9 text-xs outline-none transition focus:ring-2 ${
-                    status ? "text-[#202824]" : "text-[#9AA39D]"
-                  } ${
-                    error
+                  className={`h-10 w-full appearance-none rounded-xl border bg-white px-3 pr-9 text-xs outline-none transition focus:ring-2 ${status ? "text-[#202824]" : "text-[#9AA39D]"
+                    } ${error
                       ? "border-rose-300 focus:border-rose-400 focus:ring-rose-50"
                       : "border-[#E5EAE6] focus:border-[#287A50] focus:ring-[#65B98A]/20"
-                  } disabled:cursor-not-allowed disabled:bg-[#F5F7F5]`}
+                    } disabled:cursor-not-allowed disabled:bg-[#F5F7F5]`}
                 >
                   <option value="" disabled>
                     Pilih status presensi

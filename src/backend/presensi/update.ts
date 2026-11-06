@@ -13,10 +13,8 @@ type UpdatePresensiStatusInput = {
   keterangan?: string | null;
 };
 
-type AdminAccess = Awaited<ReturnType<typeof requireAdmin>>;
-
 type KegiatanAccess = {
-  desa: string[] | null;
+  id: number;
   kelompok: string[] | null;
   kelas: string[] | null;
   jenis_kelamin: string | null;
@@ -24,7 +22,6 @@ type KegiatanAccess = {
 
 type MudamudiAccess = {
   id: number;
-  desa: string;
   kelompok: string;
   kelas: string;
   jenis_kelamin: string | null;
@@ -37,22 +34,6 @@ const VALID_STATUSES: PresensiStatus[] = [
   "sakit",
   "alpa",
 ];
-
-function canAccessKegiatan(
-  kegiatan: KegiatanAccess,
-  admin: AdminAccess,
-): boolean {
-  if (admin.isSuperAdmin) return true;
-
-  return (
-    admin.desa !== null &&
-    Array.isArray(kegiatan.desa) &&
-    kegiatan.desa.length > 0 &&
-    kegiatan.desa.every(
-      (desa) => typeof desa === "string" && desa === admin.desa,
-    )
-  );
-}
 
 function normalizeKeterangan(keterangan?: string | null): string | null {
   const value = keterangan?.trim() || null;
@@ -82,11 +63,10 @@ async function validateTarget(
   supabase: Awaited<ReturnType<typeof createClient>>,
   kegiatanId: number,
   mudamudiId: number,
-  admin: AdminAccess,
 ) {
   const { data: kegiatan, error: kegiatanError } = await supabase
     .from("kegiatan")
-    .select("id, desa, kelompok, kelas, jenis_kelamin")
+    .select("id, kelompok, kelas, jenis_kelamin")
     .eq("id", kegiatanId)
     .maybeSingle();
 
@@ -102,20 +82,13 @@ async function validateTarget(
   if (!kegiatan) {
     return {
       valid: false as const,
-      error: "Kegiatan tidak ditemukan atau tidak memiliki akses.",
-    };
-  }
-
-  if (!canAccessKegiatan(kegiatan, admin)) {
-    return {
-      valid: false as const,
-      error: "Kamu tidak memiliki akses ke kegiatan ini.",
+      error: "Kegiatan tidak ditemukan.",
     };
   }
 
   const { data: mudamudi, error: mudamudiError } = await supabase
     .from("mudamudi")
-    .select("id, desa, kelompok, kelas, jenis_kelamin")
+    .select("id, kelompok, kelas, jenis_kelamin")
     .eq("id", mudamudiId)
     .maybeSingle();
 
@@ -131,14 +104,7 @@ async function validateTarget(
   if (!mudamudi) {
     return {
       valid: false as const,
-      error: "Muda-Mudi tidak ditemukan atau tidak memiliki akses.",
-    };
-  }
-
-  if (!admin.isSuperAdmin && mudamudi.desa !== admin.desa) {
-    return {
-      valid: false as const,
-      error: "Kamu tidak memiliki akses ke data Muda-Mudi ini.",
+      error: "Muda-Mudi tidak ditemukan.",
     };
   }
 
@@ -157,7 +123,8 @@ async function validateTarget(
 export async function updatePresensiStatus(
   input: UpdatePresensiStatusInput,
 ) {
-  const admin = await requireAdmin();
+  await requireAdmin();
+
   const supabase = await createClient();
 
   if (
@@ -195,7 +162,6 @@ export async function updatePresensiStatus(
     supabase,
     input.kegiatanId,
     input.mudamudiId,
-    admin,
   );
 
   if (!targetValidation.valid) {
@@ -228,7 +194,7 @@ export async function updatePresensiStatus(
     if (!existingPresensi) {
       return {
         success: false,
-        error: "Data presensi tidak ditemukan atau tidak memiliki akses.",
+        error: "Data presensi tidak ditemukan.",
       };
     }
 
@@ -273,7 +239,7 @@ export async function updatePresensiStatus(
     if (!updatedPresensi) {
       return {
         success: false,
-        error: "Presensi tidak dapat diperbarui atau tidak memiliki akses.",
+        error: "Presensi tidak dapat diperbarui.",
       };
     }
 
@@ -342,7 +308,7 @@ export async function updatePresensiStatus(
     if (!updatedPresensi) {
       return {
         success: false,
-        error: "Presensi tidak dapat diperbarui atau tidak memiliki akses.",
+        error: "Presensi tidak dapat diperbarui.",
       };
     }
 
@@ -396,7 +362,7 @@ export async function updatePresensiStatus(
   if (!newPresensi) {
     return {
       success: false,
-      error: "Presensi manual gagal dibuat atau tidak memiliki akses.",
+      error: "Presensi manual gagal dibuat.",
     };
   }
 

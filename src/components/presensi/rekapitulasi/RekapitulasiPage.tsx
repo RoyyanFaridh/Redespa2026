@@ -71,7 +71,6 @@ export default function RekapitulasiPage({ adminDesa }: Props) {
 
   const [selectedBulan, setSelectedBulan] = useState("");
   const [selectedKegiatan, setSelectedKegiatan] = useState("");
-  const [selectedDesa, setSelectedDesa] = useState(adminDesa ?? "");
   const [selectedKelompok, setSelectedKelompok] = useState("");
   const [selectedKelas, setSelectedKelas] = useState("");
 
@@ -94,7 +93,6 @@ export default function RekapitulasiPage({ adminDesa }: Props) {
 
   useEffect(() => {
     setCurrentPage(1);
-    setSelectedDesa(adminDesa ?? "");
     setSelectedKelompok("");
   }, [adminDesa]);
 
@@ -125,7 +123,6 @@ export default function RekapitulasiPage({ adminDesa }: Props) {
           search,
           bulan: selectedBulan || undefined,
           kegiatanId: selectedKegiatan ? Number(selectedKegiatan) : undefined,
-          desa: selectedDesa || undefined,
           kelompok: selectedKelompok || undefined,
           kelas: selectedKelas || undefined,
         })) as RekapitulasiResult;
@@ -134,7 +131,6 @@ export default function RekapitulasiPage({ adminDesa }: Props) {
 
         if ("error" in result) {
           setError(result.error ?? "Gagal memuat data rekapitulasi.");
-          // Jangan menghapus data sebelumnya saat pembaruan gagal.
           return;
         }
 
@@ -150,8 +146,6 @@ export default function RekapitulasiPage({ adminDesa }: Props) {
             ? err.message
             : "Terjadi kesalahan saat memuat rekapitulasi presensi.",
         );
-
-        // Data sebelumnya tetap ditampilkan jika request gagal.
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -171,7 +165,6 @@ export default function RekapitulasiPage({ adminDesa }: Props) {
     search,
     selectedBulan,
     selectedKegiatan,
-    selectedDesa,
     selectedKelompok,
     selectedKelas,
   ]);
@@ -296,7 +289,7 @@ export default function RekapitulasiPage({ adminDesa }: Props) {
     setExportFilters({
       bulan: selectedBulan,
       kegiatanId: selectedKegiatan,
-      desa: selectedDesa ? [selectedDesa] : [],
+      desa: [],
       kelompok: selectedKelompok ? [selectedKelompok] : [],
       kelas: selectedKelas ? [selectedKelas] : [],
       search: searchInput,
@@ -317,12 +310,6 @@ export default function RekapitulasiPage({ adminDesa }: Props) {
       const exportParams = {
         bulan: filters.bulan || undefined,
         kegiatanId: filters.kegiatanId ? Number(filters.kegiatanId) : undefined,
-        desa:
-          adminDesa !== null
-            ? [adminDesa]
-            : filters.desa.length > 0
-              ? filters.desa
-              : undefined,
         kelompok: filters.kelompok.length > 0 ? filters.kelompok : undefined,
         kelas: filters.kelas.length > 0 ? filters.kelas : undefined,
         search: filters.search.trim() || undefined,
@@ -449,23 +436,16 @@ export default function RekapitulasiPage({ adminDesa }: Props) {
             search={searchInput}
             selectedMonth={selectedBulan}
             selectedKegiatan={selectedKegiatan}
-            selectedDesa={selectedDesa}
             selectedKelompok={selectedKelompok}
             selectedKelas={selectedKelas}
             kegiatan={kegiatanOptions}
             bulanOptions={bulanOptions}
             mudamudi={data.mudamudi}
-            adminDesa={adminDesa}
             onSearchChange={setSearchInput}
             onMonthChange={(value) => updateFilter(setSelectedBulan, value)}
             onKegiatanChange={(value) =>
               updateFilter(setSelectedKegiatan, value)
             }
-            onDesaChange={(value) => {
-              setCurrentPage(1);
-              setSelectedDesa(value);
-              setSelectedKelompok("");
-            }}
             onKelompokChange={(value) =>
               updateFilter(setSelectedKelompok, value)
             }

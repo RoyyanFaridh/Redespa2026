@@ -6,25 +6,18 @@ import {
   importMudamudi,
   previewImportMudamudi,
 } from "../../backend/mudamudi/actions";
-import type { ImportRow } from "../../backend/mudamudi/importExcel";
+import {
+  parseImportExcel,
+  type ImportRow,
+  type ImportError,
+  type ImportWarning,
+} from "../../backend/mudamudi/importExcel";
 import ModalWrapper from "./ModalWrapper";
 import { UploadIcon } from "./icons";
 
-type ImportAction = "insert" | "update";
-
-type PreviewRow = ImportRow & {
-  importAction?: ImportAction;
-};
-
-type ImportError = {
-  rowNumber: number;
-  message: string;
-};
-
-type ImportWarning = {
-  rowNumber: number;
-  message: string;
-};
+type PreviewRow = Awaited<
+  ReturnType<typeof previewImportMudamudi>
+>[number];
 
 type Props = {
   onClose: () => void;
@@ -35,32 +28,36 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
+  const [parsedRows, setParsedRows] = useState<ImportRow[]>([]);
   const [previewData, setPreviewData] = useState<PreviewRow[]>([]);
   const [errors, setErrors] = useState<ImportError[]>([]);
   const [warnings, setWarnings] = useState<ImportWarning[]>([]);
-  const [newCount, setNewCount] = useState(0);
-  const [updateCount, setUpdateCount] = useState(0);
-  const [reviewCount, setReviewCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [step, setStep] = useState<"upload" | "preview">("upload");
   const [previewReady, setPreviewReady] = useState(false);
   const [showMobileHelp, setShowMobileHelp] = useState(false);
+  const [importCompleted, setImportCompleted] = useState(false);
+  const [importSummary, setImportSummary] = useState("");
+
+  const newCount = previewData.filter((item) => item.valid).length;
+  const reviewCount = previewData.filter((item) => !item.valid).length;
+  const totalReady = newCount;
 
   function resetFile() {
     if (loading) return;
 
     setFile(null);
+    setParsedRows([]);
     setPreviewData([]);
     setErrors([]);
     setWarnings([]);
-    setNewCount(0);
-    setUpdateCount(0);
-    setReviewCount(0);
     setStep("upload");
     setError("");
     setPreviewReady(false);
     setShowMobileHelp(false);
+    setImportCompleted(false);
+    setImportSummary("");
 
     if (inputRef.current) {
       inputRef.current.value = "";
@@ -73,23 +70,25 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
     const selectedFile = e.target.files?.[0] ?? null;
 
     setError("");
+    setParsedRows([]);
     setPreviewData([]);
     setErrors([]);
     setWarnings([]);
-    setNewCount(0);
-    setUpdateCount(0);
-    setReviewCount(0);
     setStep("upload");
     setPreviewReady(false);
+    setImportCompleted(false);
+    setImportSummary("");
 
     if (!selectedFile) {
       setFile(null);
       return;
     }
 
-    if (!selectedFile.name.toLowerCase().endsWith(".xlsx")) {
+    const fileName = selectedFile.name.toLowerCase();
+
+    if (!fileName.endsWith(".xlsx") && !fileName.endsWith(".csv")) {
       setFile(null);
-      setError("File harus berformat .xlsx.");
+      setError("File harus berformat .xlsx atau .csv.");
       e.target.value = "";
       return;
     }
@@ -101,60 +100,97 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
     if (loading) return;
 
     if (!file) {
-      setError("Pilih file Excel terlebih dahulu.");
+      setError("Pilih file terlebih dahulu.");
       return;
     }
 
     setLoading(true);
     setError("");
+    setParsedRows([]);
     setPreviewData([]);
     setErrors([]);
     setWarnings([]);
-    setNewCount(0);
-    setUpdateCount(0);
-    setReviewCount(0);
     setPreviewReady(false);
+    setImportCompleted(false);
+    setImportSummary("");
 
     try {
-      const formData = new FormData();
-      formData.append("file", file, file.name);
+      const parseResult = await parseImportExcel(file);
 
-      const result = await previewImportMudamudi(formData);
+      setErrors(parseResult.errors);
+      setWarnings(parseResult.warnings);
 
-      if (!result.success) {
-        setError(result.error || "Gagal memeriksa file Excel.");
-        setStep("upload");
+      if (parseResult.data.length === 0) {
+        setStep("preview");
+        setPreviewReady(true);
+        setParsedRows([]);
+
+        setError(
+          parseResult.errors.length > 0
+            ? "Tidak ada data yang lolos validasi file. Periksa rincian kesalahan."
+            : "Tidak ada data yang dapat diproses dari file.",
+        );
+
         return;
       }
 
-      const data = (result.data ?? []) as PreviewRow[];
-      const importErrors = result.errors ?? [];
-      const importWarnings = result.warnings ?? [];
+      const rows = parseResult.data;
+      setParsedRows(rows);
 
-      setPreviewData(data);
-      setErrors(importErrors);
-      setWarnings(importWarnings);
-      setNewCount(result.newCount ?? 0);
-      setUpdateCount(result.updateCount ?? 0);
-      setReviewCount(result.reviewCount ?? importErrors.length);
+      const result = await previewImportMudamudi(rows);
+
+      setPreviewData(result);
       setStep("preview");
       setPreviewReady(true);
 
-      if (data.length === 0) {
+      const serverErrors: ImportError[] = result
+        .filter((item) => !item.valid)
+        .map((item) => {
+          let message = "Data tidak memenuhi ketentuan impor.";
+
+          if (item.duplicateInDatabase) {
+            message =
+              "Data sudah terdaftar di database berdasarkan pencocokan data.";
+          } else if (item.duplicateInFile) {
+            message = "Data terdeteksi duplikat dengan baris lain dalam file.";
+          }
+
+          return {
+            rowNumber: item.row,
+            message,
+          };
+        });
+
+      setErrors((previous) => {
+        const combined = [...previous, ...serverErrors];
+
+        return combined.filter(
+          (item, index, array) =>
+            array.findIndex(
+              (other) =>
+                other.rowNumber === item.rowNumber &&
+                other.message === item.message,
+            ) === index,
+        );
+      });
+
+      if (result.length === 0) {
+        setError("Tidak ada data yang dapat diperiksa dari file.");
+      } else if (result.every((item) => !item.valid)) {
         setError(
-          importErrors.length > 0
-            ? "Tidak ada data yang lolos validasi. Periksa rincian kesalahan di bawah."
-            : "Tidak ada data yang dapat diproses dari file Excel.",
+          "Tidak ada data yang siap diimpor. Periksa kesalahan dan duplikasi pada rincian validasi.",
         );
       }
     } catch (err) {
-      console.error("Gagal memeriksa file Generus:", err);
+      console.error("Gagal memeriksa file Muda-Mudi:", err);
 
       setError(
         err instanceof Error
           ? `Gagal membaca file: ${err.message}`
-          : "Gagal membaca file Excel. Silakan coba lagi.",
+          : "Gagal membaca file. Silakan coba lagi.",
       );
+
+      setStep("upload");
     } finally {
       setLoading(false);
     }
@@ -163,13 +199,13 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
   async function handleImport() {
     if (loading) return;
 
-    if (!file) {
-      setError("Pilih file Excel terlebih dahulu.");
+    if (!previewReady || parsedRows.length === 0) {
+      setError("Periksa file terlebih dahulu.");
       return;
     }
 
-    if (!previewReady || previewData.length === 0) {
-      setError("Periksa file terlebih dahulu dan pastikan ada data valid.");
+    if (newCount === 0) {
+      setError("Tidak ada data valid yang dapat diimpor.");
       return;
     }
 
@@ -177,38 +213,65 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
     setError("");
 
     try {
-      const formData = new FormData();
-      formData.append("file", file, file.name);
+      const validRows = previewData
+        .map((item, index) => ({
+          valid: item.valid,
+          row: parsedRows[index],
+        }))
+        .filter(
+          (item): item is { valid: true; row: ImportRow } =>
+            item.valid && item.row !== undefined,
+        )
+        .map((item) => item.row);
 
-      const result = await importMudamudi(formData);
+      if (validRows.length === 0) {
+        setError("Tidak ada data valid yang dapat diimpor.");
+        return;
+      }
 
-      if (result.error) {
-        const importedCount = result.imported ?? 0;
-        const updatedCount = result.updated ?? 0;
-        const skippedCount = result.skipped ?? 0;
+      const result = await importMudamudi(validRows);
 
-        if (importedCount > 0 || updatedCount > 0) {
+      const summary = [
+        result.message,
+        `Data berhasil ditambahkan: ${result.imported}.`,
+        `Data dilewati: ${result.skipped}.`,
+      ].join(" ");
+
+      if (result.imported > 0) {
+        onSuccess();
+      }
+
+      if (!result.success || result.errors.length > 0) {
+        setImportSummary(
+          [
+            summary,
+            ...result.errors,
+          ].filter(Boolean).join("\n"),
+        );
+
+        setImportCompleted(true);
+        setPreviewReady(false);
+
+        if (result.imported > 0) {
           setError(
-            `${result.error} Sebagian perubahan mungkin sudah tersimpan: ${importedCount} data baru, ${updatedCount} data diperbarui, dan ${skippedCount} data dilewati. Periksa data sebelum mengulangi impor.`,
+            "Sebagian data telah berhasil disimpan. Periksa ringkasan hasil impor sebelum melanjutkan.",
           );
-
-          onSuccess();
         } else {
-          setError(result.error);
+          setError(
+            result.message || "Tidak ada data yang berhasil diimpor.",
+          );
         }
 
         return;
       }
 
-      if (!result.success) {
-        setError("Server tidak mengonfirmasi keberhasilan impor.");
-        return;
-      }
+      setImportSummary(summary);
+      setImportCompleted(true);
+      setPreviewReady(false);
 
-      onSuccess();
       onClose();
     } catch (err) {
-      console.error("Gagal mengimpor data Generus:", err);
+      console.error("Gagal mengimpor data Muda-Mudi:", err);
 
       setError(
         err instanceof Error
@@ -220,8 +283,11 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
     }
   }
 
-  const canImport = previewReady && previewData.length > 0 && !loading;
-  const totalReady = newCount + updateCount;
+  const canImport =
+    previewReady &&
+    newCount > 0 &&
+    !loading &&
+    !importCompleted;
 
   return (
     <ModalWrapper
@@ -229,7 +295,6 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
       onClose={loading ? () => { } : onClose}
     >
       <div className="flex max-h-[85dvh] min-h-0 w-full flex-col overflow-hidden">
-        {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-[#E5EAE6] px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#E5EAE6] bg-[#E6F2EA] text-[#287A50] sm:h-9 sm:w-9">
@@ -238,10 +303,10 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
 
             <div className="min-w-0">
               <h2 className="text-xs font-semibold tracking-tight text-[#202824]">
-                Import Data Generus
+                Import Data Muda-Mudi
               </h2>
               <p className="mt-0.5 text-[10px] leading-4 text-[#78827C]">
-                Tambahkan data baru atau perbarui data yang sudah terdaftar
+                Tambahkan data Muda-Mudi dari file Excel atau CSV
               </p>
             </div>
           </div>
@@ -270,7 +335,6 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
           </button>
         </div>
 
-        {/* Content */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-6 sm:py-5">
           {error && (
             <div
@@ -292,14 +356,44 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                   d="M12 8v4M12 16h.01"
                 />
               </svg>
-              <p className="text-[10px] leading-4 text-red-600">{error}</p>
+              <p className="whitespace-pre-line text-[10px] leading-4 text-red-600">
+                {error}
+              </p>
             </div>
           )}
 
-          {/* Upload */}
+          {importSummary && (
+            <div className="mb-3 rounded-xl border border-[#65B98A]/30 bg-[#E6F2EA] px-3 py-3 sm:mb-4 sm:px-4">
+              <div className="flex items-start gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-[#287A50]"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m5 12 4 4L19 6"
+                  />
+                </svg>
+
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold text-[#206440]">
+                    Ringkasan Hasil Impor
+                  </p>
+                  <p className="mt-1 whitespace-pre-line text-[9px] leading-4 text-[#206440]">
+                    {importSummary}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {step === "upload" && (
             <div className="space-y-3 sm:space-y-4">
-              {/* Mobile: Upload ringkas */}
               <div className="space-y-2 md:hidden">
                 <button
                   type="button"
@@ -335,12 +429,12 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                     <p className="mt-1 text-[9px] text-[#78827C]">
                       {file
                         ? "Ketuk untuk mengganti file"
-                        : "Pilih file database Generus (.xlsx)"}
+                        : "Pilih file database Muda-Mudi (.xlsx atau .csv)"}
                     </p>
                   </div>
 
                   <span className="shrink-0 rounded-lg border border-[#E5EAE6] bg-white px-2 py-1 text-[9px] font-medium text-[#287A50]">
-                    .xlsx
+                    .xlsx / .csv
                   </span>
                 </button>
 
@@ -377,7 +471,6 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                   </button>
                 </div>
 
-                {/* Mobile: Panduan yang dapat dibuka */}
                 {showMobileHelp && (
                   <div className="space-y-2 rounded-xl border border-[#E5EAE6] bg-[#F8FAF8] p-3">
                     <div>
@@ -390,14 +483,13 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                           <span className="font-semibold text-[#287A50]">
                             Wajib:
                           </span>{" "}
-                          Desa, Kelompok, Nama Lengkap, Jenis Kelamin.
+                          Kelompok, Nama Lengkap, Jenis Kelamin, Kelas.
                         </p>
                         <p>
                           <span className="font-semibold text-[#287A50]">
                             Opsional:
                           </span>{" "}
-                          Tempat, Tahun Lahir, No HP, Pekerjaan, Jenjang,
-                          Kelas, Alamat.
+                          Tempat, Tahun Lahir, No HP, Pekerjaan.
                         </p>
                         <p className="text-[#9AA39D]">
                           Kolom NO hanya digunakan sebagai nomor urut.
@@ -407,26 +499,11 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
 
                     <div className="border-t border-[#E5EAE6] pt-2">
                       <p className="text-[10px] font-semibold text-[#202824]">
-                        Pencocokan Data
+                        Ketentuan Impor
                       </p>
                       <p className="mt-1 text-[9px] leading-4 text-[#78827C]">
-                        Data lama dicocokkan berdasarkan{" "}
-                        <span className="font-semibold text-[#202824]">
-                          Nama Lengkap, Desa, dan Kelompok
-                        </span>
-                        . Kelas tidak digunakan sebagai identitas pencocokan.
-                      </p>
-                    </div>
-
-                    <div className="border-t border-amber-100 pt-2">
-                      <p className="text-[10px] font-semibold text-amber-800">
-                        Catatan Pembaruan
-                      </p>
-                      <p className="mt-1 text-[9px] leading-4 text-amber-700">
-                        Kolom opsional yang tidak tersedia pada file tidak
-                        mengubah data lama. Namun, jika kolom tersedia tetapi
-                        selnya kosong, nilai pada data lama dapat ikut
-                        dikosongkan.
+                        Proses impor hanya menambahkan data baru. Data yang
+                        sudah terdaftar atau terdeteksi duplikat akan dilewati.
                       </p>
                     </div>
                   </div>
@@ -436,15 +513,13 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
               <input
                 ref={inputRef}
                 type="file"
-                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
                 onChange={handleFileChange}
                 disabled={loading}
                 className="hidden"
               />
 
-              {/* Desktop: Dua kolom */}
               <div className="hidden items-stretch gap-5 md:grid md:grid-cols-[2fr_3fr] lg:gap-6">
-                {/* Kiri: Informasi */}
                 <div className="flex min-w-0 flex-col gap-3">
                   <div className="flex-1 rounded-xl border border-[#E5EAE6] bg-[#F8FAF8] p-3 sm:p-4">
                     <div className="flex items-center gap-2">
@@ -477,7 +552,7 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                           Kolom wajib
                         </p>
                         <p className="mt-0.5 text-[#78827C]">
-                          Desa, Kelompok, Nama Lengkap, Jenis Kelamin.
+                          Kelompok, Nama Lengkap, Jenis Kelamin, Kelas.
                         </p>
                       </div>
 
@@ -486,8 +561,7 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                           Kolom opsional
                         </p>
                         <p className="mt-0.5 text-[#78827C]">
-                          Tempat, Tahun Lahir, No HP, Pekerjaan, Jenjang,
-                          Kelas, Alamat.
+                          Tempat, Tahun Lahir, No HP, Pekerjaan.
                         </p>
                       </div>
 
@@ -519,29 +593,26 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                       </div>
 
                       <p className="text-[11px] font-semibold text-[#202824]">
-                        Pencocokan Data
+                        Ketentuan Impor
                       </p>
                     </div>
 
                     <p className="mt-2 pl-10 text-[10px] leading-4 text-[#78827C]">
-                      Data lama dicocokkan berdasarkan{" "}
-                      <span className="font-semibold text-[#202824]">
-                        Nama Lengkap, Desa, dan Kelompok
-                      </span>
-                      . Kelas tidak digunakan sebagai identitas pencocokan.
+                      Data yang sudah terdaftar atau terdeteksi duplikat tidak
+                      akan ditambahkan kembali. Proses ini hanya menambahkan
+                      data baru, bukan memperbarui data lama.
                     </p>
                   </div>
                 </div>
 
-                {/* Kanan: Upload */}
                 <div className="flex min-w-0 flex-col">
                   <div>
                     <p className="text-[11px] font-semibold text-[#202824]">
-                      Pilih File Excel
+                      Pilih File
                     </p>
                     <p className="mt-1 text-[10px] leading-4 text-[#78827C]">
-                      Unggah file database Generus yang sudah disiapkan untuk
-                      menambahkan atau memperbarui data.
+                      Unggah file database Muda-Mudi untuk memeriksa dan
+                      menambahkan data.
                     </p>
                   </div>
 
@@ -573,7 +644,7 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                     </div>
 
                     <p className="mt-4 max-w-full break-all text-[11px] font-semibold text-[#202824]">
-                      {file ? file.name : "Pilih file Excel"}
+                      {file ? file.name : "Pilih file"}
                     </p>
 
                     <p className="mt-1 text-[9px] text-[#78827C]">
@@ -583,7 +654,7 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                     </p>
 
                     <span className="mt-4 rounded-lg border border-[#E5EAE6] bg-white px-3 py-1.5 text-[9px] font-medium text-[#287A50]">
-                      Format .xlsx
+                      Format .xlsx atau .csv
                     </span>
                   </button>
 
@@ -594,7 +665,6 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                 </div>
               </div>
 
-              {/* Catatan pembaruan desktop */}
               <div className="hidden rounded-xl border border-amber-100 bg-amber-50/70 p-3 sm:p-4 md:block">
                 <div className="flex items-start gap-2.5">
                   <svg
@@ -619,12 +689,12 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
 
                   <div className="min-w-0">
                     <p className="text-[11px] font-semibold text-amber-800">
-                      Catatan Pembaruan
+                      Perhatian
                     </p>
                     <p className="mt-1 text-[10px] leading-4 text-amber-700">
-                      Kolom opsional yang tidak tersedia pada file tidak akan
-                      mengubah data lama. Jika kolom tersedia tetapi selnya
-                      kosong, nilai pada data lama dapat ikut dikosongkan.
+                      Proses impor hanya menambahkan data baru. Data yang
+                      sudah terdaftar atau terdeteksi duplikat akan dilewati.
+                      Pastikan data pada file sudah benar sebelum melanjutkan.
                     </p>
                   </div>
                 </div>
@@ -632,28 +702,19 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
             </div>
           )}
 
-          {/* Preview */}
           {step === "preview" && (
             <div className="space-y-3 sm:space-y-4">
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div className="rounded-xl border border-[#65B98A]/30 bg-[#E6F2EA] px-2.5 py-2.5 sm:px-4 sm:py-3">
                   <p className="text-[9px] font-medium uppercase tracking-wide text-[#206440]">
-                    Data Baru
+                    Siap Diimpor
                   </p>
                   <p className="mt-1 text-lg font-semibold text-[#287A50] sm:text-xl">
                     {newCount}
                   </p>
-                  <p className="text-[9px] text-[#206440]">ditambahkan</p>
-                </div>
-
-                <div className="rounded-xl border border-blue-100 bg-blue-50 px-2.5 py-2.5 sm:px-4 sm:py-3">
-                  <p className="text-[9px] font-medium uppercase tracking-wide text-blue-600">
-                    Diperbarui
+                  <p className="text-[9px] text-[#206440]">
+                    data baru
                   </p>
-                  <p className="mt-1 text-lg font-semibold text-blue-700 sm:text-xl">
-                    {updateCount}
-                  </p>
-                  <p className="text-[9px] text-blue-600">data lama</p>
                 </div>
 
                 <div
@@ -666,7 +727,7 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                     className={`text-[9px] font-medium uppercase tracking-wide ${reviewCount > 0 ? "text-amber-600" : "text-gray-500"
                       }`}
                   >
-                    Perlu Ditinjau
+                    Dilewati
                   </p>
                   <p
                     className={`mt-1 text-lg font-semibold sm:text-xl ${reviewCount > 0 ? "text-amber-700" : "text-gray-700"
@@ -678,7 +739,7 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                     className={`text-[9px] ${reviewCount > 0 ? "text-amber-600" : "text-gray-500"
                       }`}
                   >
-                    baris
+                    perlu diperiksa
                   </p>
                 </div>
               </div>
@@ -703,20 +764,17 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
 
                   <div>
                     <p className="text-[10px] font-medium text-gray-700">
-                      Hasil pencocokan data
+                      Hasil pemeriksaan data
                     </p>
                     <p className="mt-1 text-[9px] leading-4 text-gray-500">
-                      {newCount} data akan ditambahkan dan {updateCount} data
-                      akan diperbarui. Data lama hanya diperbarui jika
-                      ditemukan tepat satu kecocokan berdasarkan nama
-                      lengkap, desa, dan kelompok.
+                      {newCount} data siap ditambahkan. {reviewCount} data
+                      tidak akan diproses karena terdeteksi duplikat atau
+                      tidak memenuhi ketentuan impor.
                     </p>
 
                     {reviewCount > 0 && (
                       <p className="mt-1 text-[9px] leading-4 text-amber-700">
-                        {reviewCount} baris perlu diperiksa dan tidak boleh
-                        diproses otomatis. Baris bermasalah ditampilkan pada
-                        rincian validasi.
+                        Periksa rincian kesalahan sebelum mengimpor data.
                       </p>
                     )}
                   </div>
@@ -726,12 +784,12 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
               {(errors.length > 0 || warnings.length > 0) && (
                 <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3">
                   <p className="text-[10px] font-semibold text-gray-700">
-                    Ringkasan validasi
+                    Ringkasan Validasi
                   </p>
                   <p className="mt-1 text-[9px] leading-4 text-gray-500">
-                    Kesalahan dan data ambigu tidak diproses. Peringatan
-                    merupakan informasi tambahan yang perlu diperiksa sebelum
-                    melanjutkan impor.
+                    Kesalahan menyebabkan baris tidak dapat diproses.
+                    Peringatan merupakan informasi tambahan yang perlu
+                    diperiksa sebelum melanjutkan impor.
                   </p>
                 </div>
               )}
@@ -757,10 +815,10 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
 
                     <div className="min-w-0">
                       <p className="text-[10px] font-semibold text-red-700">
-                        Baris perlu diperiksa
+                        Baris Perlu Diperiksa
                       </p>
                       <p className="mt-0.5 text-[9px] leading-4 text-red-600">
-                        Baris berikut tidak akan diproses secara otomatis.
+                        Baris berikut tidak akan diproses.
                       </p>
                     </div>
                   </div>
@@ -808,11 +866,11 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
 
                     <div className="min-w-0">
                       <p className="text-[10px] font-semibold text-amber-700">
-                        Peringatan data
+                        Peringatan Data
                       </p>
                       <p className="mt-0.5 text-[9px] leading-4 text-amber-600">
-                        Periksa kembali data opsional, tahun lahir, nomor HP,
-                        dan kelas jika ada peringatan.
+                        Periksa kembali tempat lahir, tahun lahir, nomor HP,
+                        dan pekerjaan jika terdapat peringatan.
                       </p>
                     </div>
                   </div>
@@ -855,12 +913,11 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[700px] text-left text-[9px]">
+                    <table className="w-full min-w-[620px] text-left text-[9px]">
                       <thead className="bg-white text-gray-400">
                         <tr>
-                          <th className="px-3 py-2 font-medium">#</th>
+                          <th className="px-3 py-2 font-medium">Baris</th>
                           <th className="px-3 py-2 font-medium">Nama</th>
-                          <th className="px-3 py-2 font-medium">Desa</th>
                           <th className="px-3 py-2 font-medium">Kelompok</th>
                           <th className="px-3 py-2 font-medium">JK</th>
                           <th className="px-3 py-2 font-medium">
@@ -874,38 +931,51 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                       <tbody className="divide-y divide-gray-100">
                         {previewData.slice(0, 8).map((item, index) => (
                           <tr
-                            key={`${item.nama}-${item.desa}-${item.kelompok}-${index}`}
+                            key={`${item.data.nama}-${item.data.kelompok}-${index}`}
                             className="text-gray-600"
                           >
                             <td className="px-3 py-2 text-gray-400">
-                              {index + 1}
+                              {item.row}
                             </td>
                             <td className="px-3 py-2 font-medium text-gray-800">
-                              {item.nama}
-                            </td>
-                            <td className="px-3 py-2">{item.desa}</td>
-                            <td className="px-3 py-2">{item.kelompok}</td>
-                            <td className="px-3 py-2">
-                              {item.jenis_kelamin}
+                              {item.data.nama}
                             </td>
                             <td className="px-3 py-2">
-                              {item.tahun_lahir ?? (
+                              {item.data.kelompok}
+                            </td>
+                            <td className="px-3 py-2">
+                              {item.data.jenis_kelamin ?? "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {item.data.tahun_lahir ?? (
                                 <span className="text-gray-400">Kosong</span>
                               )}
                             </td>
                             <td className="px-3 py-2">
-                              {item.kelas ?? (
-                                <span className="text-amber-600">Kosong</span>
-                              )}
+                              {item.data.kelas.length > 0
+                                ? item.data.kelas.join(", ")
+                                : (
+                                  <span className="text-amber-600">
+                                    Kosong
+                                  </span>
+                                )}
                             </td>
                             <td className="px-3 py-2">
-                              {item.importAction === "update" ? (
-                                <span className="inline-flex whitespace-nowrap rounded-md bg-blue-50 px-2 py-1 font-medium text-blue-700">
-                                  Perbarui Data
+                              {item.valid ? (
+                                <span className="inline-flex whitespace-nowrap rounded-md bg-[#E6F2EA] px-2 py-1 font-medium text-[#206440]">
+                                  Siap Diimpor
+                                </span>
+                              ) : item.duplicateInDatabase ? (
+                                <span className="inline-flex whitespace-nowrap rounded-md bg-red-50 px-2 py-1 font-medium text-red-700">
+                                  Sudah Terdaftar
+                                </span>
+                              ) : item.duplicateInFile ? (
+                                <span className="inline-flex whitespace-nowrap rounded-md bg-amber-50 px-2 py-1 font-medium text-amber-700">
+                                  Duplikat File
                                 </span>
                               ) : (
-                                <span className="inline-flex whitespace-nowrap rounded-md bg-[#E6F2EA] px-2 py-1 font-medium text-[#206440]">
-                                  Data Baru
+                                <span className="inline-flex whitespace-nowrap rounded-md bg-amber-50 px-2 py-1 font-medium text-amber-700">
+                                  Tidak Valid
                                 </span>
                               )}
                             </td>
@@ -917,8 +987,8 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
 
                   {previewData.length > 8 && (
                     <div className="border-t border-[#E5EAE6] px-4 py-2 text-[9px] text-[#78827C]">
-                      Menampilkan 8 dari {previewData.length} baris yang dapat
-                      diproses.
+                      Menampilkan 8 dari {previewData.length} baris hasil
+                      pemeriksaan.
                     </div>
                   )}
                 </div>
@@ -927,11 +997,10 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
           )}
         </div>
 
-        {/* Footer */}
         <div className="relative z-10 flex shrink-0 flex-col-reverse gap-2 border-t border-[#E5EAE6] bg-[#F5F7F5] px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-3.5">
           <p className="text-[9px] leading-4 text-[#78827C]">
             {step === "preview"
-              ? `${totalReady} baris siap diproses`
+              ? `${totalReady} data siap ditambahkan`
               : "Periksa data sebelum menjalankan impor."}
           </p>
 
@@ -961,7 +1030,11 @@ export default function ImportModal({ onClose, onSuccess }: Props) {
                 disabled={!canImport}
                 className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#287A50] px-5 text-[11px] font-semibold text-white shadow-xs transition hover:bg-[#206440] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? "Mengimpor..." : `Proses ${totalReady} Data`}
+                {loading
+                  ? "Mengimpor..."
+                  : importCompleted
+                    ? "Impor Selesai"
+                    : `Proses ${totalReady} Data`}
               </button>
             )}
           </div>

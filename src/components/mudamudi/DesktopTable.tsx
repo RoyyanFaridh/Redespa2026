@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Mudamudi, SortKey } from "../../backend/mudamudi/types";
+import type { Mudamudi, SortKey } from "../../backend/mudamudi/types";
 import {
   toTitleCase,
   getInitials,
@@ -23,6 +23,18 @@ type Props = {
 
 const HEADER_CELL =
   "px-3.5 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.07em] text-[#78827C]";
+
+  function getKelasList(kelas: unknown): string[] {
+  if (Array.isArray(kelas)) {
+    return kelas.map(String).map((item) => item.trim()).filter(Boolean);
+  }
+
+  if (typeof kelas === "string") {
+    return kelas.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+
+  return [];
+}
 
 function SortIndicator({ indicator }: { indicator: string }) {
   const active = Boolean(indicator);
@@ -94,7 +106,6 @@ export default function DesktopTable({
   onShowQR,
 }: Props) {
   const columns: { key: SortKey; label: string }[] = [
-    { key: "desa", label: "Desa" },
     { key: "kelompok", label: "Kelompok" },
     { key: "nama", label: "Nama" },
   ];
@@ -104,7 +115,6 @@ export default function DesktopTable({
       aria-label="Daftar Generus"
       className="hidden overflow-hidden rounded-2xl border border-[#E5EAE6] bg-white shadow-xs md:block"
     >
-      {/* Table Header Section */}
       <div className="flex items-center justify-between gap-3 border-b border-[#E5EAE6] px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#E5EAE6] bg-[#E6F2EA] text-[#287A50]">
@@ -153,20 +163,19 @@ export default function DesktopTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-245 table-fixed border-collapse text-center">
+        <table className="w-full min-w-200 table-fixed border-collapse text-center">
           <colgroup>
             <col className="w-12" />
+            <col className="w-[22%]" />
+            <col className="w-[32%]" />
+            <col className="w-[12%]" />
             <col className="w-[16%]" />
             <col className="w-[18%]" />
-            <col className="w-[28%]" />
-            <col className="w-[10%]" />
-            <col className="w-[13%]" />
-            <col className="w-[15%]" />
           </colgroup>
 
           <thead>
             <tr className="border-b border-[#E5EAE6] bg-[#F5F7F5]">
-              <th scope="col" className={`${HEADER_CELL} text-center`}>
+              <th scope="col" className={HEADER_CELL}>
                 No.
               </th>
 
@@ -185,7 +194,7 @@ export default function DesktopTable({
                         "transition-colors hover:text-[#287A50]",
                         "focus-visible:outline-none focus-visible:ring-2",
                         "focus-visible:ring-[#287A50] focus-visible:ring-offset-2",
-                        active ? "text-[#287A50] font-bold" : "",
+                        active ? "font-bold text-[#287A50]" : "",
                       ].join(" ")}
                     >
                       <span>{column.label}</span>
@@ -195,32 +204,15 @@ export default function DesktopTable({
                 );
               })}
 
-              <th scope="col" className={`${HEADER_CELL} text-center`}>
+              <th scope="col" className={HEADER_CELL}>
                 JK
               </th>
 
-              {/* Jenjang */}
-              <th scope="col" className={`${HEADER_CELL} text-center`}>
-                <button
-                  type="button"
-                  onClick={() => toggleSort("jenjang")}
-                  aria-label="Urutkan berdasarkan jenjang"
-                  className={[
-                    "group inline-flex min-h-7 items-center justify-center gap-1.5 rounded-md",
-                    "transition-colors hover:text-[#287A50]",
-                    "focus-visible:outline-none focus-visible:ring-2",
-                    "focus-visible:ring-[#287A50] focus-visible:ring-offset-2",
-                    sortIndicator("jenjang")
-                      ? "text-[#287A50] font-bold"
-                      : "",
-                  ].join(" ")}
-                >
-                  <span>Jenjang</span>
-                  <SortIndicator indicator={sortIndicator("jenjang")} />
-                </button>
+              <th scope="col" className={HEADER_CELL}>
+                Kelas
               </th>
 
-              <th scope="col" className={`${HEADER_CELL} text-center`}>
+              <th scope="col" className={HEADER_CELL}>
                 Aksi
               </th>
             </tr>
@@ -229,7 +221,7 @@ export default function DesktopTable({
           <tbody className="divide-y divide-[#E5EAE6]">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center">
+                <td colSpan={6} className="px-4 py-8 text-center">
                   <div className="mx-auto flex max-w-sm flex-col items-center">
                     <span className="mb-2.5 flex h-9 w-9 items-center justify-center rounded-xl bg-[#E6F2EA] text-[#287A50]">
                       <svg
@@ -278,10 +270,6 @@ export default function DesktopTable({
                     </td>
 
                     <td className="px-3.5 py-3 text-center align-middle text-[11px] font-normal text-[#202824]">
-                      {s.desa || "-"}
-                    </td>
-
-                    <td className="px-3.5 py-3 text-center align-middle text-[11px] font-normal text-[#202824]">
                       {s.kelompok || "-"}
                     </td>
 
@@ -310,13 +298,22 @@ export default function DesktopTable({
                           : "-"}
                     </td>
 
-                    {/* Jenjang */}
                     <td className="px-3.5 py-3 text-center align-middle">
-                      <span className="inline-flex max-w-full rounded-full border border-[#E5EAE6] bg-[#F5F7F5] px-2 py-0.5 text-[9px] font-medium text-[#526159]">
-                        {s.jenjang || "-"}
-                      </span>
+                      <div className="flex flex-wrap items-center justify-center gap-1">
+                        {getKelasList(s.kelas).length > 0 ? (
+                          getKelasList(s.kelas).map((kelas) => (
+                            <span
+                              key={kelas}
+                              className="inline-flex items-center justify-center rounded-md border border-[#D5E8DC] bg-[#E6F2EA] px-2.5 py-1 text-[10px] font-semibold leading-tight text-[#287A50]"
+                            >
+                              {kelas}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[10px] text-[#78827C]">-</span>
+                        )}
+                      </div>
                     </td>
-
                     <td className="px-3 py-3 text-center align-middle">
                       <div className="flex items-center justify-center gap-1">
                         <button

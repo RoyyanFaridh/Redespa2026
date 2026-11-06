@@ -1,13 +1,12 @@
 
 "use client";
 
-import { Mudamudi } from "../../backend/mudamudi/types";
+import type { Mudamudi } from "../../backend/mudamudi/types";
 import {
   toTitleCase,
   getInitials,
   getAvatarColor,
 } from "../../backend/mudamudi/format";
-import { getKelasBadgeClass } from "../../backend/mudamudi/kelasBadge";
 import ModalWrapper from "./ModalWrapper";
 
 type Props = {
@@ -17,6 +16,12 @@ type Props = {
 
 export default function DetailModal({ data, onClose }: Props) {
   const avatarColor = getAvatarColor(data.nama);
+
+  const kelasList = Array.isArray(data.kelas)
+    ? data.kelas
+    : typeof data.kelas === "string"
+      ? data.kelas.split(",")
+      : [];
 
   function DetailItem({
     label,
@@ -40,7 +45,6 @@ export default function DetailModal({ data, onClose }: Props) {
   return (
     <ModalWrapper onClose={onClose} size="md">
       <div className="flex max-h-[90dvh] min-h-0 w-full flex-col overflow-hidden bg-white">
-        {/* Header */}
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#E5EAE6] px-4 py-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-2.5">
             <div
@@ -82,32 +86,38 @@ export default function DetailModal({ data, onClose }: Props) {
           </button>
         </header>
 
-        {/* Content */}
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
-          {/* Wilayah & Status */}
           <section className="rounded-xl border border-[#E5EAE6] bg-[#F5F7F5] p-3.5">
-            <div className="mb-2.5 flex items-center justify-between gap-3">
+            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-[10px] font-semibold tracking-tight text-[#202824]">
-                Wilayah & Status
+                Kelompok & Kelas
               </h3>
 
-              <span
-                className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-medium ${getKelasBadgeClass(
-                  data.kelas,
-                )}`}
-              >
-                {data.kelas || "-"}
-              </span>
+              <div className="flex flex-wrap items-center gap-1">
+                {kelasList.map((kelas) => String(kelas).trim()).filter(Boolean).map((kelas) => (
+                  <span
+                    key={kelas}
+                    className="inline-flex rounded-full border border-[#D5E8DC] bg-[#E6F2EA] px-2 py-0.5 text-[9px] font-semibold text-[#287A50]"
+                  >
+                    {kelas}
+                  </span>
+                ))}
+
+                {kelasList.length === 0 && (
+                  <span className="text-[9px] text-[#78827C]">-</span>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <DetailItem label="Desa" value={data.desa} />
               <DetailItem label="Kelompok" value={data.kelompok} />
-              <DetailItem label="Jenis Kelamin" value={data.jenis_kelamin} />
+              <DetailItem
+                label="Jenis Kelamin"
+                value={data.jenis_kelamin}
+              />
             </div>
           </section>
 
-          {/* Informasi Pribadi */}
           <section className="rounded-xl border border-[#E5EAE6] bg-white p-3.5 shadow-xs">
             <h3 className="mb-2.5 text-[10px] font-semibold tracking-tight text-[#202824]">
               Informasi Pribadi
@@ -118,7 +128,10 @@ export default function DetailModal({ data, onClose }: Props) {
                 label="Nama Lengkap"
                 value={toTitleCase(data.nama)}
               />
-              <DetailItem label="Tempat Lahir" value={data.tempat_lahir} />
+              <DetailItem
+                label="Tempat Lahir"
+                value={data.tempat_lahir}
+              />
               <DetailItem
                 label="Tahun Lahir"
                 value={
@@ -127,18 +140,18 @@ export default function DetailModal({ data, onClose }: Props) {
                     : null
                 }
               />
-              <DetailItem label="Jenjang" value={data.jenjang} />
-              <DetailItem label="Pekerjaan" value={data.pekerjaan} />
-              <DetailItem label="No. HP" value={data.no_hp} />
-
-              <div className="col-span-2 sm:col-span-3">
-                <DetailItem label="Alamat" value={data.alamat} />
-              </div>
+              <DetailItem
+                label="Pekerjaan"
+                value={data.pekerjaan}
+              />
+              <DetailItem
+                label="No. HP"
+                value={data.no_hp}
+              />
             </div>
           </section>
         </div>
 
-        {/* Footer */}
         <footer className="flex shrink-0 items-center justify-end border-t border-[#E5EAE6] bg-[#F5F7F5] px-4 py-3 sm:px-5">
           <button
             type="button"

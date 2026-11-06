@@ -4,9 +4,7 @@ import { createClient } from "../../../src/backend/supabase/server";
 import MudamudiPage from "../../../src/components/mudamudi/MudamudiPage";
 
 export default async function Page() {
-  const { profile } = await requireAdmin();
-
-  const adminDesa = profile.desa;
+  await requireAdmin();
 
   const supabase = await createClient();
 
@@ -21,5 +19,5 @@ export default async function Page() {
     throw new Error(error.message);
   }
 
-  return <MudamudiPage initialData={initialData ?? []} adminDesa={adminDesa} />;
+  return <MudamudiPage initialData={initialData ?? []} />;
 }

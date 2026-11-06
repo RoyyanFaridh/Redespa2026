@@ -6,7 +6,6 @@ export type Kegiatan = {
   jam_mulai: string;
   jam_selesai: string;
   lokasi: string;
-  desa: string[] | null;
   kelompok: string[] | null;
   kelas: string[] | null;
   jenis_kelamin: string | null;
@@ -14,7 +13,6 @@ export type Kegiatan = {
 
   created_by?: string | null;
   creator_nama?: string | null;
-  creator_desa?: string | null;
   creator_label?: string;
 };
 
@@ -31,7 +29,6 @@ export type FieldErrors = {
   jam_mulai?: string;
   jam_selesai?: string;
   lokasi?: string;
-  desa?: string;
   kelompok?: string;
   kelas?: string;
   jenis_kelamin?: string;

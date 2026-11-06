@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -8,7 +9,6 @@ import {
   deleteKegiatan,
   updateKegiatan,
   getKegiatan,
-  getKegiatanFormContext,
 } from "../../backend/kegiatan/actions";
 
 import { getKegiatanStatus } from "../../backend/kegiatan/format";
@@ -26,11 +26,6 @@ import KegiatanFormModal from "./KegiatanFormModal";
 import KegiatanTableView from "./KegiatanTableView";
 import SearchFilterBar from "./SearchFilterBar";
 
-type FormContext = {
-  desaAdmin: string | null;
-  isSuperAdmin: boolean;
-};
-
 type Props = {
   initialData: Kegiatan[];
 };
@@ -43,40 +38,9 @@ export default function KegiatanTable({ initialData }: Props) {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [loading, setLoading] = useState(false);
-  const [formContext, setFormContext] = useState<FormContext | null>(null);
-  const [contextError, setContextError] = useState("");
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadContext() {
-      try {
-        const context = await getKegiatanFormContext();
-
-        if (active) {
-          setFormContext(context);
-          setContextError("");
-        }
-      } catch (err) {
-        if (active) {
-          setContextError(
-            err instanceof Error
-              ? err.message
-              : "Gagal memuat kewenangan admin.",
-          );
-        }
-      }
-    }
-
-    void loadContext();
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const filteredData = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -145,14 +109,14 @@ export default function KegiatanTable({ initialData }: Props) {
   }
 
   function openAdd() {
-    if (loading || !formContext) return;
+    if (loading) return;
 
     clearMessages();
     setModal({ type: "add" });
   }
 
   function openEdit(kegiatan: Kegiatan) {
-    if (loading || !formContext) return;
+    if (loading) return;
 
     clearMessages();
     setModal({ type: "edit", data: kegiatan });
@@ -254,7 +218,9 @@ export default function KegiatanTable({ initialData }: Props) {
         return;
       }
 
-      setData((current) => current.filter((item) => item.id !== kegiatanId));
+      setData((current) =>
+        current.filter((item) => item.id !== kegiatanId),
+      );
 
       setModal(null);
       clearMessages();
@@ -289,18 +255,12 @@ export default function KegiatanTable({ initialData }: Props) {
               <p className="mt-1 max-w-xs text-[10px] leading-4 text-[#78827C] sm:max-w-none sm:text-xs">
                 Kelola kegiatan yang digunakan untuk presensi.
               </p>
-
-              {contextError && (
-                <p role="alert" className="mt-2 text-xs text-red-600">
-                  {contextError}
-                </p>
-              )}
             </div>
 
             <button
               type="button"
               onClick={openAdd}
-              disabled={loading || !formContext}
+              disabled={loading}
               aria-label="Tambah kegiatan"
               title="Tambah kegiatan"
               className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#287A50] text-lg font-medium leading-none text-white transition-colors hover:bg-[#206440] disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:w-auto sm:px-4 sm:text-[11px]"
@@ -332,13 +292,11 @@ export default function KegiatanTable({ initialData }: Props) {
         />
       </div>
 
-      {formContext && (modal?.type === "add" || modal?.type === "edit") && (
+      {(modal?.type === "add" || modal?.type === "edit") && (
         <KegiatanFormModal
           key={modal.type === "edit" ? `edit-${modal.data.id}` : "add"}
           mode={modal.type}
           initialData={modal.type === "edit" ? modal.data : undefined}
-          desaAdmin={formContext.desaAdmin}
-          isSuperAdmin={formContext.isSuperAdmin}
           fieldErrors={fieldErrors}
           error={error}
           loading={loading}

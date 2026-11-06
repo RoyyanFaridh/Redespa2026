@@ -1,3 +1,4 @@
+
 "use client";
 
 import { MonitoringPeserta } from "../../../backend/presensi/types";
@@ -52,7 +53,6 @@ export default function MonitoringDetailModal({ peserta, onClose }: Props) {
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#65B98A]/30 bg-[#E6F2EA] text-[#287A50]">
               <svg
-                xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -90,7 +90,6 @@ export default function MonitoringDetailModal({ peserta, onClose }: Props) {
             className="ml-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#9AA39D] transition hover:bg-[#F5F7F5] hover:text-[#202824]"
           >
             <svg
-              xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -119,7 +118,9 @@ export default function MonitoringDetailModal({ peserta, onClose }: Props) {
 
             <div className="rounded-xl border border-[#E5EAE6] bg-[#F5F7F5] p-3.5">
               <div className="mb-2.5">
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-[#78827C]">Nama</p>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-[#78827C]">
+                  Nama
+                </p>
 
                 <p className="mt-0.5 wrap-break-word text-sm font-bold text-[#202824]">
                   {peserta.nama}
@@ -127,14 +128,6 @@ export default function MonitoringDetailModal({ peserta, onClose }: Props) {
               </div>
 
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                <div className="min-w-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-wider text-[#78827C]">Desa</p>
-
-                  <p className="mt-0.5 truncate text-xs font-medium text-[#202824]">
-                    {peserta.desa}
-                  </p>
-                </div>
-
                 <div className="min-w-0">
                   <p className="text-[9px] font-semibold uppercase tracking-wider text-[#78827C]">
                     Kelompok
@@ -146,7 +139,9 @@ export default function MonitoringDetailModal({ peserta, onClose }: Props) {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-wider text-[#78827C]">Kelas</p>
+                  <p className="text-[9px] font-semibold uppercase tracking-wider text-[#78827C]">
+                    Kelas
+                  </p>
 
                   <p className="mt-0.5 truncate text-xs font-medium text-[#202824]">
                     {peserta.kelas}
@@ -177,7 +172,9 @@ export default function MonitoringDetailModal({ peserta, onClose }: Props) {
             <div className="rounded-xl border border-[#E5EAE6] bg-[#F5F7F5] p-3.5">
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <div>
-                  <p className="text-[9px] font-semibold uppercase tracking-wider text-[#78827C]">Metode</p>
+                  <p className="text-[9px] font-semibold uppercase tracking-wider text-[#78827C]">
+                    Metode
+                  </p>
 
                   <p className="mt-0.5 text-xs font-medium text-[#202824]">
                     {peserta.metode === "qr"

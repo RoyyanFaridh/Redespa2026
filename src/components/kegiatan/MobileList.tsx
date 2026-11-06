@@ -15,7 +15,6 @@ import { DeleteIcon, EditIcon } from "../mudamudi/icons";
 import {
   CalendarIcon,
   ClockIcon,
-  CreatorText,
   EmptyState,
   IconButton,
   LocationIcon,
@@ -213,13 +212,6 @@ export default function MobileList({
                       </p>
                     </DetailColumn>
                   </div>
-                </div>
-
-                <div className="mt-3 border-t border-[#E5EAE6] pt-2.5">
-                  <CreatorText
-                    kegiatan={item}
-                    className="text-[9px] leading-4 text-[#9AA39D]"
-                  />
                 </div>
               </div>
 

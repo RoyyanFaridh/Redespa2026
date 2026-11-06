@@ -9,11 +9,11 @@ const LEGEND_ITEMS = [
   },
   {
     label: "Terlambat",
-    className: "bg-amber-400",
+    className: "bg-violet-500",
   },
   {
     label: "Izin",
-    className: "bg-violet-500",
+    className: "bg-amber-400",
   },
   {
     label: "Sakit",

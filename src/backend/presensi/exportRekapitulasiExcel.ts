@@ -1,3 +1,4 @@
+
 import ExcelJS from "exceljs";
 
 import type {
@@ -7,12 +8,13 @@ import type {
   RekapitulasiMudaMudi,
 } from "./types";
 
+import { isMudamudiTargeted } from "./target";
+
 type FilterValue = string | string[];
 
 type ExportFilters = {
   bulan?: string;
   kegiatanId?: number;
-  desa?: FilterValue;
   kelompok?: FilterValue;
   kelas?: FilterValue;
   search?: string;
@@ -38,27 +40,6 @@ const STATUS_COLORS: Record<PresensiStatus, { fill: string; font: string }> = {
   sakit: { fill: "FFDBEAFE", font: "FF1D4ED8" },
   alpa: { fill: "FFFEE2E2", font: "FF991B1B" },
 };
-
-function isMudamudiTargeted(
-  kegiatan: RekapitulasiKegiatan,
-  mudamudi: RekapitulasiMudaMudi,
-): boolean {
-  const desaSesuai =
-    !kegiatan.desa ||
-    kegiatan.desa.length === 0 ||
-    kegiatan.desa.includes(mudamudi.desa);
-
-  const kelasSesuai =
-    !kegiatan.kelas ||
-    kegiatan.kelas.length === 0 ||
-    kegiatan.kelas.includes(mudamudi.kelas);
-
-  const genderSesuai =
-    !kegiatan.jenis_kelamin ||
-    kegiatan.jenis_kelamin === mudamudi.jenis_kelamin;
-
-  return desaSesuai && kelasSesuai && genderSesuai;
-}
 
 function formatTanggal(tanggal: string): string {
   if (!tanggal) return "-";
@@ -218,7 +199,6 @@ export async function exportRekapitulasiExcel({
     }
   }
 
-  // SHEET 1: RINGKASAN
   const ringkasan = workbook.addWorksheet("Ringkasan");
 
   ringkasan.columns = [
@@ -262,7 +242,6 @@ export async function exportRekapitulasiExcel({
           "Kegiatan terpilih")
         : "Semua kegiatan",
     ],
-    ["Desa", getFilterValue(filters.desa)],
     ["Kelompok", getFilterValue(filters.kelompok)],
     ["Kelas", getFilterValue(filters.kelas)],
     ["Pencarian nama", getFilterValue(filters.search)],
@@ -296,13 +275,11 @@ export async function exportRekapitulasiExcel({
 
   ringkasan.views = [{ state: "frozen", ySplit: 3 }];
 
-  // SHEET 2: REKAPITULASI
   const rekap = workbook.addWorksheet("Rekapitulasi");
 
   const columns: Partial<ExcelJS.Column>[] = [
     { header: "No.", key: "no", width: 7 },
     { header: "Nama Generus", key: "nama", width: 30 },
-    { header: "Desa", key: "desa", width: 18 },
     { header: "Kelompok", key: "kelompok", width: 18 },
     { header: "Kelas", key: "kelas", width: 18 },
   ];
@@ -333,9 +310,8 @@ export async function exportRekapitulasiExcel({
     const rowData: Record<string, string | number> = {
       no: index + 1,
       nama: mudamudi.nama,
-      desa: mudamudi.desa,
-      kelompok: mudamudi.kelompok,
-      kelas: mudamudi.kelas,
+      kelompok: mudamudi.kelompok ?? "-",
+      kelas: mudamudi.kelas.length > 0 ? mudamudi.kelas.join(", ") : "-",
     };
 
     const participantTotals: Record<PresensiStatus, number> = {
@@ -407,7 +383,7 @@ export async function exportRekapitulasiExcel({
   rekap.views = [
     {
       state: "frozen",
-      xSplit: 5,
+      xSplit: 4,
       ySplit: 1,
     },
   ];

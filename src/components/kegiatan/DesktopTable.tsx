@@ -17,7 +17,6 @@ import { DeleteIcon, EditIcon } from "../mudamudi/icons";
 import {
   CalendarIcon,
   ClockIcon,
-  CreatorText,
   EmptyState,
   IconButton,
   LocationIcon,
@@ -256,15 +255,9 @@ export default function DesktopTable({
                     </td>
 
                     <td className="px-3.5 py-4 align-middle">
-                      <p className="wrap-break-word text-[10px] font-semibold leading-[1.6] text-[#202824] transition-colors group-hover:text-[#287A50]">
+                      <p className="wrap-break-word text-[12px] font-semibold leading-[1.6] text-[#202824] transition-colors group-hover:text-[#287A50]">
                         {item.nama}
                       </p>
-                      <div className="mt-1">
-                        <CreatorText
-                          kegiatan={item}
-                          className="text-[9px] leading-4 text-[#9AA39D]"
-                        />
-                      </div>
                     </td>
 
                     <td className="px-3.5 py-4 align-middle">

@@ -7,10 +7,7 @@ import type { FormEvent } from "react";
 import type { Mudamudi } from "../../backend/mudamudi/types";
 
 import {
-  DESA_OPTIONS,
   JENIS_KELAMIN_OPTIONS,
-  JENJANG_OPTIONS,
-  KELOMPOK_BY_DESA,
   KELOMPOK_OPTIONS,
   KELAS_OPTIONS,
 } from "../../backend/mudamudi/constants";
@@ -22,7 +19,6 @@ import { DownloadIcon } from "./icons";
 
 type Props = {
   allData: Mudamudi[];
-  adminDesa: string | null;
   onClose: () => void;
 };
 
@@ -70,56 +66,20 @@ function MultiSelectChips({
 
 export default function ExportModal({
   allData,
-  adminDesa,
   onClose,
 }: Props) {
-  const [selectedDesa, setSelectedDesa] = useState<string[]>([]);
-  const [selectedJenisKelamin, setSelectedJenisKelamin] = useState<string[]>(
-    [],
-  );
+  const [selectedJenisKelamin, setSelectedJenisKelamin] = useState<
+    string[]
+  >([]);
+
   const [selectedKelompok, setSelectedKelompok] = useState<string[]>([]);
-  const [selectedJenjang, setSelectedJenjang] = useState<string[]>([]);
   const [selectedKelas, setSelectedKelas] = useState<string[]>([]);
 
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const isSuperAdmin = adminDesa === null;
-
-  // Data yang boleh diakses berdasarkan hak akses admin.
-  const scopedData = useMemo(() => {
-    return adminDesa
-      ? allData.filter((item) => item.desa === adminDesa)
-      : allData;
-  }, [allData, adminDesa]);
-
-  // Opsi kelompok menyesuaikan desa yang dipilih.
-  const kelompokOptions = useMemo(() => {
-    if (!isSuperAdmin) {
-      const key = adminDesa as keyof typeof KELOMPOK_BY_DESA;
-      return [...(KELOMPOK_BY_DESA[key] ?? [])];
-    }
-
-    if (selectedDesa.length > 0) {
-      return Array.from(
-        new Set(
-          selectedDesa.flatMap((desa) => {
-            const key = desa as keyof typeof KELOMPOK_BY_DESA;
-            return [...(KELOMPOK_BY_DESA[key] ?? [])];
-          }),
-        ),
-      );
-    }
-
-    return [...KELOMPOK_OPTIONS];
-  }, [isSuperAdmin, adminDesa, selectedDesa]);
-
-  // Data yang sesuai dengan seluruh filter pilihan.
   const filteredData = useMemo(() => {
-    return scopedData.filter((item) => {
-      const matchDesa =
-        selectedDesa.length === 0 || selectedDesa.includes(item.desa);
-
+    return allData.filter((item) => {
       const matchKelompok =
         selectedKelompok.length === 0 ||
         selectedKelompok.includes(item.kelompok);
@@ -129,40 +89,24 @@ export default function ExportModal({
         (item.jenis_kelamin != null &&
           selectedJenisKelamin.includes(item.jenis_kelamin));
 
-      const matchJenjang =
-        selectedJenjang.length === 0 ||
-        (item.jenjang != null && selectedJenjang.includes(item.jenjang));
-
       const matchKelas =
         selectedKelas.length === 0 ||
-        (item.kelas != null && selectedKelas.includes(item.kelas));
+        selectedKelas.includes(item.kelas);
 
-      return (
-        matchDesa &&
-        matchKelompok &&
-        matchJenisKelamin &&
-        matchJenjang &&
-        matchKelas
-      );
+      return matchKelompok && matchJenisKelamin && matchKelas;
     });
   }, [
-    scopedData,
-    selectedDesa,
+    allData,
     selectedKelompok,
     selectedJenisKelamin,
-    selectedJenjang,
     selectedKelas,
   ]);
 
-  // Menghitung jumlah filter aktif.
   const activeFilterCount =
-    selectedDesa.length +
     selectedKelompok.length +
     selectedJenisKelamin.length +
-    selectedJenjang.length +
     selectedKelas.length;
 
-  // Fungsi untuk memilih atau membatalkan pilihan chip.
   function toggleArrayValue(
     value: string,
     current: string[],
@@ -177,40 +121,13 @@ export default function ExportModal({
     setExportError(null);
   }
 
-  // Perubahan pilihan desa sekaligus menyesuaikan pilihan kelompok.
-  function handleDesaChange(desa: string) {
-    const nextDesa = selectedDesa.includes(desa)
-      ? selectedDesa.filter((item) => item !== desa)
-      : [...selectedDesa, desa];
-
-    setSelectedDesa(nextDesa);
-
-    const allowedKelompok: string[] =
-      nextDesa.length > 0
-        ? nextDesa.flatMap((item) => {
-          const key = item as keyof typeof KELOMPOK_BY_DESA;
-          return [...(KELOMPOK_BY_DESA[key] ?? [])];
-        })
-        : [...KELOMPOK_OPTIONS];
-
-    setSelectedKelompok((current) =>
-      current.filter((kelompok) => allowedKelompok.includes(kelompok)),
-    );
-
-    setExportError(null);
-  }
-
-  // Mengembalikan seluruh filter ke kondisi awal.
   function handleReset() {
-    setSelectedDesa([]);
     setSelectedKelompok([]);
     setSelectedJenisKelamin([]);
-    setSelectedJenjang([]);
     setSelectedKelas([]);
     setExportError(null);
   }
 
-  // Proses ekspor Excel.
   async function handleExport(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
@@ -229,7 +146,6 @@ export default function ExportModal({
 
       await exportPresensiExcel({
         data: filteredData,
-        adminDesa,
       });
 
       onClose();
@@ -257,7 +173,6 @@ export default function ExportModal({
         aria-busy={isExporting}
         className="flex max-h-[64dvh] min-h-0 w-full flex-col overflow-hidden bg-white"
       >
-        {/* Header */}
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#E5EAE6] px-4 py-3.5 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E6F2EA] text-[#287A50]">
@@ -298,36 +213,14 @@ export default function ExportModal({
           </button>
         </header>
 
-        {/* Filter Content */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
           <div className="grid grid-cols-1 gap-x-6 gap-y-4 lg:grid-cols-2 lg:gap-x-8">
-            {/* Kolom Kiri */}
             <div className="min-w-0 space-y-4">
-              {/* Desa */}
-              <section className={sectionClass}>
-                <p className={sectionTitleClass}>Desa</p>
-
-                {isSuperAdmin ? (
-                  <MultiSelectChips
-                    options={DESA_OPTIONS}
-                    selected={selectedDesa}
-                    onToggle={handleDesaChange}
-                  />
-                ) : (
-                  <div className="inline-flex items-center rounded-lg border border-[#D5EBDD] bg-[#E6F2EA] px-3 py-1.5">
-                    <span className="text-[11px] font-medium text-[#287A50]">
-                      {adminDesa}
-                    </span>
-                  </div>
-                )}
-              </section>
-
-              {/* Kelompok */}
               <section className={sectionClass}>
                 <p className={sectionTitleClass}>Kelompok</p>
 
                 <MultiSelectChips
-                  options={kelompokOptions}
+                  options={KELOMPOK_OPTIONS}
                   selected={selectedKelompok}
                   onToggle={(value) =>
                     toggleArrayValue(
@@ -338,11 +231,7 @@ export default function ExportModal({
                   }
                 />
               </section>
-            </div>
 
-            {/* Kolom Kanan */}
-            <div className="min-w-0 space-y-4 border-t border-gray-100 pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-              {/* Jenis Kelamin */}
               <section className={sectionClass}>
                 <p className={sectionTitleClass}>Jenis Kelamin</p>
 
@@ -358,25 +247,9 @@ export default function ExportModal({
                   }
                 />
               </section>
+            </div>
 
-              {/* Jenjang */}
-              <section className={sectionClass}>
-                <p className={sectionTitleClass}>Jenjang</p>
-
-                <MultiSelectChips
-                  options={JENJANG_OPTIONS}
-                  selected={selectedJenjang}
-                  onToggle={(value) =>
-                    toggleArrayValue(
-                      value,
-                      selectedJenjang,
-                      setSelectedJenjang,
-                    )
-                  }
-                />
-              </section>
-
-              {/* Kelas */}
+            <div className="min-w-0 space-y-4 border-t border-gray-100 pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
               <section className={sectionClass}>
                 <p className={sectionTitleClass}>Kelas</p>
 
@@ -396,7 +269,6 @@ export default function ExportModal({
           </div>
         </div>
 
-        {/* Preview Jumlah Data */}
         <div className="shrink-0 border-t border-gray-100 px-4 py-3 sm:px-6">
           <div className="flex items-center justify-between gap-3 rounded-xl border border-[#DCE9DF] bg-[#F5F9F6] px-3.5 py-2.5">
             <div className="min-w-0">
@@ -407,7 +279,7 @@ export default function ExportModal({
               <p className="mt-0.5 text-[9px] text-[#78827C]">
                 {activeFilterCount > 0
                   ? `${activeFilterCount} pilihan filter aktif`
-                  : "Seluruh data sesuai hak akses akun"}
+                  : "Seluruh data Muda-Mudi"}
               </p>
             </div>
 
@@ -432,7 +304,6 @@ export default function ExportModal({
           )}
         </div>
 
-        {/* Footer */}
         <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-[#E5EAE6] bg-[#F5F7F5] px-4 py-3 sm:px-6">
           <button
             type="button"

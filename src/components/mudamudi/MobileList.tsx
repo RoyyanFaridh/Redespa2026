@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Mudamudi } from "../../backend/mudamudi/types";
+import type { Mudamudi } from "../../backend/mudamudi/types";
 import {
   toTitleCase,
   getInitials,
@@ -39,6 +39,18 @@ function DetailColumn({
       </div>
     </div>
   );
+}
+
+function getKelasList(kelas: unknown): string[] {
+  if (Array.isArray(kelas)) {
+    return kelas.map(String).map((item) => item.trim()).filter(Boolean);
+  }
+
+  if (typeof kelas === "string") {
+    return kelas.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+
+  return [];
 }
 
 export default function MobileList({
@@ -100,8 +112,7 @@ export default function MobileList({
               className="group overflow-hidden rounded-2xl border border-[#E5EAE6] bg-white shadow-xs transition-colors duration-150 hover:border-[#65B98A]/40"
             >
               <div className="p-3.5">
-                {/* Identitas Generus */}
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
                   <div className="flex min-w-0 flex-1 items-center gap-2.5">
                     <div
                       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ${avatarColor.ring}`}
@@ -122,13 +133,6 @@ export default function MobileList({
                       </h3>
                     </div>
                   </div>
-
-                  {/* Jenjang */}
-                  <div className="max-w-[42%] shrink-0 pt-0.5">
-                    <span className="inline-flex max-w-full rounded-full border border-[#E5EAE6] bg-[#F5F7F5] px-2 py-0.5 text-[9px] font-medium text-[#526159]">
-                      <span className="truncate">{s.jenjang || "-"}</span>
-                    </span>
-                  </div>
                 </div>
 
                 <div
@@ -136,38 +140,46 @@ export default function MobileList({
                   className="mt-2.5 mb-3 h-px w-full bg-[#E5EAE6]"
                 />
 
-                {/* Informasi Singkat */}
                 <div className="grid grid-cols-3 gap-2">
-                  <DetailColumn label="Desa">
+                  <DetailColumn label="Kelompok">
                     <p className="wrap-break-word font-semibold text-[#202824]">
-                      {s.desa || "-"}
+                      {s.kelompok || "-"}
                     </p>
                   </DetailColumn>
 
                   <div className="min-w-0 border-l border-[#E5EAE6] pl-2">
-                    <DetailColumn label="Kelompok">
+                    <DetailColumn label="Jenis Kelamin">
                       <p className="wrap-break-word font-semibold text-[#202824]">
-                        {s.kelompok || "-"}
-                      </p>
-                    </DetailColumn>
-                  </div>
-
-                  <div className="min-w-0 border-l border-[#E5EAE6] pl-2">
-                    <DetailColumn label="JK / Tahun">
-                      <p className="wrap-break-word text-[#78827C]">
                         {s.jenis_kelamin === "Laki-laki"
                           ? "Laki-laki"
                           : s.jenis_kelamin === "Perempuan"
                             ? "Perempuan"
                             : "-"}
-                        {s.tahun_lahir ? ` (${s.tahun_lahir})` : ""}
                       </p>
+                    </DetailColumn>
+                  </div>
+
+                  <div className="min-w-0 border-l border-[#E5EAE6] pl-2">
+                    <DetailColumn label="Kelas">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {getKelasList(s.kelas).length > 0 ? (
+                          getKelasList(s.kelas).map((kelas) => (
+                            <span
+                              key={kelas}
+                              className="inline-flex items-center justify-center rounded-md border border-[#D5E8DC] bg-[#E6F2EA] px-2 py-1 text-[9px] font-semibold leading-tight text-[#287A50]"
+                            >
+                              {kelas}
+                            </span>
+                          ))
+                        ) : (
+                          <span>-</span>
+                        )}
+                      </div>
                     </DetailColumn>
                   </div>
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="flex items-center gap-2 border-t border-[#E5EAE6] bg-[#F5F7F5] p-3">
                 <button
                   type="button"

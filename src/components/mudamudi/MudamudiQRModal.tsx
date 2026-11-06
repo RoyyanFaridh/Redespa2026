@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRef, useState } from "react";
@@ -43,7 +44,7 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
 
       const link = document.createElement("a");
 
-      link.download = `QR-GENARA-${safeName}.png`;
+      link.download = `QR-REDESPA-${safeName}.png`;
       link.href = dataUrl;
 
       document.body.appendChild(link);
@@ -57,7 +58,7 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs px-4 py-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 backdrop-blur-xs">
       <div className="relative flex max-h-[95vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-[#E5EAE6] bg-white shadow-xl">
         <div className="shrink-0 border-b border-[#E5EAE6] px-5 py-4">
           <div className="flex items-start justify-between gap-3">
@@ -85,7 +86,7 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
                 </h2>
 
                 <p className="text-[9px] leading-3.5 text-[#78827C]">
-                  QR personal yang digunakan untuk presensi kegiatan GENARA
+                  QR personal yang digunakan untuk presensi kegiatan REDESPA
                 </p>
               </div>
             </div>
@@ -125,7 +126,7 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
                 <div className="flex h-full w-full flex-col px-[8%] py-[7%]">
                   <div className="text-center">
                     <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-[#287A50]">
-                      GENARA
+                      REDESPA
                     </p>
 
                     <h3 className="mt-1 text-[15px] font-semibold tracking-tight text-[#202824]">
@@ -152,7 +153,7 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
                     </p>
 
                     <p className="mt-1 text-[9px] leading-3.5 text-[#78827C]">
-                      {data.desa} · {data.kelompok}
+                      {data.kelompok}
                     </p>
                   </div>
 
@@ -169,7 +170,9 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
           <div className="mt-4 text-center">
             <p className="text-[9px] text-[#78827C]">
               Preview ukuran{" "}
-              <span className="font-medium text-[#202824]">70 × 100 mm</span>
+              <span className="font-medium text-[#202824]">
+                70 × 100 mm
+              </span>
             </p>
 
             <p className="mt-0.5 text-[8px] text-[#9AA39D]">

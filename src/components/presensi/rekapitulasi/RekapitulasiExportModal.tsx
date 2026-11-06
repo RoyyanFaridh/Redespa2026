@@ -5,8 +5,7 @@ import { useMemo, useState } from "react";
 import FilterCheckboxGroup from "../../mudamudi/FilterCheckboxGroup";
 
 import {
-  DESA_OPTIONS,
-  KELOMPOK_BY_DESA,
+  KELOMPOK_OPTIONS,
   KELAS_OPTIONS,
 } from "../../../backend/mudamudi/constants";
 
@@ -51,7 +50,6 @@ function formatBulan(tanggal: string) {
 }
 
 export default function RekapitulasiExportModal({
-  adminDesa,
   filters,
   bulanOptions,
   kegiatanOptions,
@@ -62,27 +60,10 @@ export default function RekapitulasiExportModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const kelompokOptions = useMemo(() => {
-    const kelompokByDesa = KELOMPOK_BY_DESA;
-
-    if (adminDesa) {
-      return [
-        ...(kelompokByDesa[adminDesa as keyof typeof kelompokByDesa] ?? []),
-      ];
-    }
-
-    if (filters.desa.length > 0) {
-      return Array.from(
-        new Set(
-          filters.desa.flatMap((desa) => [
-            ...(kelompokByDesa[desa as keyof typeof kelompokByDesa] ?? []),
-          ]),
-        ),
-      );
-    }
-
-    return Array.from(new Set(Object.values(kelompokByDesa).flat()));
-  }, [adminDesa, filters.desa]);
+  const kelompokOptions = useMemo(
+    () => [...KELOMPOK_OPTIONS],
+    [],
+  );
 
   const filteredKegiatan = useMemo(
     () =>
@@ -103,7 +84,6 @@ export default function RekapitulasiExportModal({
   const activeFilterCount =
     Number(Boolean(filters.bulan)) +
     Number(Boolean(filters.kegiatanId)) +
-    filters.desa.length +
     filters.kelompok.length +
     filters.kelas.length;
 
@@ -132,7 +112,7 @@ export default function RekapitulasiExportModal({
     try {
       await onExport({
         ...filters,
-        desa: adminDesa ? [adminDesa] : filters.desa,
+        desa: [],
         search: "",
       });
     } catch (err) {
@@ -313,40 +293,9 @@ export default function RekapitulasiExportModal({
             </div>
 
             <div className="space-y-4">
-              {adminDesa === null ? (
-                <FilterCheckboxGroup
-                  label="Desa"
-                  options={[...DESA_OPTIONS]}
-                  selected={filters.desa}
-                  onChange={(desa) => {
-                    const nextKelompokOptions = new Set<string>(
-                      desa.flatMap((item) => [
-                        ...(KELOMPOK_BY_DESA[
-                          item as keyof typeof KELOMPOK_BY_DESA
-                        ] ?? []),
-                      ]),
-                    );
-
-                    updateFilters({
-                      desa,
-                      kelompok: filters.kelompok.filter((kelompok) =>
-                        nextKelompokOptions.has(kelompok),
-                      ),
-                    });
-                  }}
-                />
-              ) : (
-                <div>
-                  <p className={LABEL_CLASS}>Desa</p>
-                  <div className="mt-1.5 flex min-h-9 items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[10px] text-gray-600">
-                    <span className="truncate">{adminDesa}</span>
-                  </div>
-                </div>
-              )}
-
               <FilterCheckboxGroup
                 label="Kelompok"
-                options={[...kelompokOptions]}
+                options={kelompokOptions}
                 selected={filters.kelompok}
                 onChange={(kelompok) => updateFilters({ kelompok })}
               />

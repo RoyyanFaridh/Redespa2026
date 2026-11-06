@@ -89,11 +89,7 @@ function calculateTotals(peserta: MonitoringPeserta[]) {
   };
 
   for (const item of peserta) {
-    switch (
-    String(item.status ?? "")
-      .trim()
-      .toLowerCase()
-    ) {
+    switch (String(item.status ?? "").trim().toLowerCase()) {
       case "hadir":
         totals.totalHadir++;
         break;
@@ -128,7 +124,6 @@ export default function MonitoringPage({ kegiatan }: Props) {
   const [error, setError] = useState("");
 
   const [search, setSearch] = useState("");
-  const [selectedDesa, setSelectedDesa] = useState<string[]>([]);
   const [selectedKelompok, setSelectedKelompok] = useState<string[]>([]);
   const [selectedKelas, setSelectedKelas] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
@@ -150,7 +145,6 @@ export default function MonitoringPage({ kegiatan }: Props) {
 
   function resetFilters() {
     setSearch("");
-    setSelectedDesa([]);
     setSelectedKelompok([]);
     setSelectedKelas([]);
     setSelectedStatus([]);
@@ -209,32 +203,6 @@ export default function MonitoringPage({ kegiatan }: Props) {
     setEditError("");
 
     void loadMonitoring(kegiatanId);
-  }
-
-  function handleDesaChange(nextDesa: string[]) {
-    setSelectedDesa(nextDesa);
-
-    if (!data) {
-      setSelectedKelompok([]);
-      return;
-    }
-
-    const pesertaSesuaiDesa =
-      nextDesa.length > 0
-        ? data.peserta.filter(
-          (peserta) => peserta.desa && nextDesa.includes(peserta.desa),
-        )
-        : data.peserta;
-
-    const kelompokTersedia = new Set(
-      getUniqueSortedValues(
-        pesertaSesuaiDesa.map((peserta) => peserta.kelompok),
-      ),
-    );
-
-    setSelectedKelompok((current) =>
-      current.filter((kelompok) => kelompokTersedia.has(kelompok)),
-    );
   }
 
   function handleOpenDetail(peserta: MonitoringPeserta) {
@@ -317,31 +285,22 @@ export default function MonitoringPage({ kegiatan }: Props) {
     }
   }
 
-  const desaOptions = useMemo(() => {
-    if (!data) return [];
-
-    return getUniqueSortedValues(data.peserta.map((peserta) => peserta.desa));
-  }, [data]);
-
   const kelompokOptions = useMemo(() => {
     if (!data) return [];
 
-    const pesertaSesuaiDesa =
-      selectedDesa.length > 0
-        ? data.peserta.filter(
-          (peserta) => peserta.desa && selectedDesa.includes(peserta.desa),
-        )
-        : data.peserta;
-
     return getUniqueSortedValues(
-      pesertaSesuaiDesa.map((peserta) => peserta.kelompok),
+      data.peserta.map((peserta) => peserta.kelompok),
     );
-  }, [data, selectedDesa]);
+  }, [data]);
 
   const kelasOptions = useMemo(() => {
     if (!data) return [];
 
-    return getUniqueSortedValues(data.peserta.map((peserta) => peserta.kelas));
+    // Gabungkan seluruh kelas dari setiap peserta.
+    // Set pada getUniqueSortedValues menghilangkan duplikasi.
+    return getUniqueSortedValues(
+      data.peserta.flatMap((peserta) => peserta.kelas ?? []),
+    );
   }, [data]);
 
   const filteredPeserta = useMemo(() => {
@@ -353,18 +312,14 @@ export default function MonitoringPage({ kegiatan }: Props) {
       const cocokPencarian =
         !keyword || peserta.nama.toLocaleLowerCase("id").includes(keyword);
 
-      const cocokDesa =
-        selectedDesa.length === 0 ||
-        (peserta.desa !== null && selectedDesa.includes(peserta.desa));
-
       const cocokKelompok =
         selectedKelompok.length === 0 ||
-        (peserta.kelompok !== null &&
-          selectedKelompok.includes(peserta.kelompok));
+        selectedKelompok.includes(peserta.kelompok);
 
+      // Peserta cocok jika memiliki minimal satu kelas yang dipilih.
       const cocokKelas =
         selectedKelas.length === 0 ||
-        (peserta.kelas !== null && selectedKelas.includes(peserta.kelas));
+        peserta.kelas.some((kelas) => selectedKelas.includes(kelas));
 
       const cocokStatus =
         selectedStatus.length === 0 ||
@@ -372,20 +327,12 @@ export default function MonitoringPage({ kegiatan }: Props) {
 
       return (
         cocokPencarian &&
-        cocokDesa &&
         cocokKelompok &&
         cocokKelas &&
         cocokStatus
       );
     });
-  }, [
-    data,
-    search,
-    selectedDesa,
-    selectedKelompok,
-    selectedKelas,
-    selectedStatus,
-  ]);
+  }, [data, search, selectedKelompok, selectedKelas, selectedStatus]);
 
   const selectedKegiatan = useMemo(() => {
     return kegiatan.find((item) => item.id === selectedKegiatanId) ?? null;
@@ -414,7 +361,6 @@ export default function MonitoringPage({ kegiatan }: Props) {
         </div>
       </div>
 
-      {/* Pemilih kegiatan tetap terpisah dari filter dan tombol unduh */}
       <MonitoringKegiatanSelector
         kegiatan={kegiatan}
         selectedKegiatanId={selectedKegiatanId}
@@ -495,15 +441,11 @@ export default function MonitoringPage({ kegiatan }: Props) {
           )}
 
           <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-[#E5EAE6] bg-white shadow-xs">
-            {/* Filter dan tombol unduh berada dalam satu baris */}
             <div className="flex min-w-0 items-start gap-2 border-b border-[#E5EAE6] p-3 sm:items-center sm:gap-3 sm:p-4">
               <div className="min-w-0 flex-1">
                 <MonitoringFilters
                   search={search}
                   onSearchChange={setSearch}
-                  selectedDesa={selectedDesa}
-                  onDesaChange={handleDesaChange}
-                  desaOptions={desaOptions}
                   selectedKelompok={selectedKelompok}
                   onKelompokChange={setSelectedKelompok}
                   kelompokOptions={kelompokOptions}

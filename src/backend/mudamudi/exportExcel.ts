@@ -1,21 +1,14 @@
 
 import ExcelJS from "exceljs";
-import { Mudamudi } from "./types";
-import {
-  DESA_OPTIONS,
-  KELOMPOK_BY_DESA,
-  JENJANG_OPTIONS,
-  KELAS_OPTIONS,
-} from "./constants";
+import type { Mudamudi } from "./types";
+import { KELOMPOK_OPTIONS, KELAS_OPTIONS, JENIS_KELAMIN_OPTIONS } from "./constants";
 
 type ExportOptions = {
   data: Mudamudi[];
-  adminDesa: string | null;
 };
 
 const HEADER = [
   "No",
-  "Desa",
   "Kelompok",
   "Nama Lengkap",
   "Jenis Kelamin",
@@ -23,16 +16,12 @@ const HEADER = [
   "Tahun Lahir",
   "No HP",
   "Pekerjaan",
-  "Jenjang",
   "Kelas",
-  "Alamat",
 ] as const;
 
 const FONT_NAME = "Arial";
 const FONT_SIZE = 10;
 const VALIDATION_LAST_ROW = 1000;
-
-const JENIS_KELAMIN_OPTIONS = ["Laki-laki", "Perempuan"] as const;
 
 const BORDER_STYLE: Partial<ExcelJS.Borders> = {
   top: { style: "thin", color: { argb: "FFD9D9D9" } },
@@ -41,31 +30,16 @@ const BORDER_STYLE: Partial<ExcelJS.Borders> = {
   right: { style: "thin", color: { argb: "FFD9D9D9" } },
 };
 
-function getKelompokIndex(desa: string, kelompok: string): number {
-  const options = KELOMPOK_BY_DESA[desa as keyof typeof KELOMPOK_BY_DESA];
-
-  if (!options) return Number.MAX_SAFE_INTEGER;
-
-  const index = options.indexOf(kelompok as never);
+function getKelompokIndex(kelompok: string): number {
+  const index = (KELOMPOK_OPTIONS as readonly string[]).indexOf(kelompok);
 
   return index === -1 ? Number.MAX_SAFE_INTEGER : index;
 }
 
-function getDesaIndex(desa: string): number {
-  const index = (DESA_OPTIONS as readonly string[]).indexOf(desa);
-
-  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
-}
-
-function sortByDesaThenKelompokThenNama(data: Mudamudi[]): Mudamudi[] {
+function sortByKelompokThenNama(data: Mudamudi[]): Mudamudi[] {
   return [...data].sort((a, b) => {
-    const desaDifference = getDesaIndex(a.desa) - getDesaIndex(b.desa);
-
-    if (desaDifference !== 0) return desaDifference;
-
     const kelompokDifference =
-      getKelompokIndex(a.desa, a.kelompok) -
-      getKelompokIndex(b.desa, b.kelompok);
+      getKelompokIndex(a.kelompok) - getKelompokIndex(b.kelompok);
 
     if (kelompokDifference !== 0) return kelompokDifference;
 
@@ -115,7 +89,7 @@ function setCellAlignment(
 
 function applyDataValidation(
   sheet: ExcelJS.Worksheet,
-  column: "E" | "J" | "K",
+  column: "B" | "D" | "I",
   values: readonly string[],
   promptTitle: string,
   prompt: string,
@@ -140,19 +114,14 @@ function applyDataValidation(
 
 export async function exportPresensiExcel({
   data,
-  adminDesa,
 }: ExportOptions): Promise<void> {
-  const scopedData = adminDesa
-    ? data.filter((item) => item.desa === adminDesa)
-    : data;
-
-  const sorted = sortByDesaThenKelompokThenNama(scopedData);
+  const sorted = sortByKelompokThenNama(data);
 
   const workbook = new ExcelJS.Workbook();
 
-  workbook.creator = "GENARA";
-  workbook.subject = "Database Generus";
-  workbook.title = "Database Generus";
+  workbook.creator = "REDESPA";
+  workbook.subject = "Database Muda-Mudi";
+  workbook.title = "Database Muda-Mudi";
   workbook.created = new Date();
   workbook.modified = new Date();
   workbook.calcProperties.fullCalcOnLoad = true;
@@ -172,7 +141,6 @@ export async function exportPresensiExcel({
 
   sheet.columns = [
     { key: "no", width: 6 },
-    { key: "desa", width: 16 },
     { key: "kelompok", width: 18 },
     { key: "nama", width: 30 },
     { key: "jenis_kelamin", width: 18 },
@@ -180,12 +148,9 @@ export async function exportPresensiExcel({
     { key: "tahun_lahir", width: 14 },
     { key: "no_hp", width: 18 },
     { key: "pekerjaan", width: 22 },
-    { key: "jenjang", width: 16 },
     { key: "kelas", width: 18 },
-    { key: "alamat", width: 38 },
   ];
 
-  // Header
   const headerRow = sheet.addRow([...HEADER]);
 
   headerRow.height = 30;
@@ -201,21 +166,17 @@ export async function exportPresensiExcel({
     cell.border = BORDER_STYLE;
   });
 
-  // Data
   sorted.forEach((item, index) => {
     const row = sheet.addRow([
       index + 1,
-      item.desa ?? "",
       item.kelompok ?? "",
       toCapitalEachWord(item.nama),
       item.jenis_kelamin ?? "",
       item.tempat_lahir ?? "",
-      item.tahun_lahir !== null ? item.tahun_lahir : "",
+      item.tahun_lahir ?? "",
       item.no_hp == null ? "" : String(item.no_hp),
       item.pekerjaan ?? "",
-      item.jenjang ?? "",
       item.kelas ?? "",
-      item.alamat ?? "",
     ]);
 
     row.height = 20;
@@ -229,7 +190,7 @@ export async function exportPresensiExcel({
 
       cell.border = BORDER_STYLE;
 
-      const leftAlignedColumns = [4, 12];
+      const leftAlignedColumns = [3, 9];
 
       setCellAlignment(
         cell,
@@ -237,32 +198,29 @@ export async function exportPresensiExcel({
       );
     });
 
-    row.getCell(7).numFmt = "0";
-    row.getCell(8).numFmt = "@";
+    row.getCell(6).numFmt = "0";
+    row.getCell(7).numFmt = "@";
   });
 
-  // Dropdown Jenis Kelamin
   applyDataValidation(
     sheet,
-    "E",
+    "B",
+    KELOMPOK_OPTIONS,
+    "Kelompok",
+    "Pilih kelompok dari daftar yang tersedia.",
+  );
+
+  applyDataValidation(
+    sheet,
+    "D",
     JENIS_KELAMIN_OPTIONS,
     "Jenis Kelamin",
     "Pilih Laki-laki atau Perempuan.",
   );
 
-  // Dropdown Jenjang
   applyDataValidation(
     sheet,
-    "J",
-    JENJANG_OPTIONS,
-    "Jenjang Pendidikan",
-    "Pilih jenjang pendidikan dari daftar yang tersedia.",
-  );
-
-  // Dropdown Kelas
-  applyDataValidation(
-    sheet,
-    "K",
+    "I",
     KELAS_OPTIONS,
     "Kelas",
     "Pilih kelas dari daftar yang tersedia.",
@@ -270,7 +228,7 @@ export async function exportPresensiExcel({
 
   sheet.autoFilter = {
     from: "A1",
-    to: `L${Math.max(sorted.length + 1, 1)}`,
+    to: `I${Math.max(sorted.length + 1, 1)}`,
   };
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -283,7 +241,7 @@ export async function exportPresensiExcel({
   const link = document.createElement("a");
 
   link.href = url;
-  link.download = `Database Generus_${getTimestamp()}.xlsx`;
+  link.download = `Database Muda-Mudi_${getTimestamp()}.xlsx`;
 
   document.body.appendChild(link);
   link.click();

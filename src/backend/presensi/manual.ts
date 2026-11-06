@@ -12,10 +12,6 @@ type ManualPresensiInput = {
   keterangan?: string | null;
 };
 
-type KegiatanAccess = {
-  desa: string[] | null;
-};
-
 const VALID_STATUSES: PresensiStatus[] = [
   "hadir",
   "terlambat",
@@ -24,25 +20,9 @@ const VALID_STATUSES: PresensiStatus[] = [
   "alpa",
 ];
 
-function canAccessKegiatan(
-  kegiatan: KegiatanAccess,
-  adminDesa: string | null,
-  isSuperAdmin: boolean,
-) {
-  if (isSuperAdmin) return true;
-
-  return (
-    adminDesa !== null &&
-    Array.isArray(kegiatan.desa) &&
-    kegiatan.desa.length > 0 &&
-    kegiatan.desa.every(
-      (desa) => typeof desa === "string" && desa === adminDesa,
-    )
-  );
-}
-
 export async function createManualPresensi(input: ManualPresensiInput) {
-  const admin = await requireAdmin();
+  await requireAdmin();
+
   const supabase = await createClient();
 
   if (!Number.isInteger(input.kegiatanId) || input.kegiatanId <= 0) {
@@ -69,7 +49,7 @@ export async function createManualPresensi(input: ManualPresensiInput) {
   const { data: kegiatan, error: kegiatanError } = await supabase
     .from("kegiatan")
     .select(
-      "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, desa, kelompok, kelas, jenis_kelamin",
+      "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, kelompok, kelas, jenis_kelamin",
     )
     .eq("id", input.kegiatanId)
     .maybeSingle();
@@ -90,16 +70,9 @@ export async function createManualPresensi(input: ManualPresensiInput) {
     };
   }
 
-  if (!canAccessKegiatan(kegiatan, admin.desa, admin.isSuperAdmin)) {
-    return {
-      success: false,
-      error: "Kamu tidak memiliki akses ke kegiatan ini.",
-    };
-  }
-
   const { data: mudamudi, error: mudamudiError } = await supabase
     .from("mudamudi")
-    .select("id, nama, desa, kelompok, kelas, jenis_kelamin")
+    .select("id, nama, kelompok, kelas, jenis_kelamin")
     .eq("id", input.mudamudiId)
     .maybeSingle();
 
@@ -115,14 +88,7 @@ export async function createManualPresensi(input: ManualPresensiInput) {
   if (!mudamudi) {
     return {
       success: false,
-      error: "Muda-Mudi tidak ditemukan atau tidak memiliki akses.",
-    };
-  }
-
-  if (!admin.isSuperAdmin && mudamudi.desa !== admin.desa) {
-    return {
-      success: false,
-      error: "Kamu tidak memiliki akses ke data Muda-Mudi ini.",
+      error: "Muda-Mudi tidak ditemukan.",
     };
   }
 
@@ -133,12 +99,13 @@ export async function createManualPresensi(input: ManualPresensiInput) {
     };
   }
 
-  const { data: existingPresensi, error: presensiCheckError } = await supabase
-    .from("presensi")
-    .select("id")
-    .eq("kegiatan_id", input.kegiatanId)
-    .eq("mudamudi_id", input.mudamudiId)
-    .maybeSingle();
+  const { data: existingPresensi, error: presensiCheckError } =
+    await supabase
+      .from("presensi")
+      .select("id")
+      .eq("kegiatan_id", input.kegiatanId)
+      .eq("mudamudi_id", input.mudamudiId)
+      .maybeSingle();
 
   if (presensiCheckError) {
     console.error("Gagal memeriksa presensi:", presensiCheckError);
@@ -218,7 +185,6 @@ export async function createManualPresensi(input: ManualPresensiInput) {
       mudamudi: {
         id: mudamudi.id,
         nama: mudamudi.nama,
-        desa: mudamudi.desa,
         kelompok: mudamudi.kelompok,
         kelas: mudamudi.kelas,
         jenisKelamin: mudamudi.jenis_kelamin,

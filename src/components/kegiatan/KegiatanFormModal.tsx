@@ -1,14 +1,14 @@
+
 "use client";
 
 import { useMemo, useRef, useState } from "react";
 
 import type { Kegiatan, FieldErrors } from "../../backend/kegiatan/types";
-
+import { validateClient } from "../../backend/kegiatan/validation";
 import {
-  DESA_OPTIONS,
   JENIS_KELAMIN_OPTIONS,
   KELAS_OPTIONS,
-  KELOMPOK_BY_DESA,
+  KELOMPOK_OPTIONS,
 } from "../../backend/mudamudi/constants";
 
 import ModalWrapper from "../mudamudi/ModalWrapper";
@@ -16,8 +16,6 @@ import ModalWrapper from "../mudamudi/ModalWrapper";
 type Props = {
   mode: "add" | "edit";
   initialData?: Kegiatan;
-  desaAdmin: string | null;
-  isSuperAdmin: boolean;
   fieldErrors: FieldErrors;
   error: string;
   loading: boolean;
@@ -36,7 +34,7 @@ type ActivityForm = {
   lokasi: string;
 };
 
-type ClientErrors = Partial<Record<keyof ActivityForm, string>>;
+const JEMAAH_CLASS = "Jamaah";
 
 const styles = {
   sectionTitle: "text-[11px] font-semibold tracking-tight text-[#202824]",
@@ -60,20 +58,28 @@ const STEPS = [
   { number: 3, title: "Konfirmasi", description: "Periksa kembali" },
 ];
 
-function getKelompokByDesa(desa: string[]): string[] {
-  const result = new Set<string>();
-
-  for (const namaDesa of desa) {
-    const daftar = KELOMPOK_BY_DESA[namaDesa as keyof typeof KELOMPOK_BY_DESA];
-
-    daftar?.forEach((kelompok) => result.add(kelompok));
-  }
-
-  return [...result];
+function getInitialGroupMode(
+  initialData: Kegiatan | undefined,
+): GroupMode {
+  return initialData?.kelompok == null ? "all" : "specific";
 }
 
-function getInitialGroupMode(initialData: Kegiatan | undefined): GroupMode {
-  return initialData?.kelompok == null ? "all" : "specific";
+function normalizeKelas(kelas: string[] | null | undefined): string[] {
+  if (!Array.isArray(kelas)) return [];
+
+  if (kelas.includes(JEMAAH_CLASS)) {
+    return [JEMAAH_CLASS];
+  }
+
+  return KELAS_OPTIONS.filter((item) => kelas.includes(item));
+}
+
+function normalizeKelompok(
+  kelompok: string[] | null | undefined,
+): string[] {
+  if (!Array.isArray(kelompok)) return [];
+
+  return KELOMPOK_OPTIONS.filter((item) => kelompok.includes(item));
 }
 
 function formatDate(value: string): string {
@@ -98,62 +104,9 @@ function formatTime(value: string): string {
   return value.slice(0, 5);
 }
 
-function validateActivity(activity: ActivityForm): ClientErrors {
-  const errors: ClientErrors = {};
-
-  if (!activity.nama.trim()) {
-    errors.nama = "Nama kegiatan wajib diisi.";
-  }
-
-  if (!activity.tanggal_mulai) {
-    errors.tanggal_mulai = "Tanggal mulai wajib diisi.";
-  }
-
-  if (!activity.tanggal_selesai) {
-    errors.tanggal_selesai = "Tanggal selesai wajib diisi.";
-  }
-
-  if (
-    activity.tanggal_mulai &&
-    activity.tanggal_selesai &&
-    activity.tanggal_selesai < activity.tanggal_mulai
-  ) {
-    errors.tanggal_selesai =
-      "Tanggal selesai harus setelah atau sama dengan tanggal mulai.";
-  }
-
-  if (!activity.jam_mulai) {
-    errors.jam_mulai = "Jam mulai wajib diisi.";
-  }
-
-  if (!activity.jam_selesai) {
-    errors.jam_selesai = "Jam selesai wajib diisi.";
-  }
-
-  if (
-    activity.tanggal_mulai &&
-    activity.tanggal_selesai &&
-    activity.tanggal_mulai === activity.tanggal_selesai &&
-    activity.jam_mulai &&
-    activity.jam_selesai &&
-    activity.jam_selesai <= activity.jam_mulai
-  ) {
-    errors.jam_selesai =
-      "Jika tanggalnya sama, jam selesai harus setelah jam mulai.";
-  }
-
-  if (!activity.lokasi.trim()) {
-    errors.lokasi = "Lokasi wajib diisi.";
-  }
-
-  return errors;
-}
-
 export default function KegiatanFormModal({
   mode,
   initialData,
-  desaAdmin,
-  isSuperAdmin,
   fieldErrors,
   error,
   loading,
@@ -163,19 +116,9 @@ export default function KegiatanFormModal({
   const navigationLockRef = useRef(false);
   const submitLockRef = useRef(false);
 
-  const initialDesa = useMemo<string[]>(() => {
-    if (isSuperAdmin) {
-      return (initialData?.desa ?? []).filter((desa) =>
-        DESA_OPTIONS.includes(desa as (typeof DESA_OPTIONS)[number]),
-      );
-    }
-
-    return desaAdmin ? [desaAdmin] : [];
-  }, [isSuperAdmin, initialData?.desa, desaAdmin]);
-
   const [currentStep, setCurrentStep] = useState(1);
   const [stepError, setStepError] = useState("");
-  const [clientErrors, setClientErrors] = useState<ClientErrors>({});
+  const [clientErrors, setClientErrors] = useState<FieldErrors>({});
 
   const [activity, setActivity] = useState<ActivityForm>({
     nama: initialData?.nama ?? "",
@@ -186,63 +129,67 @@ export default function KegiatanFormModal({
     lokasi: initialData?.lokasi ?? "",
   });
 
-  const [selectedDesa, setSelectedDesa] = useState<string[]>(initialDesa);
-
   const [groupMode, setGroupMode] = useState<GroupMode>(() =>
     getInitialGroupMode(initialData),
   );
 
-  const [selectedKelompok, setSelectedKelompok] = useState<string[]>(
-    initialData?.kelompok ?? [],
+  const [selectedKelompok, setSelectedKelompok] = useState<string[]>(() =>
+    normalizeKelompok(initialData?.kelompok),
   );
 
-  const [selectedKelas, setSelectedKelas] = useState<string[]>(
-    initialData?.kelas ?? [],
+  const [selectedKelas, setSelectedKelas] = useState<string[]>(() =>
+    normalizeKelas(initialData?.kelas),
   );
 
   const [jenisKelamin, setJenisKelamin] = useState(
     initialData?.jenis_kelamin ?? "",
   );
 
-  const availableKelompok = useMemo(
-    () => getKelompokByDesa(selectedDesa),
-    [selectedDesa],
-  );
-
-  const effectiveKelompok = selectedKelompok.filter((kelompok) =>
-    availableKelompok.includes(kelompok),
+  const effectiveKelompok = useMemo(
+    () =>
+      KELOMPOK_OPTIONS.filter((kelompok) =>
+        selectedKelompok.includes(kelompok),
+      ),
+    [selectedKelompok],
   );
 
   const allKelompokSelected =
-    availableKelompok.length > 0 &&
-    availableKelompok.every((kelompok) => effectiveKelompok.includes(kelompok));
+    effectiveKelompok.length === KELOMPOK_OPTIONS.length;
 
   const allKelasSelected =
     KELAS_OPTIONS.length > 0 &&
     KELAS_OPTIONS.every((kelas) => selectedKelas.includes(kelas));
 
-  const kelasLabel =
-    selectedKelas.length === 0 || allKelasSelected
+  const isJamaahSelected = selectedKelas.includes(JEMAAH_CLASS);
+
+  const kelasLabel = isJamaahSelected
+    ? "Semua peserta"
+    : selectedKelas.length === 0 || allKelasSelected
       ? "Semua kelas"
       : `${selectedKelas.length} kelas`;
 
   const jenisKelaminLabel = jenisKelamin || "Semua peserta";
 
-  const groupNamesByDesa = useMemo(
-    () =>
-      selectedDesa.map((desa) => ({
-        desa,
-        kelompok: (
-          KELOMPOK_BY_DESA[desa as keyof typeof KELOMPOK_BY_DESA] ?? []
-        ).filter((kelompok) => effectiveKelompok.includes(kelompok)),
-      })),
-    [selectedDesa, effectiveKelompok],
-  );
-
   const selectedKelasForSummary =
-    selectedKelas.length === 0 || allKelasSelected
-      ? [...KELAS_OPTIONS]
-      : KELAS_OPTIONS.filter((kelas) => selectedKelas.includes(kelas));
+    isJamaahSelected
+      ? [JEMAAH_CLASS]
+      : selectedKelas.length === 0 || allKelasSelected
+        ? [...KELAS_OPTIONS]
+        : KELAS_OPTIONS.filter((kelas) => selectedKelas.includes(kelas));
+
+  function getValidationErrors(): FieldErrors {
+    return validateClient(
+      activity.nama,
+      activity.tanggal_mulai,
+      activity.tanggal_selesai,
+      activity.jam_mulai,
+      activity.jam_selesai,
+      activity.lokasi,
+      groupMode === "all" ? [] : effectiveKelompok,
+      selectedKelas,
+      jenisKelamin,
+    );
+  }
 
   function updateActivity(field: keyof ActivityForm, value: string) {
     const nextActivity = {
@@ -252,60 +199,28 @@ export default function KegiatanFormModal({
 
     setActivity(nextActivity);
 
-    // Validasi hanya field yang sedang diedit, bukan semua field sekaligus.
-    // Field lain baru menampilkan error setelah pengguna menekan "Lanjut".
-    setClientErrors((current) => {
-      const validation = validateActivity(nextActivity);
-      const nextErrors: ClientErrors = {
-        ...current,
-        [field]: validation[field],
-      };
+    const validation = validateClient(
+      nextActivity.nama,
+      nextActivity.tanggal_mulai,
+      nextActivity.tanggal_selesai,
+      nextActivity.jam_mulai,
+      nextActivity.jam_selesai,
+      nextActivity.lokasi,
+      groupMode === "all" ? [] : effectiveKelompok,
+      selectedKelas,
+      jenisKelamin,
+    );
 
-      // Perbarui error tanggal selesai hanya jika sebelumnya sudah ditampilkan.
-      if (
-        (field === "tanggal_mulai" || field === "tanggal_selesai") &&
-        current.tanggal_selesai
-      ) {
-        nextErrors.tanggal_selesai = validation.tanggal_selesai;
-      }
-
-      // Perbarui error jam selesai hanya jika sebelumnya sudah ditampilkan.
-      if (
-        (field === "jam_mulai" || field === "jam_selesai") &&
-        current.jam_selesai
-      ) {
-        nextErrors.jam_selesai = validation.jam_selesai;
-      }
-
-      return nextErrors;
-    });
-
-    setStepError("");
-  }
-
-  function toggleDesa(desa: string) {
-    const isSelected = selectedDesa.includes(desa);
-
-    const nextDesa = isSelected
-      ? selectedDesa.filter((item) => item !== desa)
-      : [...selectedDesa, desa];
-
-    const nextAvailable = getKelompokByDesa(nextDesa);
-    const addedDesa = nextDesa.filter((item) => !selectedDesa.includes(item));
-
-    setSelectedDesa(nextDesa);
-
-    setSelectedKelompok((current) => {
-      const retained = current.filter((item) => nextAvailable.includes(item));
-
-      if (groupMode === "all") {
-        return retained;
-      }
-
-      return [
-        ...new Set([...retained, ...getKelompokByDesa(addedDesa)]),
-      ].filter((item) => nextAvailable.includes(item));
-    });
+    setClientErrors((current) => ({
+      ...current,
+      [field]: validation[field],
+      ...(field === "tanggal_mulai" || field === "tanggal_selesai"
+        ? { tanggal_selesai: validation.tanggal_selesai }
+        : {}),
+      ...(field === "jam_mulai" || field === "jam_selesai"
+        ? { jam_selesai: validation.jam_selesai }
+        : {}),
+    }));
 
     setStepError("");
   }
@@ -313,11 +228,16 @@ export default function KegiatanFormModal({
   function changeGroupMode(nextMode: GroupMode) {
     if (loading || nextMode === groupMode) return;
 
-    if (nextMode === "specific" && groupMode === "all") {
-      setSelectedKelompok(availableKelompok);
+    setGroupMode(nextMode);
+
+    if (nextMode === "all") {
+      setSelectedKelompok([]);
+    } else {
+      setSelectedKelompok((current) =>
+        current.length > 0 ? current : [...KELOMPOK_OPTIONS],
+      );
     }
 
-    setGroupMode(nextMode);
     setStepError("");
   }
 
@@ -332,30 +252,49 @@ export default function KegiatanFormModal({
   }
 
   function toggleAllKelompok() {
-    setSelectedKelompok((current) =>
-      allKelompokSelected
-        ? current.filter((item) => !availableKelompok.includes(item))
-        : [
-            ...new Set([
-              ...current.filter((item) => availableKelompok.includes(item)),
-              ...availableKelompok,
-            ]),
-          ],
+    setSelectedKelompok(
+      allKelompokSelected ? [] : [...KELOMPOK_OPTIONS],
     );
 
     setStepError("");
   }
 
   function toggleKelas(kelas: string) {
-    setSelectedKelas((current) =>
-      current.includes(kelas)
+    setSelectedKelas((current) => {
+      if (kelas === JEMAAH_CLASS) {
+        return current.includes(JEMAAH_CLASS) ? [] : [JEMAAH_CLASS];
+      }
+
+      if (current.includes(JEMAAH_CLASS)) {
+        return [kelas];
+      }
+
+      return current.includes(kelas)
         ? current.filter((item) => item !== kelas)
-        : [...current, kelas],
-    );
+        : [...current, kelas];
+    });
+
+    setStepError("");
   }
 
   function toggleAllKelas() {
-    setSelectedKelas((current) => (allKelasSelected ? [] : [...KELAS_OPTIONS]));
+    setSelectedKelas((current) => {
+      const allSelected =
+        KELAS_OPTIONS.length > 0 &&
+        KELAS_OPTIONS.every((kelas) => current.includes(kelas));
+
+      if (allSelected) {
+        return [];
+      }
+
+      if (KELAS_OPTIONS.includes(JEMAAH_CLASS)) {
+        return [JEMAAH_CLASS];
+      }
+
+      return [...KELAS_OPTIONS];
+    });
+
+    setStepError("");
   }
 
   function renderError(message?: string) {
@@ -373,30 +312,39 @@ export default function KegiatanFormModal({
   }
 
   function optionClass(checked: boolean) {
-    return `${styles.option} ${
-      checked
-        ? "border-[#287A50] bg-[#E6F2EA]"
-        : "border-[#E5EAE6] bg-white hover:border-[#65B98A]/40 hover:bg-[#F5F7F5]"
-    } ${loading ? "cursor-not-allowed opacity-60" : ""}`;
+    return `${styles.option} ${checked
+      ? "border-[#287A50] bg-[#E6F2EA]"
+      : "border-[#E5EAE6] bg-white hover:border-[#65B98A]/40 hover:bg-[#F5F7F5]"
+      } ${loading ? "cursor-not-allowed opacity-60" : ""}`;
   }
 
   function modeCardClass(checked: boolean) {
-    return `flex min-h-[52px] min-w-0 cursor-pointer items-start gap-2 rounded-xl border p-2.5 text-left transition ${
-      checked
-        ? "border-[#287A50] bg-[#E6F2EA]"
-        : "border-[#E5EAE6] bg-white hover:border-[#65B98A]/40 hover:bg-[#F5F7F5]"
-    } ${loading ? "cursor-not-allowed opacity-60" : ""}`;
+    return `flex min-h-[52px] min-w-0 cursor-pointer items-start gap-2 rounded-xl border p-2.5 text-left transition ${checked
+      ? "border-[#287A50] bg-[#E6F2EA]"
+      : "border-[#E5EAE6] bg-white hover:border-[#65B98A]/40 hover:bg-[#F5F7F5]"
+      } ${loading ? "cursor-not-allowed opacity-60" : ""}`;
   }
 
   function validateCurrentStep(): boolean {
     setStepError("");
 
-    if (currentStep === 1) {
-      const errors = validateActivity(activity);
-      setClientErrors(errors);
+    const validation = getValidationErrors();
+    setClientErrors(validation);
 
-      if (Object.keys(errors).length > 0) {
-        setStepError("Periksa kembali informasi kegiatan yang bertanda merah.");
+    if (currentStep === 1) {
+      const activityErrors = [
+        validation.nama,
+        validation.tanggal_mulai,
+        validation.tanggal_selesai,
+        validation.jam_mulai,
+        validation.jam_selesai,
+        validation.lokasi,
+      ];
+
+      if (activityErrors.some(Boolean)) {
+        setStepError(
+          "Periksa kembali informasi kegiatan yang bertanda merah.",
+        );
         return false;
       }
 
@@ -404,15 +352,18 @@ export default function KegiatanFormModal({
     }
 
     if (currentStep === 2) {
-      if (selectedDesa.length === 0) {
-        setStepError("Pilih setidaknya satu desa sebagai sasaran kegiatan.");
-        return false;
-      }
-
-      if (groupMode === "specific" && effectiveKelompok.length === 0) {
+      if (
+        groupMode === "specific" &&
+        effectiveKelompok.length === 0
+      ) {
         setStepError(
           "Pilih setidaknya satu kelompok atau pilih semua kelompok.",
         );
+        return false;
+      }
+
+      if (validation.kelompok || validation.kelas || validation.jenis_kelamin) {
+        setStepError("Periksa kembali sasaran kegiatan yang dipilih.");
         return false;
       }
 
@@ -461,7 +412,9 @@ export default function KegiatanFormModal({
     });
   }
 
-  async function handleFormSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleFormSubmit(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     if (
@@ -473,23 +426,23 @@ export default function KegiatanFormModal({
       return;
     }
 
-    const errors = validateActivity(activity);
-    setClientErrors(errors);
+    const validation = getValidationErrors();
+    setClientErrors(validation);
 
-    if (Object.keys(errors).length > 0) {
+    if (Object.values(validation).some(Boolean)) {
       setStepError(
-        "Informasi kegiatan belum lengkap atau belum valid. Silakan kembali ke langkah pertama.",
+        "Informasi kegiatan atau sasaran belum lengkap atau belum valid. Silakan periksa kembali.",
       );
       return;
     }
 
-    if (selectedDesa.length === 0) {
-      setStepError("Pilih setidaknya satu desa sebagai sasaran kegiatan.");
-      return;
-    }
-
-    if (groupMode === "specific" && effectiveKelompok.length === 0) {
-      setStepError("Pilih setidaknya satu kelompok atau pilih semua kelompok.");
+    if (
+      groupMode === "specific" &&
+      effectiveKelompok.length === 0
+    ) {
+      setStepError(
+        "Pilih setidaknya satu kelompok atau pilih semua kelompok.",
+      );
       return;
     }
 
@@ -515,15 +468,13 @@ export default function KegiatanFormModal({
         noValidate
         className="flex max-h-[90dvh] min-h-0 w-full flex-col overflow-hidden bg-white"
       >
-        {/* Header */}
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#E5EAE6] px-4 py-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-2.5">
             <div
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
-                mode === "add"
-                  ? "bg-[#E6F2EA] text-[#287A50]"
-                  : "bg-blue-50 text-blue-700"
-              }`}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${mode === "add"
+                ? "bg-[#E6F2EA] text-[#287A50]"
+                : "bg-blue-50 text-blue-700"
+                }`}
             >
               {mode === "add" ? (
                 <svg
@@ -592,7 +543,6 @@ export default function KegiatanFormModal({
           </button>
         </header>
 
-        {/* Step indicator */}
         <div className="shrink-0 border-b border-[#E5EAE6] px-4 py-3 sm:px-5">
           <div className="grid grid-cols-3 gap-2">
             {STEPS.map((step) => {
@@ -617,18 +567,18 @@ export default function KegiatanFormModal({
                   className="min-w-0 text-left disabled:cursor-default"
                 >
                   <div
-                    className={`mb-2 h-1 rounded-full transition ${
-                      completed || active ? "bg-[#287A50]" : "bg-[#E5EAE6]"
-                    }`}
+                    className={`mb-2 h-1 rounded-full transition ${completed || active
+                      ? "bg-[#287A50]"
+                      : "bg-[#E5EAE6]"
+                      }`}
                   />
 
                   <div className="flex min-w-0 items-start gap-1.5">
                     <span
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8px] font-semibold ${
-                        active || completed
-                          ? "bg-[#287A50] text-white"
-                          : "bg-[#F5F7F5] text-[#78827C]"
-                      }`}
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8px] font-semibold ${active || completed
+                        ? "bg-[#287A50] text-white"
+                        : "bg-[#F5F7F5] text-[#78827C]"
+                        }`}
                     >
                       {completed ? (
                         <svg
@@ -652,9 +602,8 @@ export default function KegiatanFormModal({
 
                     <span className="min-w-0">
                       <span
-                        className={`block wrap-break-word text-[9px] font-semibold leading-4 ${
-                          active ? "text-[#287A50]" : "text-[#78827C]"
-                        }`}
+                        className={`block wrap-break-word text-[9px] font-semibold leading-4 ${active ? "text-[#287A50]" : "text-[#78827C]"
+                          }`}
                       >
                         {step.title}
                       </span>
@@ -669,11 +618,8 @@ export default function KegiatanFormModal({
           </div>
         </div>
 
-        {/* Form content */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4">
-          {/* Step 1 */}
           <section hidden={currentStep !== 1} className="space-y-3">
-            {/* Informasi utama */}
             <div className="rounded-xl border border-[#E5EAE6] bg-white p-3.5 shadow-xs sm:p-4">
               <div className="mb-3 flex items-center gap-2.5">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#E6F2EA] text-[#287A50]">
@@ -701,6 +647,7 @@ export default function KegiatanFormModal({
                   </p>
                 </div>
               </div>
+
               <div>
                 <label htmlFor="nama" className={styles.label}>
                   Nama kegiatan <span className="text-red-600">*</span>
@@ -723,11 +670,12 @@ export default function KegiatanFormModal({
                   }
                   className={styles.input}
                 />
-                <div id="nama-error">{renderError(getFieldError("nama"))}</div>
+                <div id="nama-error">
+                  {renderError(getFieldError("nama"))}
+                </div>
               </div>
             </div>
 
-            {/* Jadwal kegiatan */}
             <div className="rounded-xl border border-[#E5EAE6] bg-white p-3.5 shadow-xs sm:p-4">
               <div className="mb-3 flex items-center gap-2.5">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#E6F2EA] text-[#287A50]">
@@ -754,6 +702,7 @@ export default function KegiatanFormModal({
                   </p>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-x-2.5 gap-y-3 sm:gap-x-3">
                 <div className="min-w-0">
                   <label htmlFor="tanggal_mulai" className={styles.label}>
@@ -769,11 +718,14 @@ export default function KegiatanFormModal({
                       updateActivity("tanggal_mulai", event.target.value)
                     }
                     disabled={loading}
-                    aria-invalid={Boolean(getFieldError("tanggal_mulai"))}
+                    aria-invalid={Boolean(
+                      getFieldError("tanggal_mulai"),
+                    )}
                     className={styles.input}
                   />
                   {renderError(getFieldError("tanggal_mulai"))}
                 </div>
+
                 <div className="min-w-0">
                   <label htmlFor="tanggal_selesai" className={styles.label}>
                     Tanggal selesai <span className="text-red-600">*</span>
@@ -789,11 +741,14 @@ export default function KegiatanFormModal({
                       updateActivity("tanggal_selesai", event.target.value)
                     }
                     disabled={loading}
-                    aria-invalid={Boolean(getFieldError("tanggal_selesai"))}
+                    aria-invalid={Boolean(
+                      getFieldError("tanggal_selesai"),
+                    )}
                     className={styles.input}
                   />
                   {renderError(getFieldError("tanggal_selesai"))}
                 </div>
+
                 <div className="min-w-0">
                   <label htmlFor="jam_mulai" className={styles.label}>
                     Jam mulai <span className="text-red-600">*</span>
@@ -813,6 +768,7 @@ export default function KegiatanFormModal({
                   />
                   {renderError(getFieldError("jam_mulai"))}
                 </div>
+
                 <div className="min-w-0">
                   <label htmlFor="jam_selesai" className={styles.label}>
                     Jam selesai <span className="text-red-600">*</span>
@@ -835,7 +791,6 @@ export default function KegiatanFormModal({
               </div>
             </div>
 
-            {/* Lokasi pelaksanaan */}
             <div className="rounded-xl border border-[#E5EAE6] bg-white p-3.5 shadow-xs sm:p-4">
               <div className="mb-3 flex items-center gap-2.5">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#E6F2EA] text-[#287A50]">
@@ -862,6 +817,7 @@ export default function KegiatanFormModal({
                   </p>
                 </div>
               </div>
+
               <div>
                 <label htmlFor="lokasi" className={styles.label}>
                   Lokasi <span className="text-red-600">*</span>
@@ -872,7 +828,7 @@ export default function KegiatanFormModal({
                   type="text"
                   required
                   maxLength={200}
-                  placeholder="Contoh: Balai Desa Pandak"
+                  placeholder="Contoh: Balai Pertemuan"
                   value={activity.lokasi}
                   onChange={(event) =>
                     updateActivity("lokasi", event.target.value)
@@ -886,7 +842,6 @@ export default function KegiatanFormModal({
             </div>
           </section>
 
-          {/* Step 2 */}
           <section hidden={currentStep !== 2} className="space-y-3">
             <div className="rounded-xl border border-[#E5EAE6] bg-white p-3.5 shadow-xs sm:p-4">
               <div className="mb-3 flex items-center gap-2.5">
@@ -910,81 +865,12 @@ export default function KegiatanFormModal({
                     Sasaran Kegiatan
                   </h3>
                   <p className="text-[8px] leading-4 text-[#78827C]">
-                    Tentukan wilayah dan kriteria peserta kegiatan.
+                    Tentukan kelompok dan kriteria peserta kegiatan.
                   </p>
                 </div>
               </div>
+
               <div className="space-y-4">
-                {/* Desa */}
-                <div className="rounded-xl border border-[#E5EAE6] bg-white p-3">
-                  <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                    <h4 className={styles.subheading}>
-                      Desa <span className="text-red-600">*</span>
-                    </h4>
-
-                    {isSuperAdmin && (
-                      <span className="text-[9px] tabular-nums text-[#78827C]">
-                        {selectedDesa.length} dipilih
-                      </span>
-                    )}
-                  </div>
-
-                  {isSuperAdmin ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      {DESA_OPTIONS.map((desa) => {
-                        const checked = selectedDesa.includes(desa);
-
-                        return (
-                          <label key={desa} className={optionClass(checked)}>
-                            <input
-                              type="checkbox"
-                              name="desa"
-                              value={desa}
-                              checked={checked}
-                              onChange={() => toggleDesa(desa)}
-                              disabled={loading}
-                              className="h-3.5 w-3.5 shrink-0 accent-[#287A50]"
-                            />
-                            <span className={styles.optionText}>{desa}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-[#65B98A]/30 bg-[#E6F2EA] p-2.5">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-[#287A50]">
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          className="h-4 w-4"
-                          aria-hidden="true"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11Z"
-                          />
-                          <circle cx="12" cy="10" r="2.5" />
-                        </svg>
-                      </div>
-
-                      <div className="min-w-0">
-                        <p className="wrap-break-word text-[9px] font-semibold text-[#202824]">
-                          {desaAdmin || "Desa belum ditetapkan"}
-                        </p>
-                        <p className="mt-0.5 text-[9px] leading-4 text-[#78827C]">
-                          Mengikuti wilayah pada profil admin.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {renderError(fieldErrors.desa)}
-                </div>
-
-                {/* Kelompok */}
                 <div className="rounded-xl border border-[#E5EAE6] bg-white p-3">
                   <div className="mb-2.5">
                     <h4 className={styles.subheading}>Kelompok</h4>
@@ -993,174 +879,125 @@ export default function KegiatanFormModal({
                     </p>
                   </div>
 
-                  {selectedDesa.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-[#E5EAE6] px-3 py-5 text-center">
-                      <p className="text-[9px] font-medium text-[#78827C]">
-                        Pilih desa terlebih dahulu
-                      </p>
-                      <p className="mt-1 text-[9px] leading-4 text-[#9AA39D]">
-                        Daftar kelompok akan muncul setelah desa dipilih.
-                      </p>
-                    </div>
-                  ) : (
-                    <>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        {
+                          value: "all",
+                          title: "Semua kelompok",
+                          description: "Berlaku untuk seluruh kelompok.",
+                        },
+                        {
+                          value: "specific",
+                          title: "Kelompok tertentu",
+                          description: "Pilih kelompok sesuai sasaran.",
+                        },
+                      ] as const
+                    ).map((item) => {
+                      const checked = groupMode === item.value;
+
+                      return (
+                        <button
+                          key={item.value}
+                          type="button"
+                          onClick={() => changeGroupMode(item.value)}
+                          disabled={loading}
+                          aria-pressed={checked}
+                          className={modeCardClass(checked)}
+                        >
+                          <span
+                            className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${checked
+                              ? "border-[#287A50]"
+                              : "border-[#E5EAE6]"
+                              }`}
+                          >
+                            {checked && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-[#287A50]" />
+                            )}
+                          </span>
+
+                          <span className="min-w-0">
+                            <span className="block wrap-break-word text-[9px] font-semibold text-[#202824]">
+                              {item.title}
+                            </span>
+                            <span className="mt-1 block text-[9px] leading-4 text-[#78827C]">
+                              {item.description}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {groupMode === "specific" && (
+                    <div className="mt-3 rounded-xl border border-[#E5EAE6] p-3">
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-semibold text-[#202824]">
+                            Pilih kelompok
+                          </p>
+                          <p className="mt-0.5 text-[9px] text-[#78827C]">
+                            {effectiveKelompok.length} dari{" "}
+                            {KELOMPOK_OPTIONS.length} dipilih
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={toggleAllKelompok}
+                          disabled={loading}
+                          className={styles.action}
+                        >
+                          {allKelompokSelected
+                            ? "Hapus semua"
+                            : "Pilih semua"}
+                        </button>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-2">
-                        {(
-                          [
-                            {
-                              value: "all",
-                              title: "Semua kelompok",
-                              description: "Seluruh kelompok di desa terpilih.",
-                            },
-                            {
-                              value: "specific",
-                              title: "Kelompok tertentu",
-                              description: "Pilih kelompok sesuai sasaran.",
-                            },
-                          ] as const
-                        ).map((item) => {
-                          const checked = groupMode === item.value;
+                        {KELOMPOK_OPTIONS.map((kelompok) => {
+                          const checked =
+                            effectiveKelompok.includes(kelompok);
 
                           return (
-                            <button
-                              key={item.value}
-                              type="button"
-                              onClick={() => changeGroupMode(item.value)}
-                              disabled={loading}
-                              aria-pressed={checked}
-                              className={modeCardClass(checked)}
+                            <label
+                              key={kelompok}
+                              className={optionClass(checked)}
                             >
-                              <span
-                                className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${
-                                  checked
-                                    ? "border-[#287A50]"
-                                    : "border-[#E5EAE6]"
-                                }`}
-                              >
-                                {checked && (
-                                  <span className="h-1.5 w-1.5 rounded-full bg-[#287A50]" />
-                                )}
+                              <input
+                                type="checkbox"
+                                name="kelompok"
+                                value={kelompok}
+                                checked={checked}
+                                onChange={() => toggleKelompok(kelompok)}
+                                disabled={loading}
+                                className="h-3.5 w-3.5 shrink-0 accent-[#287A50]"
+                              />
+                              <span className={styles.optionText}>
+                                {kelompok}
                               </span>
-
-                              <span className="min-w-0">
-                                <span className="block wrap-break-word text-[9px] font-semibold text-[#202824]">
-                                  {item.title}
-                                </span>
-                                <span className="mt-1 block text-[9px] leading-4 text-[#78827C]">
-                                  {item.description}
-                                </span>
-                              </span>
-                            </button>
+                            </label>
                           );
                         })}
                       </div>
-
-                      {groupMode === "specific" && (
-                        <div className="mt-3 rounded-xl border border-[#E5EAE6] p-3">
-                          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="text-[9px] font-semibold text-[#202824]">
-                                Pilih kelompok
-                              </p>
-                              <p className="mt-0.5 text-[9px] text-[#78827C]">
-                                {effectiveKelompok.length} dari{" "}
-                                {availableKelompok.length} dipilih
-                              </p>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={toggleAllKelompok}
-                              disabled={loading}
-                              className={styles.action}
-                            >
-                              {allKelompokSelected
-                                ? "Hapus semua"
-                                : "Pilih semua"}
-                            </button>
-                          </div>
-
-                          <div className="space-y-2.5">
-                            {selectedDesa.map((desa) => {
-                              const kelompokDesa =
-                                KELOMPOK_BY_DESA[
-                                  desa as keyof typeof KELOMPOK_BY_DESA
-                                ] ?? [];
-
-                              const jumlahTerpilih = kelompokDesa.filter(
-                                (item) => effectiveKelompok.includes(item),
-                              ).length;
-
-                              return (
-                                <div
-                                  key={desa}
-                                  className="border-t border-[#E5EAE6] pt-3 first:border-0 first:pt-0"
-                                >
-                                  <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                                    <h5 className="text-[9px] font-semibold text-[#202824]">
-                                      {desa}
-                                    </h5>
-                                    <span className="text-[9px] tabular-nums text-[#78827C]">
-                                      {jumlahTerpilih}/{kelompokDesa.length}
-                                    </span>
-                                  </div>
-
-                                  <div className="grid grid-cols-2 gap-2">
-                                    {kelompokDesa.map((kelompok) => {
-                                      const checked =
-                                        effectiveKelompok.includes(kelompok);
-
-                                      return (
-                                        <label
-                                          key={`${desa}-${kelompok}`}
-                                          className={optionClass(checked)}
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            name="kelompok"
-                                            value={kelompok}
-                                            checked={checked}
-                                            onChange={() =>
-                                              toggleKelompok(kelompok)
-                                            }
-                                            disabled={loading}
-                                            className="h-3.5 w-3.5 shrink-0 accent-[#287A50]"
-                                          />
-                                          <span className={styles.optionText}>
-                                            {kelompok}
-                                          </span>
-                                        </label>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {groupMode === "all" && (
-                        <p className="mt-2.5 rounded-xl bg-[#F5F7F5] px-3 py-2 text-[9px] leading-4 text-[#78827C]">
-                          Berlaku untuk seluruh kelompok di{" "}
-                          {selectedDesa.length === 1
-                            ? `Desa ${selectedDesa[0]}.`
-                            : `${selectedDesa.length} desa terpilih.`}
-                        </p>
-                      )}
-                    </>
+                    </div>
                   )}
 
-                  {renderError(fieldErrors.kelompok)}
+                  {groupMode === "all" && (
+                    <p className="mt-2.5 rounded-xl bg-[#F5F7F5] px-3 py-2 text-[9px] leading-4 text-[#78827C]">
+                      Kegiatan berlaku untuk seluruh kelompok yang terdaftar.
+                    </p>
+                  )}
+
+                  {renderError(clientErrors.kelompok || fieldErrors.kelompok)}
                 </div>
 
-                {/* Kelas */}
                 <div className="rounded-xl border border-[#E5EAE6] bg-white p-3">
                   <div className="mb-2.5 flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <h4 className={styles.subheading}>Kelas peserta</h4>
                       <p className={`mt-1 ${styles.description}`}>
-                        Kosongkan pilihan untuk menyertakan semua kelas.
+                        Pilih Jamaah untuk menyertakan semua peserta. Jika memilih kelas khusus, peserta harus memiliki salah satu kelas tersebut.
                       </p>
                     </div>
 
@@ -1206,10 +1043,15 @@ export default function KegiatanFormModal({
                     </div>
                   </div>
 
-                  {renderError(fieldErrors.kelas)}
+                  {isJamaahSelected && (
+                    <p className="mt-2.5 rounded-xl bg-[#E6F2EA] px-3 py-2 text-[9px] leading-4 text-[#206440]">
+                      Sasaran Jamaah mencakup seluruh peserta. Pilihan kelas khusus lainnya otomatis dinonaktifkan.
+                    </p>
+                  )}
+
+                  {renderError(clientErrors.kelas || fieldErrors.kelas)}
                 </div>
 
-                {/* Jenis kelamin */}
                 <div className="rounded-xl border border-[#E5EAE6] bg-white p-3">
                   <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
@@ -1232,11 +1074,10 @@ export default function KegiatanFormModal({
                         return (
                           <label
                             key={option || "semua"}
-                            className={`flex min-h-9 min-w-0 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2 transition ${
-                              checked
-                                ? "border-[#287A50] bg-[#E6F2EA] text-[#206440]"
-                                : "border-[#E5EAE6] text-[#202824] hover:border-[#65B98A]/40 hover:bg-[#F5F7F5]"
-                            } ${loading ? "cursor-not-allowed opacity-60" : ""}`}
+                            className={`flex min-h-9 min-w-0 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2 transition ${checked
+                              ? "border-[#287A50] bg-[#E6F2EA] text-[#206440]"
+                              : "border-[#E5EAE6] text-[#202824] hover:border-[#65B98A]/40 hover:bg-[#F5F7F5]"
+                              } ${loading ? "cursor-not-allowed opacity-60" : ""}`}
                           >
                             <input
                               type="radio"
@@ -1259,13 +1100,15 @@ export default function KegiatanFormModal({
                     )}
                   </div>
 
-                  {renderError(fieldErrors.jenis_kelamin)}
+                  {renderError(
+                    clientErrors.jenis_kelamin ||
+                    fieldErrors.jenis_kelamin,
+                  )}
                 </div>
               </div>
             </div>
           </section>
 
-          {/* Step 3 */}
           <section hidden={currentStep !== 3} className="space-y-3">
             <div className="rounded-xl border border-[#E5EAE6] bg-white p-3.5 shadow-xs sm:p-4">
               <div className="flex items-center gap-2.5">
@@ -1296,7 +1139,6 @@ export default function KegiatanFormModal({
             </div>
 
             <div className="space-y-2.5">
-              {/* Ringkasan informasi kegiatan */}
               <div className="rounded-xl border border-[#E5EAE6] bg-white p-3 shadow-xs sm:p-3.5">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <h4 className={styles.subheading}>Informasi Kegiatan</h4>
@@ -1312,7 +1154,9 @@ export default function KegiatanFormModal({
 
                 <div className="space-y-2.5">
                   <div>
-                    <p className="text-[9px] text-[#78827C]">Nama kegiatan</p>
+                    <p className="text-[9px] text-[#78827C]">
+                      Nama kegiatan
+                    </p>
                     <p className="mt-0.5 wrap-break-word text-[9px] font-semibold leading-4 text-[#202824]">
                       {activity.nama.trim() || "Belum diisi"}
                     </p>
@@ -1320,7 +1164,9 @@ export default function KegiatanFormModal({
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="min-w-0">
-                      <p className="text-[9px] text-[#78827C]">Tanggal mulai</p>
+                      <p className="text-[9px] text-[#78827C]">
+                        Tanggal mulai
+                      </p>
                       <p className="mt-0.5 wrap-break-word text-[9px] font-medium leading-4 text-[#202824]">
                         {formatDate(activity.tanggal_mulai)}
                       </p>
@@ -1343,7 +1189,9 @@ export default function KegiatanFormModal({
                     </div>
 
                     <div className="min-w-0">
-                      <p className="text-[9px] text-[#78827C]">Jam selesai</p>
+                      <p className="text-[9px] text-[#78827C]">
+                        Jam selesai
+                      </p>
                       <p className="mt-0.5 text-[9px] font-medium text-[#202824]">
                         {formatTime(activity.jam_selesai)}
                       </p>
@@ -1359,7 +1207,6 @@ export default function KegiatanFormModal({
                 </div>
               </div>
 
-              {/* Ringkasan sasaran peserta */}
               <div className="rounded-xl border border-[#E5EAE6] bg-white p-3 shadow-xs sm:p-3.5">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <h4 className={styles.subheading}>Sasaran Peserta</h4>
@@ -1377,34 +1224,6 @@ export default function KegiatanFormModal({
                   <div>
                     <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                       <p className="text-[9px] font-medium text-[#202824]">
-                        Desa
-                      </p>
-                      <span className="text-[9px] text-[#78827C]">
-                        {selectedDesa.length} dipilih
-                      </span>
-                    </div>
-
-                    {selectedDesa.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedDesa.map((desa) => (
-                          <span
-                            key={desa}
-                            className="max-w-full wrap-break-word rounded-md bg-[#E6F2EA] px-2 py-1 text-[9px] font-medium text-[#206440]"
-                          >
-                            {desa}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-[9px] text-red-600">
-                        Belum ada desa yang dipilih.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="border-t border-[#E5EAE6] pt-3">
-                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-[9px] font-medium text-[#202824]">
                         Kelompok
                       </p>
                       {groupMode === "specific" && (
@@ -1416,35 +1235,23 @@ export default function KegiatanFormModal({
 
                     {groupMode === "all" ? (
                       <p className="text-[9px] leading-4 text-[#202824]">
-                        Semua kelompok di desa terpilih
+                        Semua kelompok
                       </p>
-                    ) : (
-                      <div className="space-y-2.5">
-                        {groupNamesByDesa.map(({ desa, kelompok }) => (
-                          <div key={desa}>
-                            <p className="mb-1 text-[9px] font-medium text-[#78827C]">
-                              {desa}
-                            </p>
-
-                            {kelompok.length > 0 ? (
-                              <div className="flex flex-wrap gap-1.5">
-                                {kelompok.map((namaKelompok) => (
-                                  <span
-                                    key={`${desa}-${namaKelompok}`}
-                                    className="max-w-full wrap-break-word rounded-md bg-[#F5F7F5] px-2 py-1 text-[9px] font-medium text-[#202824]"
-                                  >
-                                    {namaKelompok}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-[9px] text-[#78827C]">
-                                Tidak ada kelompok yang dipilih.
-                              </p>
-                            )}
-                          </div>
+                    ) : effectiveKelompok.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {effectiveKelompok.map((kelompok) => (
+                          <span
+                            key={kelompok}
+                            className="max-w-full wrap-break-word rounded-md bg-[#E6F2EA] px-2 py-1 text-[9px] font-medium text-[#206440]"
+                          >
+                            {kelompok}
+                          </span>
                         ))}
                       </div>
+                    ) : (
+                      <p className="text-[9px] text-red-600">
+                        Belum ada kelompok yang dipilih.
+                      </p>
                     )}
                   </div>
 
@@ -1487,7 +1294,6 @@ export default function KegiatanFormModal({
                 </div>
               </div>
 
-              {/* Catatan konfirmasi */}
               <div className="flex items-start gap-2 rounded-xl border border-[#65B98A]/30 bg-[#E6F2EA] px-3 py-2.5">
                 <svg
                   viewBox="0 0 24 24"
@@ -1522,7 +1328,6 @@ export default function KegiatanFormModal({
           )}
         </div>
 
-        {/* Footer */}
         <footer className="flex shrink-0 flex-col gap-2.5 border-t border-[#E5EAE6] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <p className="text-[9px] leading-4 text-[#78827C]">
             {currentStep < 3 ? (
@@ -1598,8 +1403,8 @@ export default function KegiatanFormModal({
                 disabled={
                   loading ||
                   submitLockRef.current ||
-                  selectedDesa.length === 0 ||
-                  (groupMode === "specific" && effectiveKelompok.length === 0)
+                  (groupMode === "specific" &&
+                    effectiveKelompok.length === 0)
                 }
                 className={`${styles.button} w-full bg-[#287A50] text-white hover:bg-[#206440] sm:min-w-36 sm:w-auto`}
               >

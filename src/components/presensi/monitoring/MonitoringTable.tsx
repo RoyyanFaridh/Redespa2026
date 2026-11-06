@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -226,7 +227,7 @@ export default function MonitoringTable({ peserta, onDetail, onEdit }: Props) {
   if (peserta.length === 0) {
     return (
       <div className="px-4 py-12 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E6F2EA] text-[#287A50] mb-3">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E6F2EA] text-[#287A50]">
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -289,7 +290,7 @@ export default function MonitoringTable({ peserta, onDetail, onEdit }: Props) {
 
       {/* DESKTOP TABLE */}
       <div className="hidden min-w-0 overflow-x-auto lg:block">
-        <table className="w-full min-w-250 border-collapse text-left">
+        <table className="w-full min-w-225 border-collapse text-left">
           <thead>
             <tr className="border-b border-[#E5EAE6] bg-[#F5F7F5]">
               <th
@@ -303,12 +304,6 @@ export default function MonitoringTable({ peserta, onDetail, onEdit }: Props) {
                 className="whitespace-nowrap px-3.5 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#78827C]"
               >
                 Peserta
-              </th>
-              <th
-                scope="col"
-                className="whitespace-nowrap px-3 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#78827C]"
-              >
-                Desa
               </th>
               <th
                 scope="col"
@@ -371,10 +366,6 @@ export default function MonitoringTable({ peserta, onDetail, onEdit }: Props) {
                       </p>
                     </div>
                   </div>
-                </td>
-
-                <td className="px-3 py-3 text-xs text-[#202824]">
-                  {item.desa || "-"}
                 </td>
 
                 <td className="px-3 py-3 text-xs text-[#202824]">
@@ -449,15 +440,7 @@ export default function MonitoringTable({ peserta, onDetail, onEdit }: Props) {
 
               <div className="my-3 h-px w-full bg-[#E5EAE6]" />
 
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <p className="text-[9px] font-semibold uppercase tracking-wider text-[#78827C]">
-                    Desa
-                  </p>
-                  <p className="mt-0.5 truncate text-xs font-medium text-[#202824]">
-                    {item.desa || "-"}
-                  </p>
-                </div>
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <p className="text-[9px] font-semibold uppercase tracking-wider text-[#78827C]">
                     Kelompok

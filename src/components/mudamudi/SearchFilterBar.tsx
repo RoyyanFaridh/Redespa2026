@@ -3,10 +3,8 @@
 
 import { useState } from "react";
 import {
-  DESA_OPTIONS,
-  JENJANG_OPTIONS,
   KELAS_OPTIONS,
-  KELOMPOK_BY_DESA,
+  KELOMPOK_OPTIONS,
   JENIS_KELAMIN_OPTIONS,
 } from "../../backend/mudamudi/constants";
 import type { SortConfig, SortKey } from "../../backend/mudamudi/types";
@@ -19,22 +17,22 @@ type SortOption = {
 
 type Props = {
   search: string;
-  setSearch: (v: string) => void;
-  filterDesa: string[];
-  setFilterDesa: (v: string[]) => void;
+  setSearch: (value: string) => void;
+
   filterKelompok: string[];
-  setFilterKelompok: (v: string[]) => void;
+  setFilterKelompok: (values: string[]) => void;
+
   filterJenisKelamin: string[];
-  setFilterJenisKelamin: (v: string[]) => void;
-  filterJenjang: string[];
-  setFilterJenjang: (v: string[]) => void;
+  setFilterJenisKelamin: (values: string[]) => void;
+
   filterKelas: string[];
-  setFilterKelas: (v: string[]) => void;
+  setFilterKelas: (values: string[]) => void;
+
   hasActiveFilters: boolean;
-  sortConfig: SortConfig;
-  setSortConfig: (config: SortConfig) => void;
+  sortConfig: NonNullable<SortConfig>;
+  setSortConfig: (config: NonNullable<SortConfig>) => void;
+
   onReset: () => void;
-  adminDesa: string | null;
 };
 
 const SORT_OPTIONS: SortOption[] = [
@@ -43,51 +41,25 @@ const SORT_OPTIONS: SortOption[] = [
   { label: "Nama Z - A", key: "nama", direction: "desc" },
 ];
 
-const KELOMPOK_OPTIONS_BY_DESA: Record<string, readonly string[]> =
-  KELOMPOK_BY_DESA;
-
-const ALL_KELOMPOK_OPTIONS: string[] = Object.values(
-  KELOMPOK_OPTIONS_BY_DESA,
-).flat();
-
 export default function SearchFilterBar({
   search,
   setSearch,
-  filterDesa,
-  setFilterDesa,
   filterKelompok,
   setFilterKelompok,
   filterJenisKelamin,
   setFilterJenisKelamin,
-  filterJenjang,
-  setFilterJenjang,
   filterKelas,
   setFilterKelas,
   sortConfig,
   setSortConfig,
   hasActiveFilters,
   onReset,
-  adminDesa,
 }: Props) {
   const [showFilter, setShowFilter] = useState(false);
 
-  const isSuperAdmin = adminDesa === null;
-
-  const kelompokOptions: string[] = isSuperAdmin
-    ? filterDesa.length > 0
-      ? filterDesa.flatMap(
-        (desa) => [...(KELOMPOK_OPTIONS_BY_DESA[desa] ?? [])],
-      )
-      : [...ALL_KELOMPOK_OPTIONS]
-    : [...(KELOMPOK_OPTIONS_BY_DESA[adminDesa] ?? [])];
-
-  const uniqueKelompokOptions = [...new Set(kelompokOptions)];
-
   const activeFilterCount =
-    filterDesa.length +
     filterKelompok.length +
     filterJenisKelamin.length +
-    filterJenjang.length +
     filterKelas.length;
 
   function toggleArrayValue(
@@ -102,47 +74,12 @@ export default function SearchFilterBar({
     );
   }
 
-  function handleDesaChange(desa: string) {
-    const nextDesa = filterDesa.includes(desa)
-      ? filterDesa.filter((item) => item !== desa)
-      : [...filterDesa, desa];
-
-    setFilterDesa(nextDesa);
-
-    if (isSuperAdmin) {
-      const allowedKelompok: string[] =
-        nextDesa.length > 0
-          ? nextDesa.flatMap(
-            (item) => KELOMPOK_OPTIONS_BY_DESA[item] ?? [],
-          )
-          : ALL_KELOMPOK_OPTIONS;
-
-      setFilterKelompok(
-        filterKelompok.filter((kelompok) =>
-          allowedKelompok.includes(kelompok),
-        ),
-      );
-    }
-  }
-
-  function handleKelompokChange(kelompok: string) {
-    toggleArrayValue(
-      kelompok,
-      filterKelompok,
-      setFilterKelompok,
-    );
-  }
-
   function removeChip(
     value: string,
     current: string[],
     setter: (values: string[]) => void,
   ) {
     setter(current.filter((item) => item !== value));
-  }
-
-  function handleReset() {
-    onReset();
   }
 
   const checkboxClass =
@@ -171,6 +108,7 @@ export default function SearchFilterBar({
         className="inline-flex items-center gap-1 rounded-lg border border-[#E5EAE6] bg-[#E6F2EA] px-2 py-0.5 text-[11px] font-medium text-[#206440]"
       >
         {label}: {value}
+
         <button
           type="button"
           onClick={() => removeChip(value, values, setter)}
@@ -245,28 +183,30 @@ export default function SearchFilterBar({
           {search.trim() && (
             <span className="inline-flex items-center gap-1 rounded-lg border border-[#E5EAE6] bg-[#E6F2EA] px-2 py-0.5 text-[11px] font-medium text-[#206440]">
               Cari: &ldquo;{search}&rdquo;
+
               <button
                 type="button"
                 onClick={() => setSearch("")}
+                aria-label="Hapus pencarian"
               >
                 ×
               </button>
             </span>
           )}
 
-          {renderChips("Desa", filterDesa, setFilterDesa)}
           {renderChips("Kelompok", filterKelompok, setFilterKelompok)}
+
           {renderChips(
             "Jenis Kelamin",
             filterJenisKelamin,
             setFilterJenisKelamin,
           )}
-          {renderChips("Jenjang", filterJenjang, setFilterJenjang)}
+
           {renderChips("Kelas", filterKelas, setFilterKelas)}
 
           <button
             type="button"
-            onClick={handleReset}
+            onClick={onReset}
             className="ml-1 text-[11px] font-semibold text-red-600 transition hover:text-red-700"
           >
             Reset Semua
@@ -281,6 +221,7 @@ export default function SearchFilterBar({
               <h3 className="text-[12px] font-bold text-[#202824]">
                 Filter Data Generus
               </h3>
+
               <p className="mt-0.5 text-[10px] text-[#78827C]">
                 Pilih satu atau beberapa kriteria filter
               </p>
@@ -312,8 +253,8 @@ export default function SearchFilterBar({
                           type="radio"
                           name="sort"
                           checked={
-                            sortConfig?.key === option.key &&
-                            sortConfig?.direction === option.direction
+                            sortConfig.key === option.key &&
+                            sortConfig.direction === option.direction
                           }
                           onChange={() =>
                             setSortConfig({
@@ -323,6 +264,7 @@ export default function SearchFilterBar({
                           }
                           className="h-3.5 w-3.5 shrink-0 accent-[#287A50]"
                         />
+
                         {option.label}
                       </label>
                     ))}
@@ -330,42 +272,10 @@ export default function SearchFilterBar({
                 </section>
 
                 <section className={sectionClass}>
-                  <p className={sectionTitleClass}>Desa</p>
-
-                  {isSuperAdmin ? (
-                    <div className={optionGridClass}>
-                      {DESA_OPTIONS.map((desa) => (
-                        <label
-                          key={desa}
-                          className={optionClass}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={filterDesa.includes(desa)}
-                            onChange={() => handleDesaChange(desa)}
-                            className={checkboxClass}
-                          />
-                          {desa}
-                        </label>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-[#D5EBDD] bg-[#E6F2EA] px-3 py-2">
-                      <p className="text-[11px] font-medium text-[#287A50]">
-                        {adminDesa}
-                      </p>
-                      <p className="mt-0.5 text-[9px] text-[#287A50]/70">
-                        Mengikuti wilayah akun
-                      </p>
-                    </div>
-                  )}
-                </section>
-
-                <section className={sectionClass}>
                   <p className={sectionTitleClass}>Kelompok</p>
 
                   <div className={optionGridClass}>
-                    {uniqueKelompokOptions.map((kelompok) => (
+                    {KELOMPOK_OPTIONS.map((kelompok) => (
                       <label
                         key={kelompok}
                         className={optionClass}
@@ -373,9 +283,16 @@ export default function SearchFilterBar({
                         <input
                           type="checkbox"
                           checked={filterKelompok.includes(kelompok)}
-                          onChange={() => handleKelompokChange(kelompok)}
+                          onChange={() =>
+                            toggleArrayValue(
+                              kelompok,
+                              filterKelompok,
+                              setFilterKelompok,
+                            )
+                          }
                           className={checkboxClass}
                         />
+
                         <span>{kelompok}</span>
                       </label>
                     ))}
@@ -388,51 +305,25 @@ export default function SearchFilterBar({
                   <p className={sectionTitleClass}>Jenis Kelamin</p>
 
                   <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                    {JENIS_KELAMIN_OPTIONS.map((jk) => (
+                    {JENIS_KELAMIN_OPTIONS.map((jenisKelamin) => (
                       <label
-                        key={jk}
+                        key={jenisKelamin}
                         className={optionClass}
                       >
                         <input
                           type="checkbox"
-                          checked={filterJenisKelamin.includes(jk)}
+                          checked={filterJenisKelamin.includes(jenisKelamin)}
                           onChange={() =>
                             toggleArrayValue(
-                              jk,
+                              jenisKelamin,
                               filterJenisKelamin,
                               setFilterJenisKelamin,
                             )
                           }
                           className={checkboxClass}
                         />
-                        {jk}
-                      </label>
-                    ))}
-                  </div>
-                </section>
 
-                <section className={sectionClass}>
-                  <p className={sectionTitleClass}>Jenjang</p>
-
-                  <div className={optionGridClass}>
-                    {JENJANG_OPTIONS.map((jenjang) => (
-                      <label
-                        key={jenjang}
-                        className={optionClass}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={filterJenjang.includes(jenjang)}
-                          onChange={() =>
-                            toggleArrayValue(
-                              jenjang,
-                              filterJenjang,
-                              setFilterJenjang,
-                            )
-                          }
-                          className={checkboxClass}
-                        />
-                        <span>{jenjang}</span>
+                        {jenisKelamin}
                       </label>
                     ))}
                   </div>
@@ -459,6 +350,7 @@ export default function SearchFilterBar({
                           }
                           className={checkboxClass}
                         />
+
                         <span>{kelas}</span>
                       </label>
                     ))}
@@ -471,7 +363,7 @@ export default function SearchFilterBar({
           <div className="flex shrink-0 items-center justify-between border-t border-gray-100 bg-white px-4 py-2.5">
             <button
               type="button"
-              onClick={handleReset}
+              onClick={onReset}
               className="text-[11px] text-gray-500 underline underline-offset-2 transition hover:text-gray-700"
             >
               Reset filter

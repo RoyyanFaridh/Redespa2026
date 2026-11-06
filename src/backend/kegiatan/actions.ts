@@ -1,3 +1,4 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -7,10 +8,9 @@ import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 
 import {
-  DESA_OPTIONS,
   JENIS_KELAMIN_OPTIONS,
   KELAS_OPTIONS,
-  KELOMPOK_BY_DESA,
+  KELOMPOK_OPTIONS,
 } from "../mudamudi/constants";
 
 function normalize(value: string) {
@@ -44,74 +44,19 @@ function getStringArray(formData: FormData, name: string) {
     .filter(Boolean);
 }
 
+function normalizeKelasTarget(kelas: string[]) {
+  if (kelas.includes("Jamaah")) {
+    return ["Jamaah"];
+  }
+
+  return kelas.length > 0 ? [...kelas] : null;
+}
+
 function isValidValues(values: string[], allowedValues: readonly string[]) {
   return (
     values.every((value) => allowedValues.includes(value)) &&
     new Set(values).size === values.length
   );
-}
-
-/**
- * Menentukan kewenangan berdasarkan pembuat kegiatan.
- *
- * Admin Daerah dapat mengelola seluruh kegiatan.
- * Admin Desa hanya dapat mengelola kegiatan buatannya sendiri.
- *
- * Desa sasaran kegiatan tidak digunakan untuk menentukan kepemilikan.
- */
-function canManageKegiatan(
-  createdBy: string | null,
-  userId: string,
-  isSuperAdmin: boolean,
-) {
-  if (isSuperAdmin) {
-    return true;
-  }
-
-  return Boolean(createdBy) && createdBy === userId;
-}
-
-function getAllowedKelompok(desa: string[]) {
-  const kelompok = new Set<string>();
-
-  for (const namaDesa of desa) {
-    if (!DESA_OPTIONS.includes(namaDesa as (typeof DESA_OPTIONS)[number])) {
-      continue;
-    }
-
-    const daftarKelompok =
-      KELOMPOK_BY_DESA[namaDesa as keyof typeof KELOMPOK_BY_DESA];
-
-    for (const namaKelompok of daftarKelompok) {
-      kelompok.add(namaKelompok);
-    }
-  }
-
-  return [...kelompok];
-}
-
-/**
- * NULL berarti seluruh kelompok pada desa sasaran.
- */
-function normalizeKelompokSelection(
-  desa: string[],
-  kelompok: string[],
-): string[] | null {
-  if (kelompok.length === 0) {
-    return null;
-  }
-
-  const allowedKelompok = getAllowedKelompok(desa);
-
-  const semuaKelompokTerpilih =
-    kelompok.length === allowedKelompok.length &&
-    allowedKelompok.every((nama) => kelompok.includes(nama));
-
-  if (semuaKelompokTerpilih) {
-    return null;
-  }
-
-  return [...kelompok].sort();
 }
 
 function validateServer(
@@ -121,12 +66,9 @@ function validateServer(
   jamMulai: string,
   jamSelesai: string,
   lokasi: string,
-  desa: string[],
   kelompok: string[],
   kelas: string[],
   jenisKelamin: string,
-  desaAdmin: string | null,
-  isSuperAdmin: boolean,
 ) {
   if (!nama.trim()) {
     return "Nama kegiatan wajib diisi";
@@ -168,16 +110,8 @@ function validateServer(
     return "Lokasi wajib diisi";
   }
 
-  if (desa.length === 0) {
-    return "Pilih minimal satu desa";
-  }
-
-  if (!isValidValues(desa, DESA_OPTIONS)) {
-    return "Pilihan desa tidak valid";
-  }
-
-  if (!isValidValues(kelompok, getAllowedKelompok(desa))) {
-    return "Pilihan kelompok tidak valid atau tidak sesuai dengan desa";
+  if (!isValidValues(kelompok, KELOMPOK_OPTIONS)) {
+    return "Pilihan kelompok tidak valid";
   }
 
   if (!isValidValues(kelas, KELAS_OPTIONS)) {
@@ -193,35 +127,16 @@ function validateServer(
     return "Pilihan jenis kelamin tidak valid";
   }
 
-  if (!isSuperAdmin) {
-    if (
-      !desaAdmin ||
-      !DESA_OPTIONS.includes(desaAdmin as (typeof DESA_OPTIONS)[number])
-    ) {
-      return "Profil admin tidak memiliki kewenangan desa yang valid";
-    }
-
-    if (desa.length !== 1 || desa[0] !== desaAdmin) {
-      return "Admin desa hanya dapat membuat kegiatan di desanya sendiri";
-    }
-  }
-
   return null;
 }
 
-/**
- * Mengambil informasi pembuat kegiatan dari admin_profiles.
- * Service-role client hanya digunakan di server.
- */
-async function attachCreatorInfo<T extends { created_by?: string | null }>(
-  kegiatan: T[],
-  includeCreator: boolean,
-) {
-  if (!includeCreator || kegiatan.length === 0) {
+async function attachCreatorInfo<
+  T extends { created_by?: string | null },
+>(kegiatan: T[]) {
+  if (kegiatan.length === 0) {
     return kegiatan.map((item) => ({
       ...item,
       creator_nama: null as string | null,
-      creator_desa: null as string | null,
       creator_label: item.created_by
         ? "Informasi pembuat tidak tersedia"
         : "Belum tercatat",
@@ -240,7 +155,6 @@ async function attachCreatorInfo<T extends { created_by?: string | null }>(
     return kegiatan.map((item) => ({
       ...item,
       creator_nama: null as string | null,
-      creator_desa: null as string | null,
       creator_label: "Belum tercatat",
     }));
   }
@@ -249,7 +163,7 @@ async function attachCreatorInfo<T extends { created_by?: string | null }>(
 
   const { data: profiles, error } = await adminClient
     .from("admin_profiles")
-    .select("id, nama, desa")
+    .select("id, nama")
     .in("id", creatorIds);
 
   if (error) {
@@ -261,64 +175,44 @@ async function attachCreatorInfo<T extends { created_by?: string | null }>(
   );
 
   return kegiatan.map((item) => {
-    const profile = item.created_by ? profileMap.get(item.created_by) : null;
-
-    let creatorLabel = "Belum tercatat";
-
-    if (item.created_by && !profile) {
-      creatorLabel = "Pembuat tidak ditemukan";
-    } else if (profile) {
-      creatorLabel = profile.desa
-        ? `Admin Desa ${profile.desa}`
-        : "Admin Daerah";
-    }
+    const profile = item.created_by
+      ? profileMap.get(item.created_by)
+      : null;
 
     return {
       ...item,
       creator_nama: profile?.nama ?? null,
-      creator_desa: profile?.desa ?? null,
-      creator_label: creatorLabel,
+      creator_label: profile
+        ? "Admin REDESPA"
+        : item.created_by
+          ? "Pembuat tidak ditemukan"
+          : "Belum tercatat",
     };
   });
 }
 
-/**
- * Mengambil daftar kegiatan sesuai kewenangan admin.
- *
- * Admin Daerah:
- * - Dapat melihat semua kegiatan.
- *
- * Admin Desa:
- * - Hanya dapat melihat kegiatan dengan created_by
- *   yang sama dengan ID akun yang sedang login.
- */
 export async function getKegiatan() {
-  const { user, isSuperAdmin } = await requireAdmin();
+  await requireAdmin();
+
   const supabase = await createClient();
 
-  let query = supabase
+  const { data, error } = await supabase
     .from("kegiatan")
     .select(
-      "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, desa, kelompok, kelas, jenis_kelamin, created_at, created_by",
+      "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, kelompok, kelas, jenis_kelamin, created_at, created_by",
     )
     .order("tanggal_mulai", { ascending: false })
     .order("jam_mulai", { ascending: false });
-
-  if (!isSuperAdmin) {
-    query = query.eq("created_by", user.id);
-  }
-
-  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return attachCreatorInfo(data ?? [], true);
+  return attachCreatorInfo(data ?? []);
 }
 
 export async function addKegiatan(formData: FormData) {
-  const { user, desa: desaAdmin, isSuperAdmin } = await requireAdmin();
+  const { user } = await requireAdmin();
 
   const supabase = await createClient();
 
@@ -328,12 +222,6 @@ export async function addKegiatan(formData: FormData) {
   const jamMulai = String(formData.get("jam_mulai") ?? "").trim();
   const jamSelesai = String(formData.get("jam_selesai") ?? "").trim();
   const lokasi = String(formData.get("lokasi") ?? "").trim();
-
-  const desa = isSuperAdmin
-    ? getStringArray(formData, "desa")
-    : desaAdmin
-      ? [desaAdmin]
-      : [];
 
   const kelompok = getStringArray(formData, "kelompok");
   const kelas = getStringArray(formData, "kelas");
@@ -346,24 +234,24 @@ export async function addKegiatan(formData: FormData) {
     jamMulai,
     jamSelesai,
     lokasi,
-    desa,
     kelompok,
     kelas,
     jenisKelamin,
-    desaAdmin,
-    isSuperAdmin,
   );
 
   if (validationError) {
     return { error: validationError };
   }
 
-  const kelompokTersimpan = normalizeKelompokSelection(desa, kelompok);
+  const kelompokTersimpan =
+    kelompok.length > 0 ? [...kelompok].sort() : null;
+
+  const kelasTersimpan = normalizeKelasTarget(kelas);
 
   const { data: candidates, error: candidatesError } = await supabase
     .from("kegiatan")
     .select(
-      "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, desa, kelompok, kelas, jenis_kelamin",
+      "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, kelompok, kelas, jenis_kelamin",
     )
     .eq("tanggal_mulai", tanggalMulai)
     .eq("tanggal_selesai", tanggalSelesai);
@@ -378,9 +266,8 @@ export async function addKegiatan(formData: FormData) {
       item.jam_mulai === jamMulai &&
       item.jam_selesai === jamSelesai &&
       normalize(item.lokasi ?? "") === normalize(lokasi) &&
-      sameArray(item.desa, desa) &&
       sameArray(item.kelompok, kelompokTersimpan) &&
-      sameArray(item.kelas, kelas) &&
+      sameArray(item.kelas, kelasTersimpan) &&
       (item.jenis_kelamin ?? "") === jenisKelamin,
   );
 
@@ -395,9 +282,8 @@ export async function addKegiatan(formData: FormData) {
     jam_mulai: jamMulai,
     jam_selesai: jamSelesai,
     lokasi,
-    desa,
     kelompok: kelompokTersimpan,
-    kelas: kelas.length > 0 ? kelas : null,
+    kelas: kelasTersimpan,
     jenis_kelamin: jenisKelamin || null,
     created_by: user.id,
   });
@@ -413,7 +299,7 @@ export async function addKegiatan(formData: FormData) {
 }
 
 export async function updateKegiatan(id: number, formData: FormData) {
-  const { user, desa: desaAdmin, isSuperAdmin } = await requireAdmin();
+  const { user } = await requireAdmin();
 
   const supabase = await createClient();
 
@@ -428,12 +314,6 @@ export async function updateKegiatan(id: number, formData: FormData) {
   const jamSelesai = String(formData.get("jam_selesai") ?? "").trim();
   const lokasi = String(formData.get("lokasi") ?? "").trim();
 
-  const desa = isSuperAdmin
-    ? getStringArray(formData, "desa")
-    : desaAdmin
-      ? [desaAdmin]
-      : [];
-
   const kelompok = getStringArray(formData, "kelompok");
   const kelas = getStringArray(formData, "kelas");
   const jenisKelamin = String(formData.get("jenis_kelamin") ?? "").trim();
@@ -445,17 +325,16 @@ export async function updateKegiatan(id: number, formData: FormData) {
     jamMulai,
     jamSelesai,
     lokasi,
-    desa,
     kelompok,
     kelas,
     jenisKelamin,
-    desaAdmin,
-    isSuperAdmin,
   );
 
   if (validationError) {
     return { error: validationError };
   }
+
+  const kelasTersimpan = normalizeKelasTarget(kelas);
 
   const { data: existing, error: existingError } = await supabase
     .from("kegiatan")
@@ -471,18 +350,19 @@ export async function updateKegiatan(id: number, formData: FormData) {
     return { error: "Kegiatan tidak ditemukan" };
   }
 
-  if (!canManageKegiatan(existing.created_by, user.id, isSuperAdmin)) {
+  if (existing.created_by && existing.created_by !== user.id) {
     return {
       error: "Kamu tidak memiliki kewenangan untuk mengubah kegiatan ini",
     };
   }
 
-  const kelompokTersimpan = normalizeKelompokSelection(desa, kelompok);
+  const kelompokTersimpan =
+    kelompok.length > 0 ? [...kelompok].sort() : null;
 
   const { data: candidates, error: candidatesError } = await supabase
     .from("kegiatan")
     .select(
-      "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, desa, kelompok, kelas, jenis_kelamin",
+      "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, kelompok, kelas, jenis_kelamin",
     )
     .eq("tanggal_mulai", tanggalMulai)
     .eq("tanggal_selesai", tanggalSelesai)
@@ -498,9 +378,8 @@ export async function updateKegiatan(id: number, formData: FormData) {
       item.jam_mulai === jamMulai &&
       item.jam_selesai === jamSelesai &&
       normalize(item.lokasi ?? "") === normalize(lokasi) &&
-      sameArray(item.desa, desa) &&
       sameArray(item.kelompok, kelompokTersimpan) &&
-      sameArray(item.kelas, kelas) &&
+      sameArray(item.kelas, kelasTersimpan) &&
       (item.jenis_kelamin ?? "") === jenisKelamin,
   );
 
@@ -517,9 +396,8 @@ export async function updateKegiatan(id: number, formData: FormData) {
       jam_mulai: jamMulai,
       jam_selesai: jamSelesai,
       lokasi,
-      desa,
       kelompok: kelompokTersimpan,
-      kelas: kelas.length > 0 ? kelas : null,
+      kelas: kelasTersimpan,
       jenis_kelamin: jenisKelamin || null,
     })
     .eq("id", id)
@@ -542,7 +420,7 @@ export async function updateKegiatan(id: number, formData: FormData) {
 }
 
 export async function deleteKegiatan(id: number) {
-  const { user, isSuperAdmin } = await requireAdmin();
+  const { user } = await requireAdmin();
 
   const supabase = await createClient();
 
@@ -564,7 +442,7 @@ export async function deleteKegiatan(id: number) {
     return { error: "Kegiatan tidak ditemukan" };
   }
 
-  if (!canManageKegiatan(existing.created_by, user.id, isSuperAdmin)) {
+  if (existing.created_by && existing.created_by !== user.id) {
     return {
       error: "Kamu tidak memiliki kewenangan untuk menghapus kegiatan ini",
     };
@@ -590,13 +468,4 @@ export async function deleteKegiatan(id: number) {
   revalidatePath("/admin");
 
   return { success: true };
-}
-
-export async function getKegiatanFormContext() {
-  const { desa, isSuperAdmin } = await requireAdmin();
-
-  return {
-    desaAdmin: desa,
-    isSuperAdmin,
-  };
 }

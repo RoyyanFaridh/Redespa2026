@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -5,9 +6,6 @@ import { useState } from "react";
 type Props = {
   search: string;
   onSearchChange: (value: string) => void;
-  selectedDesa: string[];
-  onDesaChange: (value: string[]) => void;
-  desaOptions: string[];
   selectedKelompok: string[];
   onKelompokChange: (value: string[]) => void;
   kelompokOptions: string[];
@@ -101,7 +99,10 @@ function FilterSelect({
               className="inline-flex max-w-full items-center gap-1 rounded-lg border border-[#65B98A]/30 bg-[#E6F2EA] px-2 py-0.5 text-xs font-medium text-[#206440] transition hover:bg-[#E6F2EA]/80"
             >
               <span className="max-w-37.5 truncate">{option}</span>
-              <span aria-hidden="true" className="shrink-0 text-[#287A50] font-bold">
+              <span
+                aria-hidden="true"
+                className="shrink-0 text-[#287A50] font-bold"
+              >
                 ×
               </span>
             </button>
@@ -141,9 +142,6 @@ function FilterSelect({
 export default function MonitoringFilters({
   search,
   onSearchChange,
-  selectedDesa,
-  onDesaChange,
-  desaOptions,
   selectedKelompok,
   onKelompokChange,
   kelompokOptions,
@@ -158,7 +156,6 @@ export default function MonitoringFilters({
   const [showFilter, setShowFilter] = useState(false);
 
   const activeFilterCount = [
-    selectedDesa,
     selectedKelompok,
     selectedKelas,
     selectedStatus,
@@ -170,7 +167,7 @@ export default function MonitoringFilters({
 
   return (
     <section className="mb-4 space-y-3">
-      <div className="rounded-2xl border border-[#E5EAE6] bg-white p-3.5 sm:p-4 shadow-sm">
+      <div className="rounded-2xl border border-[#E5EAE6] bg-white p-3.5 shadow-sm sm:p-4">
         <div className="grid grid-cols-[minmax(0,1fr)_36px] items-end gap-x-3 gap-y-3 lg:grid-cols-[minmax(180px,1fr)_auto]">
           <div className="min-w-0">
             <label htmlFor="monitoring-search" className={LABEL_CLASS}>
@@ -230,11 +227,10 @@ export default function MonitoringFilters({
             aria-expanded={showFilter}
             aria-controls="monitoring-filter-panel"
             title="Filter lanjutan"
-            className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors lg:h-9 lg:w-auto lg:min-w-28 lg:gap-2 lg:px-3 ${
-              showFilter || hasActiveFilter
+            className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors lg:h-9 lg:w-auto lg:min-w-28 lg:gap-2 lg:px-3 ${showFilter || hasActiveFilter
                 ? "border-[#287A50] bg-[#E6F2EA] text-[#287A50] font-medium"
                 : "border-[#E5EAE6] bg-white text-[#78827C] hover:bg-[#F5F7F5] hover:text-[#202824]"
-            }`}
+              }`}
           >
             <svg
               viewBox="0 0 24 24"
@@ -262,9 +258,8 @@ export default function MonitoringFilters({
               fill="none"
               stroke="currentColor"
               strokeWidth="1.8"
-              className={`hidden h-3.5 w-3.5 shrink-0 transition-transform lg:inline ${
-                showFilter ? "rotate-180" : ""
-              }`}
+              className={`hidden h-3.5 w-3.5 shrink-0 transition-transform lg:inline ${showFilter ? "rotate-180" : ""
+                }`}
               aria-hidden="true"
             >
               <path d="m6 9 6 6 6-6" />
@@ -310,7 +305,6 @@ export default function MonitoringFilters({
               <button
                 type="button"
                 onClick={() => {
-                  onDesaChange([]);
                   onKelompokChange([]);
                   onKelasChange([]);
                   onStatusChange([]);
@@ -322,15 +316,7 @@ export default function MonitoringFilters({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-            <FilterSelect
-              id="monitoring-desa"
-              label="Desa"
-              options={desaOptions}
-              selected={selectedDesa}
-              onChange={onDesaChange}
-            />
-
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4">
             <FilterSelect
               id="monitoring-kelompok"
               label="Kelompok"

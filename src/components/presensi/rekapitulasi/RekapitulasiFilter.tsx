@@ -3,8 +3,7 @@
 import { useMemo, useState } from "react";
 
 import {
-  DESA_OPTIONS,
-  KELOMPOK_BY_DESA,
+  KELOMPOK_OPTIONS,
   KELAS_OPTIONS,
 } from "../../../backend/mudamudi/constants";
 
@@ -17,7 +16,6 @@ type Props = {
   search: string;
   selectedMonth: string;
   selectedKegiatan: string;
-  selectedDesa: string;
   selectedKelompok: string;
   selectedKelas: string;
   kegiatan: {
@@ -27,11 +25,9 @@ type Props = {
   }[];
   bulanOptions: BulanOption[];
   mudamudi: unknown[];
-  adminDesa: string | null;
   onSearchChange: (value: string) => void;
   onMonthChange: (value: string) => void;
   onKegiatanChange: (value: string) => void;
-  onDesaChange: (value: string) => void;
   onKelompokChange: (value: string) => void;
   onKelasChange: (value: string) => void;
 };
@@ -41,87 +37,30 @@ const CONTROL_CLASS =
 
 const LABEL_CLASS = "mb-1 block text-[10px] font-medium text-gray-500";
 
-type Desa = keyof typeof KELOMPOK_BY_DESA;
-
-const DESA_LIST: Desa[] = DESA_OPTIONS.filter(
-  (desa): desa is Desa => desa in KELOMPOK_BY_DESA,
-);
-
-const KELOMPOK_LIST: string[] = Array.from(
-  new Set<string>(
-    Object.values(KELOMPOK_BY_DESA).flatMap((kelompok) => [...kelompok]),
-  ),
-).sort((a, b) => a.localeCompare(b, "id"));
-
-function isDesa(value: string): value is Desa {
-  return value in KELOMPOK_BY_DESA;
-}
-
 export default function RekapitulasiFilter({
   search,
   selectedMonth,
   selectedKegiatan,
-  selectedDesa,
   selectedKelompok,
   selectedKelas,
   kegiatan,
   bulanOptions,
-  adminDesa,
   onSearchChange,
   onMonthChange,
   onKegiatanChange,
-  onDesaChange,
   onKelompokChange,
   onKelasChange,
 }: Props) {
   const [showFilter, setShowFilter] = useState(false);
 
-  const isSuperAdmin = adminDesa === null;
-
-  const desaOptions = useMemo(() => DESA_LIST, []);
-
-  const kelompokOptions = useMemo<string[]>(() => {
-    const desaAktif = selectedDesa || adminDesa || "";
-
-    if (desaAktif && isDesa(desaAktif)) {
-      return [...KELOMPOK_BY_DESA[desaAktif]];
-    }
-
-    if (!isSuperAdmin) {
-      return [];
-    }
-
-    return KELOMPOK_LIST;
-  }, [selectedDesa, isSuperAdmin, adminDesa]);
-
   const activeFilterCount = [
-    isSuperAdmin && selectedDesa,
     selectedKelompok,
     selectedKelas,
   ].filter(Boolean).length;
 
   const hasActiveFilter = activeFilterCount > 0;
 
-  const handleDesaChange = (value: string) => {
-    onDesaChange(value);
-
-    if (!value) {
-      return;
-    }
-
-    if (
-      selectedKelompok &&
-      (!isDesa(value) ||
-        !(KELOMPOK_BY_DESA[value] as readonly string[]).includes(
-          selectedKelompok,
-        ))
-    ) {
-      onKelompokChange("");
-    }
-  };
-
   const handleReset = () => {
-    onDesaChange(isSuperAdmin ? "" : (adminDesa ?? ""));
     onKelompokChange("");
     onKelasChange("");
   };
@@ -137,10 +76,8 @@ export default function RekapitulasiFilter({
 
   return (
     <section className="mb-2 space-y-2">
-      {/* Filter utama */}
-      <div className="rounded-xl border border-gray-200/90 bg-white p-3.5 sm:p-4 shadow-xs">
+      <div className="rounded-xl border border-gray-200/90 bg-white p-3.5 shadow-xs sm:p-4">
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_32px] items-end gap-x-3 gap-y-3 lg:grid-cols-[minmax(180px,1.35fr)_minmax(140px,0.8fr)_minmax(170px,1fr)_auto] lg:gap-x-4 lg:gap-y-3">
-          {/* Pencarian */}
           <div className="col-span-3 min-w-0 lg:col-span-1">
             <label htmlFor="rekap-search" className={LABEL_CLASS}>
               Cari Generus
@@ -190,7 +127,6 @@ export default function RekapitulasiFilter({
             </div>
           </div>
 
-          {/* Periode */}
           <div className="min-w-0">
             <label htmlFor="rekap-month" className={LABEL_CLASS}>
               Periode
@@ -211,7 +147,6 @@ export default function RekapitulasiFilter({
             </select>
           </div>
 
-          {/* Kegiatan */}
           <div className="min-w-0">
             <label htmlFor="rekap-kegiatan" className={LABEL_CLASS}>
               Kegiatan
@@ -232,7 +167,6 @@ export default function RekapitulasiFilter({
             </select>
           </div>
 
-          {/* Filter lanjutan */}
           <button
             type="button"
             onClick={() => setShowFilter((current) => !current)}
@@ -242,11 +176,10 @@ export default function RekapitulasiFilter({
             aria-expanded={showFilter}
             aria-controls="rekap-filter-tambahan"
             title="Filter lanjutan"
-            className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition lg:h-8 lg:w-auto lg:min-w-28 lg:gap-1.5 lg:px-2 ${
-              showFilter || hasActiveFilter
+            className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition lg:h-8 lg:w-auto lg:min-w-28 lg:gap-1.5 lg:px-2 ${showFilter || hasActiveFilter
                 ? "border-teal-200 bg-teal-50 text-teal-800"
                 : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-            }`}
+              }`}
           >
             <svg
               viewBox="0 0 24 24"
@@ -274,9 +207,8 @@ export default function RekapitulasiFilter({
               fill="none"
               stroke="currentColor"
               strokeWidth="1.8"
-              className={`hidden h-3 w-3 shrink-0 transition-transform lg:inline ${
-                showFilter ? "rotate-180" : ""
-              }`}
+              className={`hidden h-3 w-3 shrink-0 transition-transform lg:inline ${showFilter ? "rotate-180" : ""
+                }`}
               aria-hidden="true"
             >
               <path d="m6 9 6 6 6-6" />
@@ -284,11 +216,10 @@ export default function RekapitulasiFilter({
           </button>
         </div>
 
-        {/* Active chips / Reset filter */}
         {(hasActiveFilter || search.trim().length > 0) && (
           <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-medium text-gray-400 mr-0.5">
+              <span className="mr-0.5 text-[10px] font-medium text-gray-400">
                 Filter aktif:
               </span>
 
@@ -298,22 +229,8 @@ export default function RekapitulasiFilter({
                   <button
                     type="button"
                     onClick={() => onSearchChange("")}
-                    className="font-bold hover:text-teal-900 ml-0.5"
+                    className="ml-0.5 font-bold hover:text-teal-900"
                     title="Hapus pencarian"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-
-              {isSuperAdmin && selectedDesa && (
-                <span className="inline-flex items-center gap-1 rounded border border-teal-100 bg-teal-50 px-1.5 py-0.5 text-[10px] text-teal-700">
-                  <span>Desa: {selectedDesa}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleDesaChange("")}
-                    className="font-bold hover:text-teal-900 ml-0.5"
-                    title="Hapus filter desa"
                   >
                     ×
                   </button>
@@ -326,7 +243,7 @@ export default function RekapitulasiFilter({
                   <button
                     type="button"
                     onClick={() => onKelompokChange("")}
-                    className="font-bold hover:text-teal-900 ml-0.5"
+                    className="ml-0.5 font-bold hover:text-teal-900"
                     title="Hapus filter kelompok"
                   >
                     ×
@@ -340,7 +257,7 @@ export default function RekapitulasiFilter({
                   <button
                     type="button"
                     onClick={() => onKelasChange("")}
-                    className="font-bold hover:text-teal-900 ml-0.5"
+                    className="ml-0.5 font-bold hover:text-teal-900"
                     title="Hapus filter kelas"
                   >
                     ×
@@ -352,7 +269,7 @@ export default function RekapitulasiFilter({
             <button
               type="button"
               onClick={handleReset}
-              className="text-[10px] font-medium text-red-600 hover:text-red-700 transition"
+              className="text-[10px] font-medium text-red-600 transition hover:text-red-700"
             >
               Reset filter
             </button>
@@ -360,7 +277,6 @@ export default function RekapitulasiFilter({
         )}
       </div>
 
-      {/* Filter lanjutan */}
       {showFilter && (
         <div
           id="rekap-filter-tambahan"
@@ -382,37 +298,7 @@ export default function RekapitulasiFilter({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4">
-            {isSuperAdmin ? (
-              <div className="min-w-0">
-                <label htmlFor="rekap-desa" className={LABEL_CLASS}>
-                  Desa
-                </label>
-
-                <select
-                  id="rekap-desa"
-                  value={selectedDesa}
-                  onChange={(event) => handleDesaChange(event.target.value)}
-                  className={CONTROL_CLASS}
-                >
-                  <option value="">Semua desa</option>
-                  {desaOptions.map((desa) => (
-                    <option key={desa} value={desa}>
-                      {desa}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <div className="min-w-0">
-                <label className={LABEL_CLASS}>Desa</label>
-
-                <div className="flex h-8 items-center overflow-hidden rounded-md border border-gray-200 bg-gray-50 px-2 text-[11px] text-gray-600">
-                  <span className="truncate">{adminDesa || "-"}</span>
-                </div>
-              </div>
-            )}
-
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-2 lg:gap-4">
             <div className="min-w-0">
               <label htmlFor="rekap-kelompok" className={LABEL_CLASS}>
                 Kelompok
@@ -425,7 +311,7 @@ export default function RekapitulasiFilter({
                 className={CONTROL_CLASS}
               >
                 <option value="">Semua kelompok</option>
-                {kelompokOptions.map((kelompok) => (
+                {KELOMPOK_OPTIONS.map((kelompok) => (
                   <option key={kelompok} value={kelompok}>
                     {kelompok}
                   </option>
@@ -433,7 +319,7 @@ export default function RekapitulasiFilter({
               </select>
             </div>
 
-            <div className="col-span-2 min-w-0 lg:col-span-1">
+            <div className="min-w-0">
               <label htmlFor="rekap-kelas" className={LABEL_CLASS}>
                 Kelas
               </label>

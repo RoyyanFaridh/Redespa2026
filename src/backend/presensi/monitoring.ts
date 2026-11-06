@@ -1,12 +1,16 @@
+
 "use server";
 
 import { requireAdmin } from "../auth/admin";
 import { createClient } from "../supabase/server";
+import { buildDateTime } from "./helpers";
+import { isMudamudiTargeted } from "./target";
+
 import type {
-  MonitoringPeserta,
   MonitoringPresensi,
-  PresensiMetode,
+  MonitoringPeserta,
   PresensiStatus,
+  PresensiMetode,
 } from "./types";
 
 type KegiatanMonitoring = {
@@ -17,7 +21,6 @@ type KegiatanMonitoring = {
   jam_mulai: string;
   jam_selesai: string;
   lokasi: string;
-  desa: string[] | null;
   kelompok: string[] | null;
   kelas: string[] | null;
   jenis_kelamin: string | null;
@@ -26,205 +29,216 @@ type KegiatanMonitoring = {
 type MudamudiMonitoring = {
   id: number;
   nama: string;
-  desa: string;
   kelompok: string;
-  kelas: string;
+  kelas: string[];
   jenis_kelamin: string | null;
 };
 
-function emptyResult(error: string) {
-  return {
-    data: null as MonitoringPresensi | null,
-    error,
-  };
-}
+type PresensiMonitoring = {
+  id: number;
+  kegiatan_id: number;
+  mudamudi_id: number;
+  waktu_checkin: string | null;
+  status: PresensiStatus;
+  metode: PresensiMetode;
+  keterangan: string | null;
+};
 
-function canAccessKegiatan(
+async function createAutomaticAlpa(
   kegiatan: KegiatanMonitoring,
-  adminDesa: string | null,
-  isSuperAdmin: boolean,
+  peserta: MudamudiMonitoring[],
 ) {
-  if (isSuperAdmin) return true;
-
-  return (
-    adminDesa !== null &&
-    Array.isArray(kegiatan.desa) &&
-    kegiatan.desa.length > 0 &&
-    kegiatan.desa.every(
-      (desa) => typeof desa === "string" && desa === adminDesa,
-    )
+  const waktuSelesai = buildDateTime(
+    kegiatan.tanggal_selesai,
+    kegiatan.jam_selesai,
   );
-}
 
-export async function getMonitoringPresensi(kegiatanId: number) {
-  const admin = await requireAdmin();
+  if (new Date() < waktuSelesai || peserta.length === 0) {
+    return null;
+  }
+
   const supabase = await createClient();
 
-  if (!Number.isInteger(kegiatanId) || kegiatanId <= 0) {
-    return emptyResult("Kegiatan tidak valid.");
+  const dataAlpa = peserta.map((item) => ({
+    kegiatan_id: kegiatan.id,
+    mudamudi_id: item.id,
+    waktu_checkin: null,
+    status: "alpa" as PresensiStatus,
+    metode: "manual" as PresensiMetode,
+    keterangan:
+      "Otomatis: tidak melakukan presensi hingga kegiatan selesai.",
+  }));
+
+  const { error } = await supabase
+    .from("presensi")
+    .upsert(dataAlpa, {
+      onConflict: "kegiatan_id,mudamudi_id",
+      ignoreDuplicates: true,
+    });
+
+  if (error) {
+    console.error("Gagal membuat Alpa otomatis:", error);
+    return "Gagal memperbarui status Alpa otomatis.";
   }
+
+  return null;
+}
+
+export async function getMonitoringPresensi(
+  kegiatanId: number,
+): Promise<{
+  success: boolean;
+  data?: MonitoringPresensi;
+  error?: string;
+}> {
+  await requireAdmin();
+
+  const supabase = await createClient();
 
   const { data: kegiatan, error: kegiatanError } = await supabase
     .from("kegiatan")
     .select(
-      "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, desa, kelompok, kelas, jenis_kelamin",
+      "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, kelompok, kelas, jenis_kelamin",
     )
     .eq("id", kegiatanId)
-    .maybeSingle();
+    .single();
 
-  if (kegiatanError) {
-    console.error("Gagal mengambil kegiatan:", kegiatanError);
-    return emptyResult("Gagal mengambil data kegiatan.");
-  }
-
-  if (!kegiatan) {
-    return emptyResult("Kegiatan tidak ditemukan atau tidak memiliki akses.");
+  if (kegiatanError || !kegiatan) {
+    return {
+      success: false,
+      error: "Data kegiatan tidak ditemukan.",
+    };
   }
 
   const kegiatanMonitoring = kegiatan as KegiatanMonitoring;
 
-  if (!canAccessKegiatan(kegiatanMonitoring, admin.desa, admin.isSuperAdmin)) {
-    return emptyResult("Kamu tidak memiliki akses ke kegiatan ini.");
-  }
-
-  let mudamudiQuery = supabase
+  let queryMudamudi = supabase
     .from("mudamudi")
-    .select("id, nama, desa, kelompok, kelas, jenis_kelamin")
+    .select("id, nama, kelompok, kelas, jenis_kelamin")
     .order("nama", { ascending: true });
 
-  if (!admin.isSuperAdmin && admin.desa !== null) {
-    mudamudiQuery = mudamudiQuery.eq("desa", admin.desa);
-  }
-
-  // Filter desa sasaran kegiatan.
-  if (kegiatanMonitoring.desa?.length) {
-    mudamudiQuery = mudamudiQuery.in("desa", kegiatanMonitoring.desa);
-  }
-
-  // Filter kelompok sasaran kegiatan.
-  // NULL atau array kosong berarti tidak ada pembatasan kelompok,
-  // sesuai konvensi penyimpanan sasaran yang digunakan saat ini.
   if (kegiatanMonitoring.kelompok?.length) {
-    mudamudiQuery = mudamudiQuery.in("kelompok", kegiatanMonitoring.kelompok);
+    queryMudamudi = queryMudamudi.in(
+      "kelompok",
+      kegiatanMonitoring.kelompok,
+    );
   }
 
-  // Filter kelas sasaran kegiatan.
   if (kegiatanMonitoring.kelas?.length) {
-    mudamudiQuery = mudamudiQuery.in("kelas", kegiatanMonitoring.kelas);
+    queryMudamudi = queryMudamudi.overlaps(
+      "kelas",
+      kegiatanMonitoring.kelas,
+    );
   }
 
-  // Filter jenis kelamin jika dibatasi.
   if (kegiatanMonitoring.jenis_kelamin) {
-    mudamudiQuery = mudamudiQuery.eq(
+    queryMudamudi = queryMudamudi.eq(
       "jenis_kelamin",
       kegiatanMonitoring.jenis_kelamin,
     );
   }
 
-  const [mudamudiResult, presensiResult] = await Promise.all([
-    mudamudiQuery,
-    supabase
-      .from("presensi")
-      .select("id, mudamudi_id, waktu_checkin, status, metode, keterangan")
-      .eq("kegiatan_id", kegiatanId)
-      .order("waktu_checkin", {
-        ascending: true,
-        nullsFirst: false,
-      }),
-  ]);
+  const { data: mudamudi, error: mudamudiError } =
+    await queryMudamudi;
 
-  if (mudamudiResult.error) {
-    console.error("Gagal mengambil Muda-Mudi:", mudamudiResult.error);
-    return emptyResult("Gagal mengambil data Muda-Mudi.");
+  if (mudamudiError) {
+    return {
+      success: false,
+      error: "Gagal mengambil data Muda-Mudi.",
+    };
   }
 
-  if (presensiResult.error) {
-    console.error("Gagal mengambil presensi:", presensiResult.error);
-    return emptyResult("Gagal mengambil data presensi.");
+  const mudamudiSasaran = (
+    (mudamudi ?? []) as MudamudiMonitoring[]
+  ).filter((item) =>
+    isMudamudiTargeted(kegiatanMonitoring, item),
+  );
+
+  const alpaError = await createAutomaticAlpa(
+    kegiatanMonitoring,
+    mudamudiSasaran,
+  );
+
+  if (alpaError) {
+    return {
+      success: false,
+      error: alpaError,
+    };
   }
 
-  const mudamudiSasaran = (mudamudiResult.data ?? []) as MudamudiMonitoring[];
+  const { data: presensi, error: presensiError } = await supabase
+    .from("presensi")
+    .select(
+      "id, kegiatan_id, mudamudi_id, waktu_checkin, status, metode, keterangan",
+    )
+    .eq("kegiatan_id", kegiatanId);
 
-  const presensiMap = new Map<
-    number,
-    {
-      presensi_id: number;
-      waktu_checkin: string | null;
-      status: PresensiStatus;
-      metode: PresensiMetode;
-      keterangan: string | null;
-    }
-  >();
-
-  for (const item of presensiResult.data ?? []) {
-    presensiMap.set(item.mudamudi_id, {
-      presensi_id: item.id,
-      waktu_checkin: item.waktu_checkin,
-      status: item.status as PresensiStatus,
-      metode: item.metode as PresensiMetode,
-      keterangan: item.keterangan,
-    });
+  if (presensiError) {
+    return {
+      success: false,
+      error: "Gagal mengambil data presensi.",
+    };
   }
 
-  const peserta: MonitoringPeserta[] = mudamudiSasaran.map((item) => {
-    const presensi = presensiMap.get(item.id);
+  const presensiMap = new Map<number, PresensiMonitoring>();
+
+  for (const item of (presensi ?? []) as PresensiMonitoring[]) {
+    presensiMap.set(item.mudamudi_id, item);
+  }
+
+  const data: MonitoringPeserta[] = mudamudiSasaran.map((item) => {
+    const presensiItem = presensiMap.get(item.id);
 
     return {
-      presensi_id: presensi?.presensi_id ?? null,
       mudamudi_id: item.id,
       nama: item.nama,
-      desa: item.desa,
       kelompok: item.kelompok,
       kelas: item.kelas,
       jenis_kelamin: item.jenis_kelamin,
-      waktu_checkin: presensi?.waktu_checkin ?? null,
-      status: presensi?.status ?? null,
-      metode: presensi?.metode ?? null,
-      keterangan: presensi?.keterangan ?? null,
+      presensi_id: presensiItem?.id ?? null,
+      status: presensiItem?.status ?? null,
+      waktu_checkin: presensiItem?.waktu_checkin ?? null,
+      metode: presensiItem?.metode ?? null,
+      keterangan: presensiItem?.keterangan ?? null,
     };
   });
 
-  let totalHadir = 0;
-  let totalTerlambat = 0;
-  let totalIzin = 0;
-  let totalSakit = 0;
-  let totalAlpa = 0;
-  let totalBelumHadir = 0;
+  const totalHadir = data.filter(
+    (item) => item.status === "hadir",
+  ).length;
 
-  for (const item of peserta) {
-    switch (item.status) {
-      case "hadir":
-        totalHadir++;
-        break;
-      case "terlambat":
-        totalTerlambat++;
-        break;
-      case "izin":
-        totalIzin++;
-        break;
-      case "sakit":
-        totalSakit++;
-        break;
-      case "alpa":
-        totalAlpa++;
-        break;
-      default:
-        totalBelumHadir++;
-        break;
-    }
-  }
+  const totalTerlambat = data.filter(
+    (item) => item.status === "terlambat",
+  ).length;
+
+  const totalIzin = data.filter(
+    (item) => item.status === "izin",
+  ).length;
+
+  const totalSakit = data.filter(
+    (item) => item.status === "sakit",
+  ).length;
+
+  const totalAlpa = data.filter(
+    (item) => item.status === "alpa",
+  ).length;
+
+  const totalBelumHadir = data.filter(
+    (item) => item.status === null,
+  ).length;
 
   return {
+    success: true,
     data: {
       kegiatan: kegiatanMonitoring,
-      totalPeserta: peserta.length,
+      peserta: data,
+      totalPeserta: data.length,
       totalHadir,
       totalTerlambat,
       totalIzin,
       totalSakit,
       totalAlpa,
       totalBelumHadir,
-      peserta,
-    } satisfies MonitoringPresensi,
+    },
   };
 }

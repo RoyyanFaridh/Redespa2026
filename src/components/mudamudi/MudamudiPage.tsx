@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -9,7 +10,7 @@ import {
   deleteMudamudi,
 } from "../../backend/mudamudi/actions";
 
-import {
+import type {
   Mudamudi,
   ModalState,
   FieldErrors,
@@ -26,11 +27,9 @@ import DetailModal from "./DetailModal";
 import ExportModal from "./ExportModal";
 import ImportModal from "./ImportModal";
 import MudamudiQRModal from "./MudamudiQRModal";
-import ReminderModal from "./ReminderModal";
 
 type Props = {
   initialData: Mudamudi[];
-  adminDesa: string | null;
 };
 
 function UploadIcon() {
@@ -67,36 +66,60 @@ function DownloadIcon() {
   );
 }
 
-export default function MudamudiPage({ initialData, adminDesa }: Props) {
+function getActionError(result: unknown): string {
+  if (!result || typeof result !== "object") {
+    return "Terjadi kesalahan. Silakan coba kembali.";
+  }
+
+  const actionResult = result as {
+    message?: unknown;
+    errors?: unknown;
+  };
+
+  if (
+    typeof actionResult.message === "string" &&
+    actionResult.message.trim()
+  ) {
+    return actionResult.message;
+  }
+
+  if (Array.isArray(actionResult.errors)) {
+    return actionResult.errors.map((item) => String(item)).join(", ");
+  }
+
+  if (
+    actionResult.errors &&
+    typeof actionResult.errors === "object"
+  ) {
+    return Object.values(
+      actionResult.errors as Record<string, unknown>,
+    )
+      .flat()
+      .map((item) => String(item))
+      .join(", ");
+  }
+
+  if (typeof actionResult.errors === "string") {
+    return actionResult.errors;
+  }
+
+  return "Terjadi kesalahan. Silakan coba kembali.";
+}
+
+export default function MudamudiPage({ initialData }: Props) {
   const router = useRouter();
 
   const [modal, setModal] = useState<ModalState | null>(null);
-
   const [detailData, setDetailData] = useState<Mudamudi | null>(null);
-
   const [qrData, setQrData] = useState<Mudamudi | null>(null);
 
   const [showExportModal, setShowExportModal] = useState(false);
-
   const [showImportModal, setShowImportModal] = useState(false);
 
   const [error, setError] = useState("");
-
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
-  const missingJenjangCount = initialData.filter(
-    (item) => !item.jenjang?.trim(),
-  ).length;
-
-  const [showReminder, setShowReminder] = useState(
-    () => missingJenjangCount > 0,
-  );
-
-  useEffect(() => {
-    setShowReminder(missingJenjangCount > 0);
-  }, [missingJenjangCount]);
-
-  const filter = useMudamudiFilter(initialData, adminDesa);
+  const filter = useMudamudiFilter(initialData);
 
   function closeModal() {
     setModal(null);
@@ -107,10 +130,7 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
   function openAddModal() {
     setError("");
     setFieldErrors({});
-
-    setModal({
-      type: "add",
-    });
+    setModal({ type: "add" });
   }
 
   function openDetailModal(data: Mudamudi) {
@@ -134,7 +154,6 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
   function openEditModal(data: Mudamudi) {
     setError("");
     setFieldErrors({});
-
     setModal({
       type: "edit",
       data,
@@ -144,7 +163,6 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
   function openDeleteModal(data: Mudamudi) {
     setError("");
     setFieldErrors({});
-
     setModal({
       type: "delete",
       data,
@@ -157,7 +175,6 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
     const formData = new FormData(e.currentTarget);
 
     const nama = String(formData.get("nama") ?? "");
-    const desa = String(formData.get("desa") ?? "");
     const kelas = String(formData.get("kelas") ?? "");
     const kelompok = String(formData.get("kelompok") ?? "");
     const jenisKelamin = String(formData.get("jenis_kelamin") ?? "");
@@ -165,7 +182,6 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
 
     const errors = validateClient(
       nama,
-      desa,
       kelas,
       kelompok,
       jenisKelamin,
@@ -180,15 +196,20 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
 
     setError("");
 
-    const result = await addMudamudi(formData);
+    try {
+      const result = await addMudamudi(formData);
 
-    if (result?.error) {
-      setError(result.error);
-      return;
+      if (!result.success) {
+        setError(getActionError(result));
+        return;
+      }
+
+      closeModal();
+      router.refresh();
+    } catch (err) {
+      console.error("Gagal menambahkan data Generus:", err);
+      setError("Terjadi kesalahan saat menambahkan data Generus.");
     }
-
-    closeModal();
-    router.refresh();
   }
 
   async function handleEditSubmit(
@@ -200,7 +221,6 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
     const formData = new FormData(e.currentTarget);
 
     const nama = String(formData.get("nama") ?? "");
-    const desa = String(formData.get("desa") ?? "");
     const kelas = String(formData.get("kelas") ?? "");
     const kelompok = String(formData.get("kelompok") ?? "");
     const jenisKelamin = String(formData.get("jenis_kelamin") ?? "");
@@ -208,7 +228,6 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
 
     const errors = validateClient(
       nama,
-      desa,
       kelas,
       kelompok,
       jenisKelamin,
@@ -223,29 +242,39 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
 
     setError("");
 
-    const result = await updateMudamudi(id, formData);
+    try {
+      const result = await updateMudamudi(id, formData);
 
-    if (result?.error) {
-      setError(result.error);
-      return;
+      if (!result.success) {
+        setError(getActionError(result));
+        return;
+      }
+
+      closeModal();
+      router.refresh();
+    } catch (err) {
+      console.error("Gagal memperbarui data Generus:", err);
+      setError("Terjadi kesalahan saat memperbarui data Generus.");
     }
-
-    closeModal();
-    router.refresh();
   }
 
   async function handleDelete(id: number) {
     setError("");
 
-    const result = await deleteMudamudi(id);
+    try {
+      const result = await deleteMudamudi(id);
 
-    if (result?.error) {
-      setError(result.error);
-      return;
+      if (!result.success) {
+        setError(getActionError(result));
+        return;
+      }
+
+      closeModal();
+      router.refresh();
+    } catch (err) {
+      console.error("Gagal menghapus data Generus:", err);
+      setError("Terjadi kesalahan saat menghapus data Generus.");
     }
-
-    closeModal();
-    router.refresh();
   }
 
   function handleImportSuccess() {
@@ -258,7 +287,7 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
         <header className="pb-5">
           <div className="mb-5">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#287A50]">
-              Generus
+              REDESPA
             </p>
 
             <div className="mt-1 flex items-start justify-between gap-3">
@@ -281,7 +310,6 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
                   className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5EAE6] bg-white text-[#202824] shadow-xs transition-colors hover:bg-[#F0F4F1] active:bg-[#E5EAE6] md:h-9 md:w-auto md:gap-1.5 md:px-3.5 md:text-[11px] md:font-medium"
                 >
                   <UploadIcon />
-
                   <span className="hidden md:inline">Import</span>
                 </button>
 
@@ -293,7 +321,6 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
                   className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5EAE6] bg-white text-[#202824] shadow-xs transition-colors hover:bg-[#F0F4F1] active:bg-[#E5EAE6] md:h-9 md:w-auto md:gap-1.5 md:px-3.5 md:text-[11px] md:font-medium"
                 >
                   <DownloadIcon />
-
                   <span className="hidden md:inline">Export</span>
                 </button>
 
@@ -305,7 +332,6 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
                   className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#287A50] text-lg font-medium leading-none text-white shadow-xs transition-colors hover:bg-[#206440] active:bg-[#181C1B] md:h-9 md:w-auto md:px-4 md:text-[11px] md:font-semibold"
                 >
                   <span className="md:hidden">+</span>
-
                   <span className="hidden md:inline">+ Tambah Generus</span>
                 </button>
               </div>
@@ -317,10 +343,6 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
           <SearchFilterBar
             search={filter.search}
             setSearch={filter.setSearch}
-            filterDesa={filter.filterDesa}
-            setFilterDesa={filter.setFilterDesa}
-            filterJenjang={filter.filterJenjang}
-            setFilterJenjang={filter.setFilterJenjang}
             filterKelas={filter.filterKelas}
             setFilterKelas={filter.setFilterKelas}
             filterKelompok={filter.filterKelompok}
@@ -331,7 +353,6 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
             setSortConfig={filter.setSortConfig}
             hasActiveFilters={filter.hasActiveFilters}
             onReset={filter.resetAll}
-            adminDesa={adminDesa}
           />
 
           <MudamudiTableView
@@ -348,28 +369,23 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
         </section>
       </div>
 
-      {showReminder && missingJenjangCount > 0 && (
-        <ReminderModal
-          title="Pembaruan Data Jenjang"
-          description="Terdapat data Generus yang belum memiliki jenjang pendidikan. Silakan lengkapi data jenjang setiap Generus agar informasi anggota tetap sesuai dan dapat digunakan dalam pengelolaan data."
-          count={missingJenjangCount}
-          countLabel="Generus belum memiliki data jenjang."
-          note="Pengingat ini akan muncul kembali saat menu Generus dibuka selama masih terdapat data jenjang yang belum dilengkapi."
-          buttonLabel="Mengerti"
-          onClose={() => setShowReminder(false)}
+      {detailData && (
+        <DetailModal
+          data={detailData}
+          onClose={closeDetailModal}
         />
       )}
 
-      {detailData && (
-        <DetailModal data={detailData} onClose={closeDetailModal} />
+      {qrData && (
+        <MudamudiQRModal
+          data={qrData}
+          onClose={closeQRModal}
+        />
       )}
-
-      {qrData && <MudamudiQRModal data={qrData} onClose={closeQRModal} />}
 
       {modal?.type === "add" && (
         <MudamudiFormModal
           mode="add"
-          adminDesa={adminDesa}
           fieldErrors={fieldErrors}
           error={error}
           onSubmit={handleAddSubmit}
@@ -381,7 +397,6 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
         <MudamudiFormModal
           mode="edit"
           initialData={modal.data}
-          adminDesa={adminDesa}
           fieldErrors={fieldErrors}
           error={error}
           onSubmit={(e: React.FormEvent<HTMLFormElement>) =>
@@ -403,7 +418,6 @@ export default function MudamudiPage({ initialData, adminDesa }: Props) {
       {showExportModal && (
         <ExportModal
           allData={initialData}
-          adminDesa={adminDesa}
           onClose={() => setShowExportModal(false)}
         />
       )}

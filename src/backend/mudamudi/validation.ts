@@ -1,19 +1,19 @@
-import { FieldErrors } from "./types";
-import { DESA_OPTIONS, KELOMPOK_BY_DESA } from "./constants";
+
+import type { FieldErrors } from "./types";
+import {
+  KELOMPOK_OPTIONS,
+  JENIS_KELAMIN_OPTIONS,
+  KELAS_OPTIONS,
+} from "./constants";
 
 export function validateClient(
   nama: string,
-  desa: string,
   kelas: string,
   kelompok: string,
   jenisKelamin: string,
   tahunLahirRaw: string,
 ): FieldErrors {
   const errors: FieldErrors = {};
-
-  if (!desa) {
-    errors.desa = "Desa wajib dipilih";
-  }
 
   if (!nama.trim()) {
     errors.nama = "Nama wajib diisi";
@@ -24,23 +24,25 @@ export function validateClient(
   if (!kelompok) {
     errors.kelompok = "Kelompok wajib dipilih";
   } else if (
-    desa &&
-    DESA_OPTIONS.includes(desa as (typeof DESA_OPTIONS)[number])
+    !(KELOMPOK_OPTIONS as readonly string[]).includes(kelompok)
   ) {
-    const kelompokOptions =
-      KELOMPOK_BY_DESA[desa as keyof typeof KELOMPOK_BY_DESA];
-
-    if (!kelompokOptions.includes(kelompok as never)) {
-      errors.kelompok = "Kelompok tidak sesuai dengan desa";
-    }
+    errors.kelompok = "Kelompok tidak valid";
   }
 
   if (!jenisKelamin) {
     errors.jenis_kelamin = "Jenis kelamin wajib dipilih";
+  } else if (
+    !(JENIS_KELAMIN_OPTIONS as readonly string[]).includes(jenisKelamin)
+  ) {
+    errors.jenis_kelamin = "Jenis kelamin tidak valid";
   }
 
-  // Tahun lahir opsional.
-  // Jika diisi, pastikan nilainya berupa tahun yang wajar.
+  if (!kelas) {
+    errors.kelas = "Kelas wajib dipilih";
+  } else if (!(KELAS_OPTIONS as readonly string[]).includes(kelas)) {
+    errors.kelas = "Kelas tidak valid";
+  }
+
   if (tahunLahirRaw.trim() !== "") {
     const tahunLahir = Number(tahunLahirRaw);
     const currentYear = new Date().getFullYear();

@@ -2,14 +2,12 @@
 import ExcelJS from "exceljs";
 
 import {
-  DESA_OPTIONS,
-  KELOMPOK_BY_DESA,
+  KELOMPOK_OPTIONS,
   JENIS_KELAMIN_OPTIONS,
-  JENJANG_OPTIONS,
+  KELAS_OPTIONS,
 } from "./constants";
 
 export type ImportField =
-  | "desa"
   | "kelompok"
   | "nama"
   | "jenis_kelamin"
@@ -17,11 +15,9 @@ export type ImportField =
   | "tahun_lahir"
   | "no_hp"
   | "pekerjaan"
-  | "jenjang"
-  | "alamat";
+  | "kelas";
 
 export type ImportRow = {
-  desa: string;
   kelompok: string;
   nama: string;
   jenis_kelamin: string;
@@ -29,9 +25,7 @@ export type ImportRow = {
   tahun_lahir: number | null;
   no_hp: string | null;
   pekerjaan: string | null;
-  jenjang: string;
   kelas: string;
-  alamat: string | null;
   presentFields: ImportField[];
 };
 
@@ -53,7 +47,6 @@ export type ImportParseResult = {
 
 const REQUIRED_HEADERS = [
   "NO",
-  "DESA",
   "KELOMPOK",
   "NAMA LENGKAP",
   "JENIS KELAMIN",
@@ -61,15 +54,12 @@ const REQUIRED_HEADERS = [
   "TAHUN LAHIR",
   "NO HP",
   "PEKERJAAN",
-  "JENJANG",
   "KELAS",
-  "ALAMAT",
 ] as const;
 
 type HeaderName = (typeof REQUIRED_HEADERS)[number];
 
 const HEADER_TO_FIELD: Partial<Record<HeaderName, ImportField>> = {
-  DESA: "desa",
   KELOMPOK: "kelompok",
   "NAMA LENGKAP": "nama",
   "JENIS KELAMIN": "jenis_kelamin",
@@ -77,14 +67,12 @@ const HEADER_TO_FIELD: Partial<Record<HeaderName, ImportField>> = {
   "TAHUN LAHIR": "tahun_lahir",
   "NO HP": "no_hp",
   PEKERJAAN: "pekerjaan",
-  JENJANG: "jenjang",
-  ALAMAT: "alamat",
+  KELAS: "kelas",
 };
 
 type HeaderMap = Map<string, number>;
 
 type ValidateValues = {
-  desa: string;
   kelompok: string;
   nama: string;
   jenisKelamin: string;
@@ -92,8 +80,7 @@ type ValidateValues = {
   tahunLahir: string;
   noHp: string;
   pekerjaan: string;
-  jenjang: string;
-  alamat: string;
+  kelas: string;
 };
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -118,16 +105,8 @@ function emptyToNull(value: string): string | null {
   return value.trim() || null;
 }
 
-function createIdentityKey(
-  nama: string,
-  desa: string,
-  kelompok: string,
-): string {
-  return [
-    normalizeText(nama),
-    normalizeText(desa),
-    normalizeText(kelompok),
-  ].join("|");
+function createIdentityKey(nama: string, kelompok: string): string {
+  return [normalizeText(nama), normalizeText(kelompok)].join("|");
 }
 
 function getCellValue(cell: ExcelJS.Cell): string {
@@ -210,9 +189,9 @@ function validateHeaders(headerMap: HeaderMap): void {
   if (missingHeaders.length > 0) {
     throw new Error(
       [
-        "Format file tidak sesuai dengan format Export Data Generus.",
+        "Format file tidak sesuai dengan format Export Data Muda-Mudi REDESPA.",
         `Kolom yang tidak ditemukan: ${missingHeaders.join(", ")}.`,
-        "Silakan unduh kembali file melalui menu Export Data Generus dan gunakan file tersebut sebagai template.",
+        "Silakan unduh kembali file melalui menu Export Data Muda-Mudi dan gunakan file tersebut sebagai template.",
       ].join(" "),
     );
   }
@@ -224,10 +203,7 @@ function getPresentFields(headerMap: HeaderMap): ImportField[] {
     .map(([, field]) => field as ImportField);
 }
 
-function findOption(
-  value: string,
-  options: readonly string[],
-): string {
+function findOption(value: string, options: readonly string[]): string {
   const normalized = normalizeText(value);
 
   return (
@@ -235,57 +211,16 @@ function findOption(
   );
 }
 
-function normalizeDesa(value: string): string {
-  return findOption(value, DESA_OPTIONS);
-}
-
-function normalizeKelompok(desa: string, kelompok: string): string {
-  const options =
-    KELOMPOK_BY_DESA[desa as keyof typeof KELOMPOK_BY_DESA];
-
-  if (!options) return "";
-
-  return findOption(kelompok, options);
+function normalizeKelompok(value: string): string {
+  return findOption(value, KELOMPOK_OPTIONS);
 }
 
 function normalizeJenisKelamin(value: string): string {
   return findOption(value, JENIS_KELAMIN_OPTIONS);
 }
 
-function normalizeJenjang(value: string): string {
-  return findOption(value, JENJANG_OPTIONS);
-}
-
-function calculateKelasFromJenjang(jenjang: string): string {
-  if (jenjang === "Belum Sekolah" || jenjang === "PAUD") {
-    return "PAUD";
-  }
-
-  if (jenjang === "TK") {
-    return "TK";
-  }
-
-  if (["SD-1", "SD-2", "SD-3"].includes(jenjang)) {
-    return "Caberawit A";
-  }
-
-  if (["SD-4", "SD-5", "SD-6"].includes(jenjang)) {
-    return "Caberawit B";
-  }
-
-  if (["SMP-1", "SMP-2", "SMP-3"].includes(jenjang)) {
-    return "Pra Remaja";
-  }
-
-  if (["SMA-1", "SMA-2", "SMA-3"].includes(jenjang)) {
-    return "Remaja";
-  }
-
-  if (jenjang === "Kuliah" || jenjang === "Kerja") {
-    return "Usia Nikah";
-  }
-
-  return "";
+function normalizeKelas(value: string): string {
+  return findOption(value, KELAS_OPTIONS);
 }
 
 function isValidPhone(value: string): boolean {
@@ -321,11 +256,9 @@ function validateRow(
   const rowErrors: string[] = [];
   const rowWarnings: string[] = [];
 
-  const desa = normalizeDesa(values.desa);
-  const kelompok = normalizeKelompok(desa, values.kelompok);
+  const kelompok = normalizeKelompok(values.kelompok);
   const jenisKelamin = normalizeJenisKelamin(values.jenisKelamin);
-  const jenjang = normalizeJenjang(values.jenjang);
-
+  const kelas = normalizeKelas(values.kelas);
   const nama = values.nama.trim();
 
   if (!nama) {
@@ -334,16 +267,10 @@ function validateRow(
     rowErrors.push("Nama Lengkap tidak boleh mengandung angka");
   }
 
-  if (!values.desa.trim()) {
-    rowErrors.push("Desa wajib diisi");
-  } else if (!desa) {
-    rowErrors.push("Desa tidak valid");
-  }
-
   if (!values.kelompok.trim()) {
     rowErrors.push("Kelompok wajib diisi");
-  } else if (!desa || !kelompok) {
-    rowErrors.push("Kelompok tidak sesuai dengan desa");
+  } else if (!kelompok) {
+    rowErrors.push("Kelompok tidak valid");
   }
 
   if (!values.jenisKelamin.trim()) {
@@ -352,12 +279,10 @@ function validateRow(
     rowErrors.push("Jenis Kelamin tidak valid");
   }
 
-  if (!values.jenjang.trim()) {
-    rowErrors.push("Jenjang wajib diisi");
-  } else if (!jenjang) {
-    rowErrors.push(
-      "Jenjang tidak valid. Gunakan pilihan jenjang yang tersedia",
-    );
+  if (!values.kelas.trim()) {
+    rowWarnings.push("Kelas kosong");
+  } else if (!kelas) {
+    rowErrors.push("Kelas tidak valid. Gunakan pilihan kelas yang tersedia");
   }
 
   if (rowErrors.length > 0) {
@@ -403,17 +328,12 @@ function validateRow(
   }
 
   const pekerjaan = values.pekerjaan.trim();
-  const alamat = values.alamat.trim();
 
   if (!pekerjaan) {
     rowWarnings.push("Pekerjaan kosong");
   }
 
-  if (!alamat) {
-    rowWarnings.push("Alamat kosong");
-  }
-
-  const duplicateKey = createIdentityKey(nama, desa, kelompok);
+  const duplicateKey = createIdentityKey(nama, kelompok);
 
   if (seenKeys.has(duplicateKey)) {
     return {
@@ -421,7 +341,7 @@ function validateRow(
       error: {
         rowNumber,
         message:
-          "Data duplikat dengan baris lain dalam file berdasarkan Nama Lengkap, Desa, dan Kelompok",
+          "Data duplikat dengan baris lain dalam file berdasarkan Nama Lengkap dan Kelompok",
       },
       warnings: rowWarnings.map((message) => ({
         rowNumber,
@@ -434,7 +354,6 @@ function validateRow(
 
   return {
     data: {
-      desa,
       kelompok,
       nama,
       jenis_kelamin: jenisKelamin,
@@ -442,9 +361,7 @@ function validateRow(
       tahun_lahir: tahunLahir,
       no_hp: noHp,
       pekerjaan: emptyToNull(pekerjaan),
-      jenjang,
-      kelas: calculateKelasFromJenjang(jenjang),
-      alamat: emptyToNull(alamat),
+      kelas,
       presentFields,
     },
     error: null,
@@ -488,7 +405,6 @@ function buildImportResult(
     const row = rows[index];
 
     const values: ValidateValues = {
-      desa: getValue(row, "DESA"),
       kelompok: getValue(row, "KELOMPOK"),
       nama: getValue(row, "NAMA LENGKAP"),
       jenisKelamin: getValue(row, "JENIS KELAMIN"),
@@ -496,8 +412,7 @@ function buildImportResult(
       tahunLahir: getValue(row, "TAHUN LAHIR"),
       noHp: getValue(row, "NO HP"),
       pekerjaan: getValue(row, "PEKERJAAN"),
-      jenjang: getValue(row, "JENJANG"),
-      alamat: getValue(row, "ALAMAT"),
+      kelas: getValue(row, "KELAS"),
     };
 
     const isEmptyRow = Object.values(values).every(
@@ -696,6 +611,6 @@ export async function parseImportExcel(
   }
 
   throw new Error(
-    "Format file tidak didukung. Gunakan file .xlsx atau .csv hasil Export Data Generus.",
+    "Format file tidak didukung. Gunakan file .xlsx atau .csv hasil Export Data Muda-Mudi REDESPA.",
   );
 }

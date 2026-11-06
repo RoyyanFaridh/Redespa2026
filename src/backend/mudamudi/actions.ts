@@ -1,938 +1,732 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "../supabase/server";
+
+import { createAdminClient } from "../supabase/admin";
 import { requireAdmin } from "../auth/admin";
-import { toTitleCase } from "./format";
+
 import {
-  DESA_OPTIONS,
-  KELOMPOK_BY_DESA,
+  KELOMPOK_OPTIONS,
   JENIS_KELAMIN_OPTIONS,
-  JENJANG_OPTIONS,
+  KELAS_OPTIONS,
 } from "./constants";
-import {
-  parseImportExcel,
-  type ImportRow,
-  type ImportWarning,
-} from "./importExcel";
+
+import type { Mudamudi } from "./types";
+import type { ImportRow } from "./importExcel";
 
 type ActionResult = {
-  success?: boolean;
-  error?: string;
-};
-
-export type ImportPreviewResult = {
   success: boolean;
-  error?: string;
-  data: ImportRow[];
-  errors: Array<{
-    rowNumber: number;
-    message: string;
-  }>;
-  warnings: ImportWarning[];
-  newCount: number;
-  updateCount: number;
-  reviewCount: number;
+  message?: string;
+  data?: Mudamudi;
+  errors?: Record<string, string>;
 };
 
-type ImportResult = ActionResult & {
-  imported?: number;
-  updated?: number;
-  skipped?: number;
-  warnings?: ImportWarning[];
-};
+type ClassValue = string | string[] | null | undefined;
 
-type ExistingImportRecord = {
-  id: number;
-  nama: string;
-  desa: string;
-  kelompok: string;
-};
+function parseClasses(value: ClassValue): string[] {
+  const values = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
 
-type ImportIdentity = {
-  nama: string;
-  desa: string;
-  kelompok: string;
-};
-
-function isValidDesa(desa: string): boolean {
-  return DESA_OPTIONS.includes(desa as (typeof DESA_OPTIONS)[number]);
+  return [
+    ...new Set(
+      values
+        .map((item) => String(item).trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
-function isValidKelompok(desa: string, kelompok: string): boolean {
-  if (!isValidDesa(desa)) return false;
+function normalizeClasses(value: ClassValue): string[] {
+  const classes = parseClasses(value);
 
-  const options = KELOMPOK_BY_DESA[desa as keyof typeof KELOMPOK_BY_DESA];
+  if (!classes.includes("Jamaah")) {
+    classes.push("Jamaah");
+  }
 
-  return options.includes(kelompok as never);
+  return [
+    ...KELAS_OPTIONS.filter((item) => classes.includes(item)),
+    ...classes.filter(
+      (item) =>
+        !KELAS_OPTIONS.includes(
+          item as (typeof KELAS_OPTIONS)[number],
+        ),
+    ),
+  ];
 }
 
-function isValidJenisKelamin(jenisKelamin: string): boolean {
-  return JENIS_KELAMIN_OPTIONS.includes(
-    jenisKelamin as (typeof JENIS_KELAMIN_OPTIONS)[number],
+function validateClasses(classes: string[]): boolean {
+  if (classes.length === 0) {
+    return false;
+  }
+
+  return classes.every((item) =>
+    KELAS_OPTIONS.includes(
+      item as (typeof KELAS_OPTIONS)[number],
+    ),
   );
 }
 
-function isValidJenjang(jenjang: string): boolean {
-  return JENJANG_OPTIONS.includes(jenjang as (typeof JENJANG_OPTIONS)[number]);
+function parseYear(value: string): number | null {
+  const year = value.trim();
+
+  if (!year) {
+    return null;
+  }
+
+  const parsedYear = Number(year);
+
+  if (!Number.isInteger(parsedYear)) {
+    return null;
+  }
+
+  return parsedYear;
 }
 
-function calculateKelasFromJenjang(jenjang: string): string {
-  if (jenjang === "Belum Sekolah" || jenjang === "PAUD") return "PAUD";
-  if (jenjang === "TK") return "TK";
-  if (["SD-1", "SD-2", "SD-3"].includes(jenjang)) return "Caberawit A";
-  if (["SD-4", "SD-5", "SD-6"].includes(jenjang)) return "Caberawit B";
-  if (["SMP-1", "SMP-2", "SMP-3"].includes(jenjang)) return "Pra Remaja";
-  if (["SMA-1", "SMA-2", "SMA-3"].includes(jenjang)) return "Remaja";
-  if (jenjang === "Kuliah" || jenjang === "Kerja") return "Usia Nikah";
-  return "";
+function validateYear(value: string): boolean {
+  const year = value.trim();
+
+  if (!year) {
+    return true;
+  }
+
+  if (!/^\d{4}$/.test(year)) {
+    return false;
+  }
+
+  const parsedYear = Number(year);
+  const currentYear = new Date().getFullYear();
+
+  return parsedYear >= 1900 && parsedYear <= currentYear;
 }
 
 function validate(
   nama: string,
-  desa: string,
   kelompok: string,
   jenisKelamin: string,
-  jenjang: string,
-  tahunLahirRaw: string,
-): string | null {
-  if (!nama.trim()) return "Nama wajib diisi";
+  kelas: string[],
+  tahunLahir: string,
+): Record<string, string> {
+  const errors: Record<string, string> = {};
 
-  if (/\d/.test(nama)) {
-    return "Nama tidak boleh mengandung angka";
+  if (!nama.trim()) {
+    errors.nama = "Nama wajib diisi";
+  } else if (/\d/.test(nama)) {
+    errors.nama = "Nama tidak boleh mengandung angka";
   }
 
-  if (!isValidDesa(desa)) return "Desa tidak valid";
-
-  if (!isValidKelompok(desa, kelompok)) {
-    return "Kelompok tidak sesuai dengan desa";
+  if (!kelompok) {
+    errors.kelompok = "Kelompok wajib dipilih";
+  } else if (
+    !KELOMPOK_OPTIONS.includes(
+      kelompok as (typeof KELOMPOK_OPTIONS)[number],
+    )
+  ) {
+    errors.kelompok = "Kelompok tidak valid";
   }
 
-  if (!isValidJenisKelamin(jenisKelamin)) {
-    return "Jenis kelamin wajib dipilih";
+  if (!jenisKelamin) {
+    errors.jenis_kelamin = "Jenis kelamin wajib dipilih";
+  } else if (
+    !JENIS_KELAMIN_OPTIONS.includes(
+      jenisKelamin as (typeof JENIS_KELAMIN_OPTIONS)[number],
+    )
+  ) {
+    errors.jenis_kelamin = "Jenis kelamin tidak valid";
   }
 
-  if (!isValidJenjang(jenjang)) {
-    return "Jenjang wajib dipilih dan harus sesuai dengan pilihan yang tersedia";
+  if (!validateClasses(kelas)) {
+    errors.kelas = "Pilih minimal satu kelas yang valid";
   }
 
-  if (tahunLahirRaw !== "") {
-    const tahunLahir = Number(tahunLahirRaw);
-    const currentYear = new Date().getFullYear();
-
-    if (
-      !Number.isInteger(tahunLahir) ||
-      tahunLahir < 1900 ||
-      tahunLahir > currentYear
-    ) {
-      return `Tahun lahir harus berupa angka antara 1900 dan ${currentYear}`;
-    }
+  if (!validateYear(tahunLahir)) {
+    errors.tahun_lahir =
+      "Tahun lahir harus berupa 4 digit dan tidak boleh melebihi tahun sekarang";
   }
 
-  return null;
-}
-
-function normalizeForCompare(value: string | null | undefined): string {
-  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function createIdentityKey(row: ImportIdentity): string {
-  return [
-    normalizeForCompare(row.nama),
-    normalizeForCompare(row.desa),
-    normalizeForCompare(row.kelompok),
-  ].join("|");
-}
-
-function readFormData(formData: FormData) {
-  const nama = String(formData.get("nama") ?? "").trim();
-  const desa = String(formData.get("desa") ?? "").trim();
-  const kelompok = String(formData.get("kelompok") ?? "").trim();
-  const jenisKelamin = String(formData.get("jenis_kelamin") ?? "").trim();
-  const jenjang = String(formData.get("jenjang") ?? "").trim();
-  const tahunLahirRaw = String(formData.get("tahun_lahir") ?? "").trim();
-
-  const tahunLahir = tahunLahirRaw === "" ? null : Number(tahunLahirRaw);
-  const kelas = isValidJenjang(jenjang) ? calculateKelasFromJenjang(jenjang) : "";
-
-  return {
-    nama,
-    desa,
-    kelompok,
-    jenisKelamin,
-    jenjang,
-    kelas,
-    tahunLahir,
-    tahunLahirRaw,
-    tempatLahir: String(formData.get("tempat_lahir") ?? "").trim() || null,
-    noHp: String(formData.get("no_hp") ?? "").trim() || null,
-    pekerjaan: String(formData.get("pekerjaan") ?? "").trim() || null,
-    alamat: String(formData.get("alamat") ?? "").trim() || null,
-  };
-}
-
-function validateFormData(data: ReturnType<typeof readFormData>) {
-  return validate(
-    data.nama,
-    data.desa,
-    data.kelompok,
-    data.jenisKelamin,
-    data.jenjang,
-    data.tahunLahirRaw,
-  );
+  return errors;
 }
 
 function mapImportRow(row: ImportRow) {
+  const kelas = parseClasses(row.kelas);
+
   return {
-    nama: toTitleCase(row.nama.trim()),
-    desa: row.desa.trim(),
-    kelompok: row.kelompok.trim(),
-    jenis_kelamin: row.jenis_kelamin.trim(),
-    jenjang: row.jenjang,
-    tempat_lahir: row.tempat_lahir?.trim() || null,
-    tahun_lahir: row.tahun_lahir ?? null,
-    no_hp: row.no_hp?.trim() || null,
-    pekerjaan: row.pekerjaan?.trim() || null,
-    kelas: row.kelas,
-    alamat: row.alamat?.trim() || null,
+    kelompok: (row.kelompok ?? "").trim(),
+    nama: (row.nama ?? "").trim(),
+    jenis_kelamin: (row.jenis_kelamin ?? "").trim() || null,
+    tempat_lahir: (row.tempat_lahir ?? "").trim() || null,
+    tahun_lahir: parseYear(String(row.tahun_lahir ?? "")),
+    no_hp: (row.no_hp ?? "").trim() || null,
+    pekerjaan: (row.pekerjaan ?? "").trim() || null,
+    kelas: normalizeClasses(kelas),
   };
 }
 
-function mapImportUpdate(row: ImportRow): Record<string, unknown> {
-  const mapped = mapImportRow(row);
-  const payload: Record<string, unknown> = {};
-
-  for (const field of row.presentFields ?? []) {
-    if (Object.prototype.hasOwnProperty.call(mapped, field)) {
-      payload[field] = mapped[field as keyof typeof mapped];
-    }
-  }
-
-  // Kelas selalu mengikuti jenjang, sehingga keduanya diperbarui bersama.
-  if (row.presentFields?.includes("jenjang")) {
-    payload.jenjang = mapped.jenjang;
-    payload.kelas = mapped.kelas;
-  }
-
-  return payload;
+function createDuplicateKey(
+  nama: string,
+  kelas: ClassValue,
+  kelompok: string,
+): string {
+  return [
+    nama.trim().toLowerCase(),
+    normalizeClasses(kelas).sort().join(",").toLowerCase(),
+    kelompok.trim().toLowerCase(),
+  ].join("|");
 }
 
-function createEmptyPreview(error: string): ImportPreviewResult {
-  return {
-    success: false,
-    error,
-    data: [],
-    errors: [],
-    warnings: [],
-    newCount: 0,
-    updateCount: 0,
-    reviewCount: 0,
-  };
+function getClassesFromForm(formData: FormData): string[] {
+  return formData
+    .getAll("kelas")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
 }
 
-async function getExistingImportRecords(
-  adminDesa: string | null,
-  isSuperAdmin: boolean,
-): Promise<{
-  data: ExistingImportRecord[] | null;
-  error: string | null;
-}> {
-  const supabase = await createClient();
+async function findDuplicateMudamudi(
+  nama: string,
+  kelas: string[],
+  kelompok: string,
+  excludeId?: number,
+): Promise<{ exists: boolean; error: string | null }> {
+  const supabase = createAdminClient();
 
-  let query = supabase.from("mudamudi").select("id, nama, desa, kelompok");
+  let query = supabase
+    .from("mudamudi")
+    .select("id, nama, kelas, kelompok")
+    .eq("nama", nama)
+    .eq("kelompok", kelompok);
 
-  if (!isSuperAdmin) {
-    if (!adminDesa) {
-      return {
-        data: null,
-        error: "Desa admin tidak valid",
-      };
-    }
-
-    query = query.eq("desa", adminDesa);
+  if (excludeId !== undefined) {
+    query = query.neq("id", excludeId);
   }
 
   const { data, error } = await query;
 
   if (error) {
-    console.error("getExistingImportRecords error:", error);
-
     return {
-      data: null,
-      error: "Gagal memeriksa data Muda-Mudi yang sudah terdaftar",
+      exists: false,
+      error: error.message,
     };
   }
 
+  const targetKey = createDuplicateKey(nama, kelas, kelompok);
+
+  const exists = (data ?? []).some((item) => {
+    const existingKey = createDuplicateKey(
+      item.nama,
+      item.kelas,
+      item.kelompok,
+    );
+
+    return existingKey === targetKey;
+  });
+
   return {
-    data: (data ?? []) as ExistingImportRecord[],
+    exists,
     error: null,
   };
 }
 
-function groupExistingByIdentity(
-  records: ExistingImportRecord[],
-): Map<string, ExistingImportRecord[]> {
-  const grouped = new Map<string, ExistingImportRecord[]>();
+export async function addMudamudi(
+  formData: FormData,
+): Promise<ActionResult> {
+  await requireAdmin();
 
-  for (const record of records) {
-    const key = createIdentityKey(record);
-    const matches = grouped.get(key) ?? [];
+  const supabase = createAdminClient();
 
-    matches.push(record);
-    grouped.set(key, matches);
-  }
+  const nama = String(formData.get("nama") ?? "").trim();
+  const kelompok = String(formData.get("kelompok") ?? "").trim();
+  const jenisKelamin = String(
+    formData.get("jenis_kelamin") ?? "",
+  ).trim();
 
-  return grouped;
-}
+  const tempatLahir = String(
+    formData.get("tempat_lahir") ?? "",
+  ).trim();
 
-export async function addMudamudi(formData: FormData): Promise<ActionResult> {
-  const { desa: adminDesa, isSuperAdmin } = await requireAdmin();
-  const supabase = await createClient();
-  const form = readFormData(formData);
+  const tahunLahir = String(
+    formData.get("tahun_lahir") ?? "",
+  ).trim();
 
-  const desa = isSuperAdmin ? form.desa : (adminDesa ?? "");
-  const data = { ...form, desa };
+  const kelasInput = getClassesFromForm(formData);
 
-  if (!isSuperAdmin && !adminDesa) {
-    return { error: "Desa admin tidak valid" };
-  }
+  const errors = validate(
+    nama,
+    kelompok,
+    jenisKelamin,
+    kelasInput,
+    tahunLahir,
+  );
 
-  const validationError = validateFormData(data);
-
-  if (validationError) return { error: validationError };
-
-  const nama = toTitleCase(data.nama);
-
-  const { data: candidates, error: candidateError } = await supabase
-    .from("mudamudi")
-    .select("id, nama, kelas")
-    .eq("kelompok", data.kelompok)
-    .eq("desa", data.desa);
-
-  if (candidateError) {
-    console.error("addMudamudi candidate query error:", candidateError);
-    return { error: "Gagal memeriksa duplikasi data Muda-Mudi" };
-  }
-
-  const normalizedNama = normalizeForCompare(nama);
-  const normalizedKelas = normalizeForCompare(data.kelas);
-
-  const isDuplicate =
-    candidates?.some(
-      (candidate) =>
-        normalizeForCompare(candidate.nama) === normalizedNama &&
-        normalizeForCompare(candidate.kelas) === normalizedKelas,
-    ) ?? false;
-
-  if (isDuplicate) {
+  if (Object.keys(errors).length > 0) {
     return {
-      error: "Data dengan nama, kelas, dan kelompok yang sama sudah ada",
+      success: false,
+      errors,
     };
   }
 
-  const { error } = await supabase.from("mudamudi").insert({
+  const kelas = normalizeClasses(kelasInput);
+
+  const duplicate = await findDuplicateMudamudi(
     nama,
-    desa: data.desa,
-    kelompok: data.kelompok,
-    jenis_kelamin: data.jenisKelamin,
-    tempat_lahir: data.tempatLahir,
-    tahun_lahir: data.tahunLahir,
-    jenjang: data.jenjang,
-    kelas: data.kelas,
-    no_hp: data.noHp,
-    pekerjaan: data.pekerjaan,
-    alamat: data.alamat,
-  });
+    kelas,
+    kelompok,
+  );
+
+  if (duplicate.error) {
+    return {
+      success: false,
+      message: "Gagal memeriksa data Muda-Mudi",
+    };
+  }
+
+  if (duplicate.exists) {
+    return {
+      success: false,
+      message:
+        "Data Muda-Mudi dengan nama, kelas, dan kelompok tersebut sudah ada",
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("mudamudi")
+    .insert({
+      nama,
+      kelompok,
+      jenis_kelamin: jenisKelamin,
+      tempat_lahir: tempatLahir || null,
+      tahun_lahir: parseYear(tahunLahir),
+      no_hp: String(formData.get("no_hp") ?? "").trim() || null,
+      pekerjaan:
+        String(formData.get("pekerjaan") ?? "").trim() || null,
+      kelas,
+    })
+    .select("*")
+    .single();
 
   if (error) {
-    console.error("addMudamudi insert error:", error);
-
-    if (error.code === "23505") {
-      return { error: "Data dengan kombinasi ini sudah ada" };
-    }
-
-    if (error.code === "23502") {
-      return {
-        error:
-          "Penyimpanan gagal karena ada kolom wajib database yang kosong. Periksa pengaturan kolom di Supabase.",
-      };
-    }
-
-    return { error: "Gagal menyimpan data Muda-Mudi. Periksa log server." };
+    return {
+      success: false,
+      message: error.message || "Gagal menambahkan Muda-Mudi",
+    };
   }
 
   revalidatePath("/admin/mudamudi");
 
-  return { success: true };
+  return {
+    success: true,
+    message: "Muda-Mudi berhasil ditambahkan",
+    data,
+  };
 }
 
 export async function updateMudamudi(
   id: number,
   formData: FormData,
 ): Promise<ActionResult> {
-  const { desa: adminDesa, isSuperAdmin } = await requireAdmin();
-  const supabase = await createClient();
+  await requireAdmin();
 
-  if (!Number.isInteger(id) || id <= 0) {
-    return { error: "ID Muda-Mudi tidak valid" };
-  }
+  const supabase = createAdminClient();
 
-  if (!isSuperAdmin && !adminDesa) {
-    return { error: "Desa admin tidak valid" };
-  }
+  const nama = String(formData.get("nama") ?? "").trim();
+  const kelompok = String(formData.get("kelompok") ?? "").trim();
+  const jenisKelamin = String(
+    formData.get("jenis_kelamin") ?? "",
+  ).trim();
 
-  const form = readFormData(formData);
-  const desa = isSuperAdmin ? form.desa : (adminDesa ?? "");
-  const data = { ...form, desa };
+  const tempatLahir = String(
+    formData.get("tempat_lahir") ?? "",
+  ).trim();
 
-  const validationError = validateFormData(data);
+  const tahunLahir = String(
+    formData.get("tahun_lahir") ?? "",
+  ).trim();
 
-  if (validationError) return { error: validationError };
+  const kelasInput = getClassesFromForm(formData);
 
-  let existingQuery = supabase.from("mudamudi").select("id, desa").eq("id", id);
+  const errors = validate(
+    nama,
+    kelompok,
+    jenisKelamin,
+    kelasInput,
+    tahunLahir,
+  );
 
-  if (!isSuperAdmin) {
-    existingQuery = existingQuery.eq("desa", adminDesa);
-  }
-
-  const { data: existing, error: existingError } =
-    await existingQuery.maybeSingle();
-
-  if (existingError) {
-    console.error("updateMudamudi existing query error:", existingError);
-    return { error: "Gagal memeriksa data Muda-Mudi" };
-  }
-
-  if (!existing) {
+  if (Object.keys(errors).length > 0) {
     return {
-      error: "Data Muda-Mudi tidak ditemukan atau tidak dapat diakses",
+      success: false,
+      errors,
     };
   }
 
-  if (!isSuperAdmin && existing.desa !== adminDesa) {
+  const kelas = normalizeClasses(kelasInput);
+
+  const duplicate = await findDuplicateMudamudi(
+    nama,
+    kelas,
+    kelompok,
+    id,
+  );
+
+  if (duplicate.error) {
     return {
-      error: "Anda tidak memiliki akses ke data Muda-Mudi desa ini",
+      success: false,
+      message: "Gagal memeriksa data Muda-Mudi",
     };
   }
 
-  const nama = toTitleCase(data.nama);
-
-  const { data: candidates, error: candidateError } = await supabase
-    .from("mudamudi")
-    .select("id, nama, kelas")
-    .eq("kelompok", data.kelompok)
-    .eq("desa", data.desa)
-    .neq("id", id);
-
-  if (candidateError) {
-    console.error("updateMudamudi candidate query error:", candidateError);
-    return { error: "Gagal memeriksa duplikasi data Muda-Mudi" };
-  }
-
-  const normalizedNama = normalizeForCompare(nama);
-  const normalizedKelas = normalizeForCompare(data.kelas);
-
-  const isDuplicate =
-    candidates?.some(
-      (candidate) =>
-        normalizeForCompare(candidate.nama) === normalizedNama &&
-        normalizeForCompare(candidate.kelas) === normalizedKelas,
-    ) ?? false;
-
-  if (isDuplicate) {
+  if (duplicate.exists) {
     return {
-      error: "Data dengan nama, kelas, dan kelompok yang sama sudah ada",
+      success: false,
+      message:
+        "Data Muda-Mudi dengan nama, kelas, dan kelompok tersebut sudah ada",
     };
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("mudamudi")
     .update({
       nama,
-      desa: data.desa,
-      kelompok: data.kelompok,
-      jenis_kelamin: data.jenisKelamin,
-      tempat_lahir: data.tempatLahir,
-      tahun_lahir: data.tahunLahir,
-      jenjang: data.jenjang,
-      kelas: data.kelas,
-      no_hp: data.noHp,
-      pekerjaan: data.pekerjaan,
-      alamat: data.alamat,
+      kelompok,
+      jenis_kelamin: jenisKelamin,
+      tempat_lahir: tempatLahir || null,
+      tahun_lahir: parseYear(tahunLahir),
+      no_hp: String(formData.get("no_hp") ?? "").trim() || null,
+      pekerjaan:
+        String(formData.get("pekerjaan") ?? "").trim() || null,
+      kelas,
     })
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error) {
+    return {
+      success: false,
+      message: error.message || "Gagal memperbarui Muda-Mudi",
+    };
+  }
+
+  revalidatePath("/admin/mudamudi");
+
+  return {
+    success: true,
+    message: "Muda-Mudi berhasil diperbarui",
+    data,
+  };
+}
+
+export async function deleteMudamudi(
+  id: number,
+): Promise<ActionResult> {
+  await requireAdmin();
+
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from("mudamudi")
+    .delete()
     .eq("id", id);
 
   if (error) {
-    console.error("updateMudamudi update error:", error);
-
-    if (error.code === "23505") {
-      return { error: "Data dengan kombinasi ini sudah ada" };
-    }
-
-    if (error.code === "23502") {
-      return {
-        error:
-          "Pembaruan gagal karena ada kolom wajib database yang kosong. Periksa kolom wajib di Supabase.",
-      };
-    }
-
-    return { error: "Gagal memperbarui data Muda-Mudi. Periksa log server." };
-  }
-
-  revalidatePath("/admin/mudamudi");
-
-  return { success: true };
-}
-
-export async function deleteMudamudi(id: number): Promise<ActionResult> {
-  const { desa: adminDesa, isSuperAdmin } = await requireAdmin();
-  const supabase = await createClient();
-
-  if (!Number.isInteger(id) || id <= 0) {
-    return { error: "ID Muda-Mudi tidak valid" };
-  }
-
-  if (!isSuperAdmin && !adminDesa) {
-    return { error: "Desa admin tidak valid" };
-  }
-
-  let query = supabase.from("mudamudi").delete().eq("id", id);
-
-  if (!isSuperAdmin) {
-    query = query.eq("desa", adminDesa);
-  }
-
-  const { data, error } = await query.select("id");
-
-  if (error) {
-    console.error("deleteMudamudi error:", error);
-    return { error: "Gagal menghapus data Muda-Mudi" };
-  }
-
-  if (!data || data.length === 0) {
     return {
-      error: "Data Muda-Mudi tidak ditemukan atau tidak dapat diakses",
+      success: false,
+      message: error.message || "Gagal menghapus Muda-Mudi",
     };
   }
 
   revalidatePath("/admin/mudamudi");
 
-  return { success: true };
+  return {
+    success: true,
+    message: "Muda-Mudi berhasil dihapus",
+  };
 }
 
-export async function getMudamudi() {
-  const { desa: adminDesa, isSuperAdmin } = await requireAdmin();
-  const supabase = await createClient();
+export async function getMudamudi(): Promise<Mudamudi[]> {
+  await requireAdmin();
 
-  if (!isSuperAdmin && !adminDesa) {
-    return { data: [], error: "Desa admin tidak valid" };
-  }
+  const supabase = createAdminClient();
 
-  let query = supabase.from("mudamudi").select("*");
-
-  if (!isSuperAdmin) {
-    query = query.eq("desa", adminDesa);
-  }
-
-  const { data, error } = await query.order("created_at", {
-    ascending: false,
-  });
+  const { data, error } = await supabase
+    .from("mudamudi")
+    .select("*")
+    .order("kelompok", {
+      ascending: true,
+    })
+    .order("nama", {
+      ascending: true,
+    });
 
   if (error) {
-    console.error("getMudamudi error:", error);
-    return { data: [], error: "Gagal mengambil data Muda-Mudi" };
+    throw new Error(
+      error.message || "Gagal mengambil data Muda-Mudi",
+    );
   }
 
-  return { data: data ?? [], error: null };
+  return data ?? [];
 }
 
 export async function searchMudamudiNames(query: string) {
-  const { desa: adminDesa, isSuperAdmin } = await requireAdmin();
-  const supabase = await createClient();
-  const keyword = query.trim();
+  await requireAdmin();
 
-  if (!keyword) return { data: [], error: null };
+  const supabase = createAdminClient();
 
-  if (!isSuperAdmin && !adminDesa) {
-    return { data: [], error: "Desa admin tidak valid" };
+  const search = query.trim();
+
+  if (search.length < 2) {
+    return [];
   }
 
-  let searchQuery = supabase
+  const { data, error } = await supabase
     .from("mudamudi")
-    .select("id, nama, desa, kelompok")
-    .ilike("nama", `%${keyword}%`);
-
-  if (!isSuperAdmin) {
-    searchQuery = searchQuery.eq("desa", adminDesa);
-  }
-
-  const { data, error } = await searchQuery
-    .order("nama", { ascending: true })
-    .limit(5);
+    .select("id, nama, kelompok")
+    .ilike("nama", `%${search}%`)
+    .order("nama", {
+      ascending: true,
+    })
+    .limit(20);
 
   if (error) {
-    console.error("searchMudamudiNames error:", error);
-    return { data: [], error: "Gagal mencari nama Muda-Mudi" };
+    throw new Error(
+      error.message || "Gagal mencari Muda-Mudi",
+    );
   }
 
-  return { data: data ?? [], error: null };
+  return data ?? [];
 }
 
 export async function previewImportMudamudi(
-  formData: FormData,
-): Promise<ImportPreviewResult> {
-  const { desa: adminDesa, isSuperAdmin } = await requireAdmin();
-  const file = formData.get("file");
+  rows: ImportRow[],
+) {
+  await requireAdmin();
 
-  if (!(file instanceof File)) {
-    return createEmptyPreview("File Excel belum dipilih");
+  const supabase = createAdminClient();
+
+  const { data: existingData, error } = await supabase
+    .from("mudamudi")
+    .select("id, nama, kelas, kelompok");
+
+  if (error) {
+    throw new Error(
+      error.message || "Gagal mengambil data Muda-Mudi",
+    );
   }
 
-  if (!file.name.toLowerCase().endsWith(".xlsx")) {
-    return createEmptyPreview("Format file harus .xlsx");
-  }
+  const existingKeys = new Set(
+    (existingData ?? []).map((item) =>
+      createDuplicateKey(
+        item.nama,
+        item.kelas,
+        item.kelompok,
+      ),
+    ),
+  );
 
-  if (!isSuperAdmin && !adminDesa) {
-    return createEmptyPreview("Desa admin tidak valid");
-  }
+  const importedKeys = new Set<string>();
 
-  try {
-    const result = await parseImportExcel(file);
+  const preview = rows.map((row, index) => {
+    const mapped = mapImportRow(row);
 
-    const invalidJenjangRows = result.data
-      .filter((row) => !isValidJenjang(String(row.jenjang ?? "").trim()))
-      .map((row) => ({
-        rowNumber: 0,
-        message: `Jenjang untuk data "${row.nama}" wajib diisi dengan nilai yang tersedia.`,
-      }));
-
-    const validRows = result.data.filter((row) =>
-      isValidJenjang(String(row.jenjang ?? "").trim()),
+    const key = createDuplicateKey(
+      mapped.nama,
+      mapped.kelas,
+      mapped.kelompok,
     );
 
-    const errors = [...result.errors, ...invalidJenjangRows];
-    const scopedRows: ImportRow[] = [];
+    const duplicateInDatabase = existingKeys.has(key);
+    const duplicateInFile = importedKeys.has(key);
 
-    for (const row of validRows) {
-      if (!isSuperAdmin && row.desa.trim() !== adminDesa) {
-        errors.push({
-          rowNumber: 0,
-          message: `Desa harus ${adminDesa}. Data "${row.nama}" tidak dapat dipratinjau oleh admin desa ini.`,
-        });
-        continue;
-      }
-
-      scopedRows.push(row);
-    }
-
-    const existingResult = await getExistingImportRecords(
-      adminDesa,
-      isSuperAdmin,
+    const validYear = validateYear(
+      String(row.tahun_lahir ?? ""),
     );
 
-    if (existingResult.error || !existingResult.data) {
-      return {
-        ...createEmptyPreview(
-          existingResult.error ?? "Gagal memeriksa data yang sudah terdaftar",
-        ),
-        errors,
-        warnings: result.warnings,
-        reviewCount: errors.length,
-      };
-    }
+    const validClasses = validateClasses(
+      parseClasses(row.kelas),
+    );
 
-    const existingByIdentity = groupExistingByIdentity(existingResult.data);
-    const importableRows: ImportRow[] = [];
-    let newCount = 0;
-    let updateCount = 0;
-    let ambiguousCount = 0;
+    const validRequiredFields =
+      Boolean(mapped.nama) &&
+      Boolean(mapped.kelompok) &&
+      Boolean(mapped.jenis_kelamin);
 
-    for (const row of scopedRows) {
-      const key = createIdentityKey({
-        nama: row.nama,
-        desa: row.desa,
-        kelompok: row.kelompok,
-      });
-
-      const matches = existingByIdentity.get(key) ?? [];
-
-      if (matches.length > 1) {
-        ambiguousCount++;
-        errors.push({
-          rowNumber: 0,
-          message: `Data "${row.nama}" di desa ${row.desa}, kelompok ${row.kelompok} cocok dengan lebih dari satu data yang sudah terdaftar. Periksa data tersebut secara manual.`,
-        });
-        continue;
-      }
-
-      if (matches.length === 1) {
-        updateCount++;
-      } else {
-        newCount++;
-      }
-
-      importableRows.push(row);
-    }
+    importedKeys.add(key);
 
     return {
-      success: true,
-      data: importableRows,
-      errors,
-      warnings: result.warnings,
-      newCount,
-      updateCount,
-      reviewCount: errors.length + ambiguousCount,
+      row: index + 2,
+      data: mapped,
+      duplicateInDatabase,
+      duplicateInFile,
+      valid:
+        !duplicateInDatabase &&
+        !duplicateInFile &&
+        validYear &&
+        validClasses &&
+        validRequiredFields,
     };
-  } catch (error) {
-    console.error("previewImportMudamudi error:", error);
+  });
 
-    return createEmptyPreview(
-      error instanceof Error ? error.message : "Gagal membaca file Excel",
-    );
-  }
+  return preview;
 }
 
 export async function importMudamudi(
-  formData: FormData,
-): Promise<ImportResult> {
-  const { desa: adminDesa, isSuperAdmin } = await requireAdmin();
-  const supabase = await createClient();
-  const file = formData.get("file");
+  rows: ImportRow[],
+): Promise<{
+  success: boolean;
+  message: string;
+  imported: number;
+  skipped: number;
+  errors: string[];
+}> {
+  await requireAdmin();
 
-  if (!(file instanceof File)) {
-    return { error: "File Excel belum dipilih" };
-  }
+  const supabase = createAdminClient();
 
-  if (!file.name.toLowerCase().endsWith(".xlsx")) {
-    return { error: "Format file harus .xlsx" };
-  }
-
-  if (!isSuperAdmin && !adminDesa) {
-    return { error: "Desa admin tidak valid" };
-  }
-
-  try {
-    const result = await parseImportExcel(file);
-
-    if (result.data.length === 0) {
-      if (result.errors.length > 0) {
-        return {
-          error:
-            "Tidak ada data yang dapat diimpor. Semua baris memiliki masalah pada kolom wajib atau duplikat dalam file.",
-          imported: 0,
-          updated: 0,
-          skipped: result.errors.length,
-          warnings: result.warnings,
-        };
-      }
-
-      return {
-        error: "Tidak ada data yang dapat diimpor.",
-        imported: 0,
-        updated: 0,
-        skipped: 0,
-        warnings: result.warnings,
-      };
-    }
-
-    const invalidJenjangRows = result.data.filter(
-      (row) => !isValidJenjang(String(row.jenjang ?? "").trim()),
-    );
-
-    if (invalidJenjangRows.length > 0) {
-      return {
-        error:
-          "Import dibatalkan karena terdapat data dengan jenjang kosong atau tidak valid. Periksa kolom JENJANG pada file Excel.",
-        imported: 0,
-        updated: 0,
-        skipped: invalidJenjangRows.length + result.errors.length,
-        warnings: result.warnings,
-      };
-    }
-
-    const scopedRows: ImportRow[] = [];
-    let unauthorizedCount = 0;
-
-    for (const row of result.data) {
-      if (!isSuperAdmin && row.desa.trim() !== adminDesa) {
-        unauthorizedCount++;
-        continue;
-      }
-
-      scopedRows.push(row);
-    }
-
-    if (scopedRows.length === 0) {
-      return {
-        error: `Tidak ada data ${adminDesa ?? ""} yang dapat diimpor.`,
-        imported: 0,
-        updated: 0,
-        skipped: result.errors.length + unauthorizedCount,
-        warnings: result.warnings,
-      };
-    }
-
-    const existingResult = await getExistingImportRecords(
-      adminDesa,
-      isSuperAdmin,
-    );
-
-    if (existingResult.error || !existingResult.data) {
-      return {
-        error:
-          existingResult.error ??
-          "Gagal memeriksa data Muda-Mudi yang sudah terdaftar",
-        imported: 0,
-        updated: 0,
-        skipped: result.errors.length + unauthorizedCount,
-        warnings: result.warnings,
-      };
-    }
-
-    const existingByIdentity = groupExistingByIdentity(existingResult.data);
-    const rowsToInsert: ReturnType<typeof mapImportRow>[] = [];
-    const rowsToUpdate: Array<{
-      id: number;
-      payload: Record<string, unknown>;
-    }> = [];
-    const seenImportKeys = new Set<string>();
-
-    let ambiguousCount = 0;
-    let duplicateImportCount = 0;
-
-    for (const row of scopedRows) {
-      const key = createIdentityKey({
-        nama: row.nama,
-        desa: row.desa,
-        kelompok: row.kelompok,
-      });
-
-      if (seenImportKeys.has(key)) {
-        duplicateImportCount++;
-        continue;
-      }
-
-      seenImportKeys.add(key);
-
-      const matches = existingByIdentity.get(key) ?? [];
-
-      if (matches.length > 1) {
-        ambiguousCount++;
-        continue;
-      }
-
-      if (matches.length === 1) {
-        const payload = mapImportUpdate(row);
-
-        if (Object.keys(payload).length === 0) {
-          ambiguousCount++;
-          continue;
-        }
-
-        rowsToUpdate.push({
-          id: matches[0].id,
-          payload,
-        });
-
-        continue;
-      }
-
-      rowsToInsert.push(mapImportRow(row));
-    }
-
-    const skipped =
-      result.errors.length +
-      unauthorizedCount +
-      ambiguousCount +
-      duplicateImportCount;
-
-    if (rowsToInsert.length === 0 && rowsToUpdate.length === 0) {
-      return {
-        error:
-          "Tidak ada data yang dapat diproses. Data mungkin sudah bermasalah, ambigu, duplikat dalam file, atau berasal dari desa lain.",
-        imported: 0,
-        updated: 0,
-        skipped,
-        warnings: result.warnings,
-      };
-    }
-
-    let imported = 0;
-    let updated = 0;
-
-    for (const item of rowsToUpdate) {
-      let updateQuery = supabase
-        .from("mudamudi")
-        .update(item.payload)
-        .eq("id", item.id);
-
-      if (!isSuperAdmin) {
-        updateQuery = updateQuery.eq("desa", adminDesa);
-      }
-
-      const { data, error } = await updateQuery.select("id").maybeSingle();
-
-      if (error || !data) {
-        console.error("Import update error:", error);
-
-        return {
-          error:
-            error?.code === "23505"
-              ? "Pembaruan gagal karena data bertabrakan dengan data lain yang sudah terdaftar."
-              : error?.code === "23502"
-                ? "Pembaruan gagal karena kolom wajib database bernilai NULL."
-                : "Import berhenti saat memperbarui data. Sebagian perubahan mungkin sudah tersimpan.",
-          imported,
-          updated,
-          skipped,
-          warnings: result.warnings,
-        };
-      }
-
-      updated++;
-    }
-
-    const batchSize = 100;
-
-    for (let index = 0; index < rowsToInsert.length; index += batchSize) {
-      const batch = rowsToInsert.slice(index, index + batchSize);
-      const { error } = await supabase.from("mudamudi").insert(batch);
-
-      if (error) {
-        console.error("Import batch error:", error);
-
-        return {
-          error:
-            error.code === "23502"
-              ? "Import gagal karena kolom wajib database masih bernilai NULL. Periksa kolom wajib di Supabase."
-              : error.code === "23505"
-                ? "Import gagal karena terdapat data duplikat."
-                : "Import berhenti saat menambahkan data baru. Sebagian perubahan mungkin sudah tersimpan.",
-          imported,
-          updated,
-          skipped: skipped + (rowsToInsert.length - imported - batch.length),
-          warnings: result.warnings,
-        };
-      }
-
-      imported += batch.length;
-    }
-
-    revalidatePath("/admin/mudamudi");
-
+  if (!rows.length) {
     return {
-      success: true,
-      imported,
-      updated,
+      success: false,
+      message: "Tidak ada data untuk diimpor",
+      imported: 0,
+      skipped: 0,
+      errors: [],
+    };
+  }
+
+  const { data: existingData, error: existingError } =
+    await supabase
+      .from("mudamudi")
+      .select("id, nama, kelas, kelompok");
+
+  if (existingError) {
+    return {
+      success: false,
+      message:
+        existingError.message ||
+        "Gagal mengambil data Muda-Mudi",
+      imported: 0,
+      skipped: 0,
+      errors: [],
+    };
+  }
+
+  const existingKeys = new Set(
+    (existingData ?? []).map((item) =>
+      createDuplicateKey(
+        item.nama,
+        item.kelas,
+        item.kelompok,
+      ),
+    ),
+  );
+
+  const importedKeys = new Set<string>();
+
+  const validRows: ReturnType<typeof mapImportRow>[] = [];
+
+  const errors: string[] = [];
+  let skipped = 0;
+
+  rows.forEach((row, index) => {
+    const rowNumber = index + 2;
+    const mapped = mapImportRow(row);
+
+    const rawClasses = parseClasses(row.kelas);
+    const tahunLahir = String(
+      row.tahun_lahir ?? "",
+    ).trim();
+
+    if (
+      !mapped.nama ||
+      !mapped.kelompok ||
+      !mapped.jenis_kelamin
+    ) {
+      errors.push(
+        `Baris ${rowNumber}: Data wajib belum lengkap`,
+      );
+      skipped++;
+      return;
+    }
+
+    if (!validateClasses(rawClasses)) {
+      errors.push(
+        `Baris ${rowNumber}: Kelas tidak valid atau belum dipilih`,
+      );
+      skipped++;
+      return;
+    }
+
+    if (!validateYear(tahunLahir)) {
+      errors.push(
+        `Baris ${rowNumber}: Tahun lahir harus berupa 4 digit dan tidak boleh melebihi tahun sekarang`,
+      );
+      skipped++;
+      return;
+    }
+
+    const key = createDuplicateKey(
+      mapped.nama,
+      mapped.kelas,
+      mapped.kelompok,
+    );
+
+    if (existingKeys.has(key)) {
+      errors.push(
+        `Baris ${rowNumber}: Data sudah ada di database`,
+      );
+      skipped++;
+      return;
+    }
+
+    if (importedKeys.has(key)) {
+      errors.push(
+        `Baris ${rowNumber}: Data duplikat dalam file`,
+      );
+      skipped++;
+      return;
+    }
+
+    importedKeys.add(key);
+    validRows.push(mapped);
+  });
+
+  if (validRows.length === 0) {
+    return {
+      success: errors.length === 0,
+      message:
+        errors.length > 0
+          ? "Tidak ada data yang dapat diimpor"
+          : "Tidak ada data baru",
+      imported: 0,
       skipped,
-      warnings: result.warnings,
-    };
-  } catch (error) {
-    console.error("importMudamudi error:", error);
-
-    return {
-      error:
-        error instanceof Error ? error.message : "Gagal mengimpor data Excel",
+      errors,
     };
   }
+
+  const { error: insertError } = await supabase
+    .from("mudamudi")
+    .insert(validRows);
+
+  if (insertError) {
+    return {
+      success: false,
+      message:
+        insertError.message ||
+        "Gagal mengimpor data Muda-Mudi",
+      imported: 0,
+      skipped,
+      errors,
+    };
+  }
+
+  revalidatePath("/admin/mudamudi");
+
+  return {
+    success: true,
+    message: `${validRows.length} data Muda-Mudi berhasil diimpor`,
+    imported: validRows.length,
+    skipped,
+    errors,
+  };
 }
