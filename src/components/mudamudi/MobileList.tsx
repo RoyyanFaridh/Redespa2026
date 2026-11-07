@@ -102,7 +102,7 @@ export default function MobileList({
 
   return (
     <div className="md:hidden">
-      <ul aria-label="Daftar Generus" className="space-y-3">
+      <ul aria-label="Daftar Jamaah" className="space-y-3">
         {data.map((s) => {
           const avatarColor = getAvatarColor(s.nama);
 
@@ -125,7 +125,7 @@ export default function MobileList({
 
                     <div className="min-w-0">
                       <p className="mb-0.5 text-[8px] font-bold uppercase tracking-widest text-[#287A50]">
-                        Generus
+                        Jamaah
                       </p>
 
                       <h3 className="wrap-break-word text-[13px] font-bold leading-normal tracking-[-0.01em] text-[#202824] transition-colors group-hover:text-[#287A50]">
@@ -261,7 +261,7 @@ export default function MobileList({
       </ul>
 
       <p className="mt-3 text-center text-[9px] leading-4 text-[#78827C]">
-        Menampilkan {data.length} Generus
+        Menampilkan {data.length} Jamaah
       </p>
     </div>
   );

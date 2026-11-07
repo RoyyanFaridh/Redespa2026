@@ -12,6 +12,7 @@ import {
   JabatanKyaiOption,
   PemateriRow,
 } from "../../../backend/presensi/beritaAcaraDocx";
+import { Button } from "../../common";
 
 type Props = {
   kegiatan: Kegiatan;
@@ -568,65 +569,40 @@ export default function BeritaAcaraModal({
 
           {/* Footer Modal */}
           <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#E5EAE6] bg-[#F5F7F5]/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="md"
               onClick={onClose}
               disabled={loading}
-              className="inline-flex h-9 items-center justify-center rounded-xl border border-[#E5EAE6] bg-white px-4 text-xs font-medium text-[#78827C] transition hover:bg-[#F5F7F5] hover:text-[#202824] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Batal
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#287A50] px-4 text-xs font-semibold text-white shadow-xs transition hover:bg-[#206440] disabled:cursor-not-allowed disabled:opacity-60"
+              variant="primary"
+              size="md"
+              isLoading={loading}
+              leftIcon={
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  className="h-3.5 w-3.5"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"
+                  />
+                </svg>
+              }
             >
-              {loading ? (
-                <>
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    className="h-3.5 w-3.5 animate-spin"
-                    aria-hidden="true"
-                  >
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="9"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      className="opacity-25"
-                    />
-                    <path
-                      d="M21 12a9 9 0 0 0-9-9"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  Memproses...
-                </>
-              ) : (
-                <>
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.8}
-                    className="h-3.5 w-3.5"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"
-                    />
-                  </svg>
-                  Unduh Berita Acara (.docx)
-                </>
-              )}
-            </button>
+              Unduh Berita Acara (.docx)
+            </Button>
           </div>
         </form>
       </div>

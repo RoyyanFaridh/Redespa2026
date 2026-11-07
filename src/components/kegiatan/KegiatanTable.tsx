@@ -25,6 +25,7 @@ import DeleteConfirmModal from "./DeleteConfirmModal";
 import KegiatanFormModal from "./KegiatanFormModal";
 import KegiatanTableView from "./KegiatanTableView";
 import SearchFilterBar from "./SearchFilterBar";
+import { PageHeader, Button } from "../common";
 
 type Props = {
   initialData: Kegiatan[];
@@ -240,35 +241,27 @@ export default function KegiatanTable({ initialData }: Props) {
 
   return (
     <>
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto w-full px-4 py-6 sm:px-6 md:px-7 lg:px-8">
         <div className="mb-5">
-          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#287A50]">
-            Kegiatan
-          </p>
-
-          <div className="mt-1 flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="text-xl font-bold tracking-tight text-[#202824]">
-                Data Kegiatan
-              </h1>
-
-              <p className="mt-1 max-w-xs text-[10px] leading-4 text-[#78827C] sm:max-w-none sm:text-xs">
-                Kelola kegiatan yang digunakan untuk presensi.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={openAdd}
-              disabled={loading}
-              aria-label="Tambah kegiatan"
-              title="Tambah kegiatan"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#287A50] text-lg font-medium leading-none text-white transition-colors hover:bg-[#206440] disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:w-auto sm:px-4 sm:text-[11px]"
-            >
-              <span className="sm:hidden">+</span>
-              <span className="hidden sm:inline">+ Tambah Kegiatan</span>
-            </button>
-          </div>
+          <PageHeader
+            eyebrow="Kegiatan"
+            title="Data Kegiatan"
+            description="Kelola kegiatan yang digunakan untuk presensi."
+            actions={
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={openAdd}
+                disabled={loading}
+                aria-label="Tambah kegiatan"
+                title="Tambah kegiatan"
+              >
+                <span className="sm:hidden">+</span>
+                <span className="hidden sm:inline">+ Tambah Kegiatan</span>
+              </Button>
+            }
+          />
         </div>
 
         <SearchFilterBar

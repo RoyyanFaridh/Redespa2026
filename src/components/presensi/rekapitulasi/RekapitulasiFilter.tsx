@@ -80,7 +80,7 @@ export default function RekapitulasiFilter({
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_32px] items-end gap-x-3 gap-y-3 lg:grid-cols-[minmax(180px,1.35fr)_minmax(140px,0.8fr)_minmax(170px,1fr)_auto] lg:gap-x-4 lg:gap-y-3">
           <div className="col-span-3 min-w-0 lg:col-span-1">
             <label htmlFor="rekap-search" className={LABEL_CLASS}>
-              Cari Generus
+              Cari Jamaah
             </label>
 
             <div className="relative">
@@ -101,7 +101,7 @@ export default function RekapitulasiFilter({
                 type="text"
                 value={search}
                 onChange={(event) => onSearchChange(event.target.value)}
-                placeholder="Cari nama Generus..."
+                placeholder="Cari nama Jamaah..."
                 className={`${CONTROL_CLASS} pl-8 pr-7`}
               />
 

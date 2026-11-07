@@ -28,7 +28,7 @@ const menuItems = [
     ),
   },
   {
-    label: "Generus",
+    label: "Jamaah",
     href: "/admin/mudamudi",
     icon: (
       <svg
@@ -287,20 +287,20 @@ function Brand() {
   return (
     <div className="flex items-center gap-3">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#287A50] text-[11px] font-bold tracking-tight text-white shadow-sm ring-1 ring-white/10">
-        GN
+        RD
       </div>
 
       <div className="min-w-0">
         <h1 className="truncate text-[14px] font-bold tracking-tight text-white">
-          GENARA
+          REDESPA
         </h1>
 
         <p className="truncate text-[9px] font-medium leading-4 text-[#8E9892]">
-          Generus Administrasi
+          Rekap Data Jamaah
         </p>
 
         <p className="truncate text-[9px] font-medium leading-3 text-[#8E9892]">
-          dan Presensi
+          Desa Pandak
         </p>
       </div>
     </div>
@@ -324,7 +324,7 @@ function AccountSection({
 
   const accountLabel =
     account.nama.trim() ||
-    (account.desa === null ? "Admin Daerah" : `Admin ${account.desa}`);
+    (account.desa ? `Admin ${account.desa}` : "Admin REDESPA");
 
   const initials =
     accountLabel
@@ -548,11 +548,11 @@ export default function AdminSidebar() {
 
         <div className="ml-2.5 min-w-0">
           <p className="truncate text-[12px] font-bold text-white">
-            GENARA
+            REDESPA
           </p>
 
           <p className="truncate text-[9px] text-[#8E9892]">
-            Generus Administrasi & Presensi
+            Rekap Data Jamaah Desa Pandak
           </p>
         </div>
       </header>

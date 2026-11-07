@@ -40,19 +40,19 @@ const STATUS_STYLES: Record<
     textClassName: "text-emerald-700",
   },
   terlambat: {
-    className: "bg-violet-500 ring-violet-100",
+    className: "bg-amber-500 ring-amber-100",
     label: "Terlambat",
-    textClassName: "text-violet-700",
-  },
-  izin: {
-    className: "bg-amber-400 ring-amber-100",
-    label: "Izin",
     textClassName: "text-amber-700",
   },
-  sakit: {
+  izin: {
     className: "bg-blue-500 ring-blue-100",
-    label: "Sakit",
+    label: "Izin",
     textClassName: "text-blue-700",
+  },
+  sakit: {
+    className: "bg-violet-500 ring-violet-100",
+    label: "Sakit",
+    textClassName: "text-violet-700",
   },
   alpa: {
     className: "bg-red-500 ring-red-100",
@@ -85,15 +85,15 @@ const SUMMARY_COLUMNS = [
     key: "izin",
     label: "I",
     title: "Izin",
-    textClassName: "text-violet-700",
-    headerClassName: "text-violet-800",
+    textClassName: "text-blue-700",
+    headerClassName: "text-blue-800",
   },
   {
     key: "sakit",
     label: "S",
     title: "Sakit",
-    textClassName: "text-blue-700",
-    headerClassName: "text-blue-800",
+    textClassName: "text-violet-700",
+    headerClassName: "text-violet-800",
   },
   {
     key: "alpa",
@@ -284,7 +284,7 @@ export default function RekapitulasiTable({
           </svg>
         </div>
         <p className="mt-3 text-[11px] font-semibold text-gray-700">
-          Data Generus tidak ditemukan
+          Data Jamaah tidak ditemukan
         </p>
         <p className="mt-1 text-[10px] text-gray-500">
           Coba ubah kata kunci atau filter yang digunakan.
@@ -353,7 +353,7 @@ export default function RekapitulasiTable({
           <thead className="sticky top-0 z-20">
             <tr>
               <th className="sticky left-0 z-40 min-w-64 border-b border-r border-gray-200 bg-gray-50 px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                Generus
+                Jamaah
               </th>
 
               {kegiatan.map((item) => (

@@ -31,10 +31,10 @@ const poppins = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "GENARA - Generus Administrasi dan Presensi",
-  description: "GENARA - Generus Administrasi dan Presensi",
+  title: "REDESPA - Rekap Data Jamaah Desa Pandak",
+  description: "REDESPA - Rekap Data Jamaah Desa Pandak",
   icons: {
-    icon: "/icon_gold.webp",
+    icon: "/icon.webp",
   },
 };
 

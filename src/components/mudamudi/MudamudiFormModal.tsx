@@ -9,6 +9,7 @@ import {
   KELAS_OPTIONS,
 } from "../../backend/mudamudi/constants";
 import ModalWrapper from "./ModalWrapper";
+import { Button } from "../common";
 
 type Props = {
   mode: "add" | "edit";
@@ -104,12 +105,12 @@ export default function MudamudiFormModal({
 
             <div className="min-w-0">
               <h2 className="text-[11px] font-semibold leading-5 text-[#202824]">
-                {mode === "add" ? "Tambah Data Generus" : "Edit Data Generus"}
+                {mode === "add" ? "Tambah Data Jamaah" : "Edit Data Jamaah"}
               </h2>
               <p className="mt-0.5 text-[9px] leading-4 text-[#78827C]">
                 {mode === "add"
-                  ? "Tambahkan Generus baru ke database REDESPA"
-                  : "Perbarui informasi data Generus"}
+                  ? "Tambahkan Jamaah baru ke database REDESPA"
+                  : "Perbarui informasi data Jamaah"}
               </p>
             </div>
           </div>
@@ -351,20 +352,22 @@ export default function MudamudiFormModal({
         </div>
 
         <footer className="flex shrink-0 items-center justify-between border-t border-[#E5EAE6] bg-[#F5F7F5] px-4 py-3 sm:px-5">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="md"
             onClick={onClose}
-            className="inline-flex min-h-9 items-center justify-center rounded-xl border border-[#E5EAE6] bg-white px-3.5 py-2 text-[9px] font-semibold text-[#202824] transition hover:bg-[#F0F4F1] active:scale-[0.98]"
           >
             Batal
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="submit"
-            className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-[#287A50] px-4 py-2 text-[9px] font-semibold text-white transition hover:bg-[#206440] active:scale-[0.98]"
+            variant="primary"
+            size="md"
           >
             {mode === "add" ? "Simpan Data" : "Simpan Perubahan"}
-          </button>
+          </Button>
         </footer>
       </form>
     </ModalWrapper>

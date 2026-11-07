@@ -16,6 +16,7 @@ import { exportPresensiExcel } from "../../backend/mudamudi/exportExcel";
 
 import ModalWrapper from "./ModalWrapper";
 import { DownloadIcon } from "./icons";
+import { Button } from "../common";
 
 type Props = {
   allData: Mudamudi[];
@@ -150,7 +151,7 @@ export default function ExportModal({
 
       onClose();
     } catch (error) {
-      console.error("Gagal mengekspor data Generus:", error);
+      console.error("Gagal mengekspor data Jamaah:", error);
 
       setExportError(
         "Export gagal. Silakan coba kembali. Jika masalah berlanjut, periksa konsol aplikasi.",
@@ -181,7 +182,7 @@ export default function ExportModal({
 
             <div className="min-w-0">
               <h2 className="text-xs font-semibold leading-5 text-[#202824]">
-                Ekspor Data Generus
+                Ekspor Data Jamaah
               </h2>
 
               <p className="mt-0.5 text-[10px] leading-4 text-[#78827C]">
@@ -289,7 +290,7 @@ export default function ExportModal({
               </span>
 
               <span className="text-[10px] text-[#78827C]">
-                Generus
+                Jamaah
               </span>
             </div>
           </div>
@@ -315,52 +316,26 @@ export default function ExportModal({
           </button>
 
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="md"
               onClick={onClose}
               disabled={isExporting}
-              className="inline-flex min-h-9 items-center justify-center rounded-xl border border-[#E5EAE6] bg-white px-4 py-2 text-[10px] font-semibold text-[#202824] transition hover:bg-[#F0F4F1] disabled:opacity-50"
             >
               Batal
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="submit"
-              disabled={isExporting || filteredData.length === 0}
-              className="inline-flex min-h-9 items-center justify-center gap-2 rounded-xl bg-[#287A50] px-4 py-2 text-[10px] font-semibold text-white transition hover:bg-[#206440] disabled:cursor-not-allowed disabled:opacity-60 sm:px-5"
+              variant="primary"
+              size="md"
+              isLoading={isExporting}
+              disabled={filteredData.length === 0}
+              leftIcon={<DownloadIcon className="h-3.5 w-3.5" />}
             >
-              {isExporting ? (
-                <>
-                  <svg
-                    className="h-3.5 w-3.5 animate-spin"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
-                  </svg>
-
-                  <span>Menyiapkan Excel...</span>
-                </>
-              ) : (
-                <>
-                  <DownloadIcon className="h-3.5 w-3.5" />
-                  <span>Unduh Excel</span>
-                </>
-              )}
-            </button>
+              Unduh Excel
+            </Button>
           </div>
         </footer>
       </form>

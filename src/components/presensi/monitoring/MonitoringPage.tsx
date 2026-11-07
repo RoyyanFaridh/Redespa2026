@@ -23,6 +23,7 @@ import MonitoringTable from "./MonitoringTable";
 import MonitoringDetailModal from "./MonitoringDetailModal";
 import MonitoringEditModal from "./MonitoringEditModal";
 import BeritaAcaraModal from "./BeritaAcaraModal";
+import { PageHeader, Button } from "../../common";
 
 type Props = {
   kegiatan: Kegiatan[];
@@ -342,23 +343,13 @@ export default function MonitoringPage({ kegiatan }: Props) {
     Boolean(data) && !loading && !error && Boolean(selectedKegiatan);
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
+    <div className="mx-auto w-full space-y-4 px-4 py-6 sm:px-6 md:px-7 lg:px-8">
       <div className="mb-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#287A50]">
-          Presensi
-        </p>
-
-        <div className="mt-1 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold tracking-tight text-[#202824]">
-              Monitoring Presensi
-            </h1>
-
-            <p className="mt-1 max-w-xs text-[10px] leading-4 text-[#78827C] sm:max-w-none sm:text-xs">
-              Pantau dan kelola kehadiran peserta berdasarkan kegiatan.
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          eyebrow="Presensi"
+          title="Monitoring Presensi"
+          description="Pantau dan kelola kehadiran peserta berdasarkan kegiatan."
+        />
       </div>
 
       <MonitoringKegiatanSelector
@@ -460,32 +451,30 @@ export default function MonitoringPage({ kegiatan }: Props) {
               </div>
 
               {canDownloadBeritaAcara && (
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
                   onClick={() => setShowBeritaAcara(true)}
                   aria-label="Unduh Berita Acara"
                   title="Unduh Berita Acara (.docx)"
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#287A50] text-white shadow-xs transition hover:bg-[#206440] focus:outline-none focus:ring-2 focus:ring-[#65B98A]/20 sm:h-10 sm:w-auto sm:gap-2 sm:rounded-xl sm:px-4"
+                  leftIcon={
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.8}
+                      className="h-4 w-4"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"
+                      />
+                    </svg>
+                  }
                 >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.8}
-                    className="h-5 w-5 sm:h-4 sm:w-4"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"
-                    />
-                  </svg>
-
-                  <span className="hidden whitespace-nowrap text-xs font-semibold sm:inline">
-                    Unduh
-                  </span>
-                </button>
+                  <span className="hidden sm:inline">Unduh Berita Acara</span>
+                </Button>
               )}
             </div>
 

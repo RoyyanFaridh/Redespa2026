@@ -18,6 +18,7 @@ import type {
 
 import { validateClient } from "../../backend/mudamudi/validation";
 import { useMudamudiFilter } from "./useMudamudiFilter";
+import { PageHeader, Button } from "../common";
 
 import SearchFilterBar from "./SearchFilterBar";
 import MudamudiTableView from "./MudamudiTableView";
@@ -27,6 +28,8 @@ import DetailModal from "./DetailModal";
 import ExportModal from "./ExportModal";
 import ImportModal from "./ImportModal";
 import MudamudiQRModal from "./MudamudiQRModal";
+import ExportDropdown from "./ExportDropdown";
+import { exportBatchQRCodeZip } from "../../backend/mudamudi/exportQRBatch";
 
 type Props = {
   initialData: Mudamudi[];
@@ -45,23 +48,6 @@ function UploadIcon() {
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4" />
       <path strokeLinecap="round" strokeLinejoin="round" d="m7 9 5-5 5 5" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 20h14" />
-    </svg>
-  );
-}
-
-function DownloadIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="h-4 w-4"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="m7 10 5 5 5-5" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 21h14" />
     </svg>
   );
 }
@@ -116,10 +102,40 @@ export default function MudamudiPage({ initialData }: Props) {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
 
+  const [isExportingQR, setIsExportingQR] = useState(false);
+  const [qrExportProgress, setQrExportProgress] = useState<{
+    current: number;
+    total: number;
+  } | null>(null);
+
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const filter = useMudamudiFilter(initialData);
+
+  async function handleExportQR() {
+    if (isExportingQR) return;
+
+    try {
+      setIsExportingQR(true);
+      setError("");
+      setQrExportProgress({ current: 0, total: initialData.length });
+
+      await exportBatchQRCodeZip(initialData, (current, total) => {
+        setQrExportProgress({ current, total });
+      });
+    } catch (err) {
+      console.error("Gagal mengekspor QR Code batch:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Gagal mengunduh QR Code. Silakan coba kembali.",
+      );
+    } finally {
+      setIsExportingQR(false);
+      setQrExportProgress(null);
+    }
+  }
 
   function closeModal() {
     setModal(null);
@@ -207,8 +223,8 @@ export default function MudamudiPage({ initialData }: Props) {
       closeModal();
       router.refresh();
     } catch (err) {
-      console.error("Gagal menambahkan data Generus:", err);
-      setError("Terjadi kesalahan saat menambahkan data Generus.");
+      console.error("Gagal menambahkan data Jamaah:", err);
+      setError("Terjadi kesalahan saat menambahkan data Jamaah.");
     }
   }
 
@@ -253,8 +269,8 @@ export default function MudamudiPage({ initialData }: Props) {
       closeModal();
       router.refresh();
     } catch (err) {
-      console.error("Gagal memperbarui data Generus:", err);
-      setError("Terjadi kesalahan saat memperbarui data Generus.");
+      console.error("Gagal memperbarui data Jamaah:", err);
+      setError("Terjadi kesalahan saat memperbarui data Jamaah.");
     }
   }
 
@@ -272,8 +288,8 @@ export default function MudamudiPage({ initialData }: Props) {
       closeModal();
       router.refresh();
     } catch (err) {
-      console.error("Gagal menghapus data Generus:", err);
-      setError("Terjadi kesalahan saat menghapus data Generus.");
+      console.error("Gagal menghapus data Jamaah:", err);
+      setError("Terjadi kesalahan saat menghapus data Jamaah.");
     }
   }
 
@@ -285,58 +301,44 @@ export default function MudamudiPage({ initialData }: Props) {
     <main className="min-h-screen bg-[#F5F7F5]">
       <div className="mx-auto w-full px-4 py-6 sm:px-6 md:px-7 lg:px-8">
         <header className="pb-5">
-          <div className="mb-5">
-            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#287A50]">
-              REDESPA
-            </p>
-
-            <div className="mt-1 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h1 className="text-2xl font-bold tracking-tight text-[#202824]">
-                  Data Generus
-                </h1>
-
-                <p className="mt-1 max-w-xs text-[12px] leading-4 text-[#78827C] sm:max-w-none sm:text-xs">
-                  Kelola data anggota Generus yang digunakan untuk presensi.
-                </p>
-              </div>
-
-              <div className="flex shrink-0 items-center gap-2">
-                <button
+          <PageHeader
+            eyebrow="REDESPA"
+            title="Data Jamaah"
+            description="Kelola data anggota Jamaah yang digunakan untuk presensi."
+            actions={
+              <>
+                <Button
                   type="button"
+                  variant="outline"
+                  size="md"
                   onClick={() => setShowImportModal(true)}
                   aria-label="Import data"
                   title="Import data"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5EAE6] bg-white text-[#202824] shadow-xs transition-colors hover:bg-[#F0F4F1] active:bg-[#E5EAE6] md:h-9 md:w-auto md:gap-1.5 md:px-3.5 md:text-[11px] md:font-medium"
+                  leftIcon={<UploadIcon />}
                 >
-                  <UploadIcon />
                   <span className="hidden md:inline">Import</span>
-                </button>
+                </Button>
 
-                <button
-                  type="button"
-                  onClick={() => setShowExportModal(true)}
-                  aria-label="Export data"
-                  title="Export data"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5EAE6] bg-white text-[#202824] shadow-xs transition-colors hover:bg-[#F0F4F1] active:bg-[#E5EAE6] md:h-9 md:w-auto md:gap-1.5 md:px-3.5 md:text-[11px] md:font-medium"
-                >
-                  <DownloadIcon />
-                  <span className="hidden md:inline">Export</span>
-                </button>
+                <ExportDropdown
+                  onExportData={() => setShowExportModal(true)}
+                  onExportQR={handleExportQR}
+                  isExportingQR={isExportingQR}
+                />
 
-                <button
+                <Button
                   type="button"
+                  variant="primary"
+                  size="md"
                   onClick={openAddModal}
-                  aria-label="Tambah Generus"
-                  title="Tambah Generus"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#287A50] text-lg font-medium leading-none text-white shadow-xs transition-colors hover:bg-[#206440] active:bg-[#181C1B] md:h-9 md:w-auto md:px-4 md:text-[11px] md:font-semibold"
+                  aria-label="Tambah Jamaah"
+                  title="Tambah Jamaah"
                 >
                   <span className="md:hidden">+</span>
-                  <span className="hidden md:inline">+ Tambah Generus</span>
-                </button>
-              </div>
-            </div>
-          </div>
+                  <span className="hidden md:inline">+ Tambah Jamaah</span>
+                </Button>
+              </>
+            }
+          />
         </header>
 
         <section className="pt-1">
@@ -427,6 +429,42 @@ export default function MudamudiPage({ initialData }: Props) {
           onClose={() => setShowImportModal(false)}
           onSuccess={handleImportSuccess}
         />
+      )}
+
+      {/* Floating progress feedback saat export batch QR sedang berlangsung */}
+      {isExportingQR && qrExportProgress && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-[#287A50]/30 bg-white px-4 py-3 shadow-xl shadow-black/10">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#E6F2EA] text-[#287A50]">
+            <svg
+              className="h-4 w-4 animate-spin text-[#287A50]"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-[#202824]">
+              Mengunduh QR Code Batch...
+            </p>
+            <p className="text-[10px] text-[#78827C]">
+              {qrExportProgress.current} dari {qrExportProgress.total} QR diproses ({Math.round((qrExportProgress.current / Math.max(qrExportProgress.total, 1)) * 100)}%)
+            </p>
+          </div>
+        </div>
       )}
     </main>
   );

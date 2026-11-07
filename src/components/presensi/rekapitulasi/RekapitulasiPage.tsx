@@ -20,6 +20,7 @@ import RekapitulasiTable from "./RekapitulasiTable";
 import RekapitulasiExportModal, {
   type ExportFilters,
 } from "./RekapitulasiExportModal";
+import { PageHeader, Button } from "../../common";
 
 function getMonthValue(tanggal: string) {
   return tanggal.slice(0, 7);
@@ -365,52 +366,40 @@ export default function RekapitulasiPage({ adminDesa }: Props) {
   }
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
-      <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col">
-        <div className="shrink-0">
-          <div className="mb-6 flex items-center justify-between gap-3 sm:items-end">
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#287A50]">
-                Presensi
-              </p>
-
-              <div className="mt-1">
-                <h1 className="text-lg font-bold tracking-tight text-[#202824] sm:text-xl">
-                  Rekapitulasi Presensi
-                </h1>
-
-                <p className="mt-1 max-w-xs text-xs text-[#78827C] sm:max-w-none">
-                  Lihat riwayat kehadiran Generus pada setiap kegiatan.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={openExportModal}
-              aria-label="Ekspor Excel"
-              title="Ekspor Excel"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#287A50] text-white shadow-xs transition hover:bg-[#206440] focus:outline-none focus:ring-2 focus:ring-[#287A50] focus:ring-offset-2 sm:h-9 sm:w-auto sm:gap-2 sm:px-4"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.8}
-                className="h-4 w-4"
-                aria-hidden="true"
+    <main className="min-h-screen bg-[#F5F7F5]">
+      <div className="mx-auto w-full px-4 py-6 sm:px-6 md:px-7 lg:px-8">
+        <div className="shrink-0 pb-5">
+          <PageHeader
+            eyebrow="Presensi"
+            title="Rekapitulasi Presensi"
+            description="Lihat riwayat kehadiran Jamaah pada setiap kegiatan."
+            actions={
+              <Button
+                variant="primary"
+                onClick={openExportModal}
+                aria-label="Ekspor Excel"
+                title="Ekspor Excel"
+                leftIcon={
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.8}
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"
+                    />
+                  </svg>
+                }
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"
-                />
-              </svg>
-              <span className="hidden text-xs font-semibold sm:inline">
-                Ekspor Excel
-              </span>
-            </button>
-          </div>
+                <span className="hidden sm:inline">Ekspor Excel</span>
+              </Button>
+            }
+          />
 
           {error && (
             <div

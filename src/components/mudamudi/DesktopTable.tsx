@@ -112,7 +112,7 @@ export default function DesktopTable({
 
   return (
     <section
-      aria-label="Daftar Generus"
+      aria-label="Daftar Jamaah"
       className="hidden overflow-hidden rounded-2xl border border-[#E5EAE6] bg-white shadow-xs md:block"
     >
       <div className="flex items-center justify-between gap-3 border-b border-[#E5EAE6] px-4 py-3">
@@ -148,17 +148,17 @@ export default function DesktopTable({
 
           <div className="min-w-0">
             <h2 className="text-[12px] font-bold tracking-tight text-[#202824]">
-              Daftar Generus
+              Daftar Jamaah
             </h2>
             <p className="mt-0.5 text-[10px] leading-3.5 text-[#78827C]">
-              Data anggota Generus dan informasi presensi
+              Data anggota Jamaah dan informasi presensi
             </p>
           </div>
         </div>
 
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#E5EAE6] bg-[#F5F7F5] px-2.5 py-1 text-[10px] font-medium text-[#202824]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#287A50]" />
-          {data.length} Generus
+          {data.length} Jamaah
         </span>
       </div>
 

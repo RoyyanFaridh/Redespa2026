@@ -147,8 +147,8 @@ export async function exportRekapitulasiExcel({
 }: ExportOptions): Promise<void> {
   const workbook = new ExcelJS.Workbook();
 
-  workbook.creator = "GENARA";
-  workbook.subject = "Rekapitulasi Presensi Generus";
+  workbook.creator = "REDESPA";
+  workbook.subject = "Rekapitulasi Presensi Jamaah";
   workbook.title = "Rekapitulasi Presensi";
   workbook.created = new Date();
 
@@ -208,7 +208,7 @@ export async function exportRekapitulasiExcel({
 
   ringkasan.mergeCells("A1:B1");
 
-  ringkasan.getCell("A1").value = "REKAPITULASI PRESENSI GENARA";
+  ringkasan.getCell("A1").value = "REKAPITULASI PRESENSI REDESPA";
 
   ringkasan.getCell("A1").font = {
     bold: true,
@@ -279,7 +279,7 @@ export async function exportRekapitulasiExcel({
 
   const columns: Partial<ExcelJS.Column>[] = [
     { header: "No.", key: "no", width: 7 },
-    { header: "Nama Generus", key: "nama", width: 30 },
+    { header: "Nama Jamaah", key: "nama", width: 30 },
     { header: "Kelompok", key: "kelompok", width: 18 },
     { header: "Kelas", key: "kelas", width: 18 },
   ];

@@ -7,6 +7,7 @@ import { toPng } from "html-to-image";
 
 import { Mudamudi } from "../../backend/mudamudi/types";
 import { toTitleCase } from "../../backend/mudamudi/format";
+import { Button } from "../common";
 
 type Props = {
   data: Mudamudi;
@@ -40,7 +41,7 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
         data.nama
           ?.trim()
           .replace(/[^a-zA-Z0-9\s-_]/g, "")
-          .replace(/\s+/g, "-") || "Generus";
+          .replace(/\s+/g, "-") || "Jamaah";
 
       const link = document.createElement("a");
 
@@ -82,7 +83,7 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
 
               <div className="min-w-0">
                 <h2 className="text-[11px] font-semibold tracking-tight text-[#202824]">
-                  Kartu QR Presensi Generus
+                  Kartu QR Presensi Jamaah
                 </h2>
 
                 <p className="text-[9px] leading-3.5 text-[#78827C]">
@@ -185,7 +186,7 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
           <div className="min-w-0">
             <p className="text-[9px] text-[#78827C]">
               QR personal{" "}
-              <span className="font-medium text-[#202824]">Generus</span>
+              <span className="font-medium text-[#202824]">Jamaah</span>
             </p>
 
             <p className="mt-0.5 text-[8px] text-[#9AA39D]">
@@ -194,78 +195,50 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={onClose}
-              className="inline-flex h-8 items-center justify-center rounded-xl border border-[#E5EAE6] bg-white px-3 text-[10px] font-medium text-[#202824] transition hover:bg-[#F0F4F1]"
             >
               Tutup
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="sm"
               onClick={handleDownload}
-              disabled={isDownloading}
-              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-xl bg-[#287A50] px-3.5 text-[10px] font-semibold text-white transition hover:bg-[#206440] active:bg-[#206440] disabled:cursor-not-allowed disabled:opacity-60"
+              isLoading={isDownloading}
+              leftIcon={
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  className="h-3.5 w-3.5"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 3v12"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m7 10 5 5 5-5"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 21h14"
+                  />
+                </svg>
+              }
             >
-              {isDownloading ? (
-                <>
-                  <svg
-                    className="h-3.5 w-3.5 animate-spin"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="9"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="opacity-25"
-                    />
-
-                    <path
-                      d="M21 12a9 9 0 0 0-9-9"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  Menyiapkan...
-                </>
-              ) : (
-                <>
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    className="h-3.5 w-3.5"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 3v12"
-                    />
-
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="m7 10 5 5 5-5"
-                    />
-
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M5 21h14"
-                    />
-                  </svg>
-                  Download PNG
-                </>
-              )}
-            </button>
+              Download PNG
+            </Button>
           </div>
         </div>
       </div>

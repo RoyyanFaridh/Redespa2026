@@ -4,7 +4,7 @@
   --background: #F5F7F5;
   --foreground: #202824;
 
-  /* GENARA Charcoal & Green Palette Tokens */
+  /* REDESPA Charcoal & Green Palette Tokens */
   --charcoal: #181C1B;
   --dark-surface: #262D29;
   --primary-green: #287A50;
@@ -16,6 +16,15 @@
   --primary-text: #202824;
   --secondary-text: #78827C;
   --border-green: #E5EAE6;
+  /* Semantic Status Tokens */
+  --status-success: #287A50;
+  --status-success-bg: #E6F2EA;
+  --status-warning: #D97706;
+  --status-warning-bg: #FEF3C7;
+  --status-danger: #DC2626;
+  --status-danger-bg: #FEF2F2;
+  --status-info: #2563EB;
+  --status-info-bg: #EFF6FF;
 }
 
 @theme {
@@ -30,6 +39,14 @@
   --color-primary-text: #202824;
   --color-secondary-text: #78827C;
   --color-border-green: #E5EAE6;
+  --color-status-success: #287A50;
+  --color-status-success-bg: #E6F2EA;
+  --color-status-warning: #D97706;
+  --color-status-warning-bg: #FEF3C7;
+  --color-status-danger: #DC2626;
+  --color-status-danger-bg: #FEF2F2;
+  --color-status-info: #2563EB;
+  --color-status-info-bg: #EFF6FF;
   --font-sans: var(--font-poppins), system-ui, -apple-system, sans-serif;
 }
 

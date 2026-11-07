@@ -220,7 +220,7 @@ export default function ProfileForm({ user, profile }: Props) {
                 </h2>
 
                 <p className="mt-0.5 text-[9px] leading-3.5 text-gray-400">
-                  Informasi akun yang terdaftar pada sistem GENARA.
+                  Informasi akun yang terdaftar pada sistem REDESPA.
                 </p>
               </div>
 
@@ -248,7 +248,7 @@ export default function ProfileForm({ user, profile }: Props) {
 
             <AccountRow label="Email" value={user.email} />
 
-            <AccountRow label="Wilayah" value={profile.desa ?? "Daerah"} />
+            <AccountRow label="Wilayah" value={profile.desa ?? "Desa Pandak"} />
           </div>
 
           <div className="border-t border-gray-100 bg-gray-50/70 px-5 py-4">

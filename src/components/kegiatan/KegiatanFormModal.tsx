@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useRef, useState } from "react";
@@ -6,12 +5,23 @@ import { useMemo, useRef, useState } from "react";
 import type { Kegiatan, FieldErrors } from "../../backend/kegiatan/types";
 import { validateClient } from "../../backend/kegiatan/validation";
 import {
-  JENIS_KELAMIN_OPTIONS,
   KELAS_OPTIONS,
   KELOMPOK_OPTIONS,
 } from "../../backend/mudamudi/constants";
 
-import ModalWrapper from "../mudamudi/ModalWrapper";
+import { ModalWrapper } from "../common/ModalWrapper";
+import { Button } from "../common/Button";
+import { IconButton } from "../common/IconButton";
+
+import {
+  type ActivityForm,
+  type GroupMode,
+  JEMAAH_CLASS,
+} from "./form/types";
+import StepIndicator from "./form/StepIndicator";
+import StepInformasi from "./form/StepInformasi";
+import StepSasaran from "./form/StepSasaran";
+import StepKonfirmasi from "./form/StepKonfirmasi";
 
 type Props = {
   mode: "add" | "edit";
@@ -23,44 +33,7 @@ type Props = {
   onClose: () => void;
 };
 
-type GroupMode = "all" | "specific";
-
-type ActivityForm = {
-  nama: string;
-  tanggal_mulai: string;
-  tanggal_selesai: string;
-  jam_mulai: string;
-  jam_selesai: string;
-  lokasi: string;
-};
-
-const JEMAAH_CLASS = "Jamaah";
-
-const styles = {
-  sectionTitle: "text-[11px] font-semibold tracking-tight text-[#202824]",
-  description: "text-[9px] leading-4 text-[#78827C]",
-  label: "mb-1.5 block text-[9px] font-semibold leading-4 text-[#202824]",
-  input:
-    "h-9 w-full min-w-0 rounded-xl border border-[#E5EAE6] bg-white px-3 text-[9px] text-[#202824] outline-none transition placeholder:text-[#9AA39D] focus:border-[#287A50] focus:ring-2 focus:ring-[#65B98A]/20 disabled:cursor-not-allowed disabled:bg-[#F5F7F5]",
-  option:
-    "flex min-h-8 min-w-0 cursor-pointer items-center gap-2 rounded-xl border px-2.5 py-1.5 transition",
-  optionText: "min-w-0 wrap-break-word text-[9px] leading-4 text-[#202824]",
-  subheading: "text-[9px] font-semibold text-[#202824]",
-  action:
-    "shrink-0 text-[9px] font-semibold text-[#287A50] transition hover:text-[#206440] disabled:cursor-not-allowed disabled:opacity-50",
-  button:
-    "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[9px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
-};
-
-const STEPS = [
-  { number: 1, title: "Informasi Kegiatan", description: "Informasi dasar" },
-  { number: 2, title: "Sasaran Kegiatan", description: "Kriteria peserta" },
-  { number: 3, title: "Konfirmasi", description: "Periksa kembali" },
-];
-
-function getInitialGroupMode(
-  initialData: Kegiatan | undefined,
-): GroupMode {
+function getInitialGroupMode(initialData: Kegiatan | undefined): GroupMode {
   return initialData?.kelompok == null ? "all" : "specific";
 }
 
@@ -74,34 +47,10 @@ function normalizeKelas(kelas: string[] | null | undefined): string[] {
   return KELAS_OPTIONS.filter((item) => kelas.includes(item));
 }
 
-function normalizeKelompok(
-  kelompok: string[] | null | undefined,
-): string[] {
+function normalizeKelompok(kelompok: string[] | null | undefined): string[] {
   if (!Array.isArray(kelompok)) return [];
 
   return KELOMPOK_OPTIONS.filter((item) => kelompok.includes(item));
-}
-
-function formatDate(value: string): string {
-  if (!value) return "Belum diisi";
-
-  const [year, month, day] = value.split("-");
-
-  if (!year || !month || !day) return value;
-
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
-
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(date);
-}
-
-function formatTime(value: string): string {
-  if (!value) return "Belum diisi";
-
-  return value.slice(0, 5);
 }
 
 export default function KegiatanFormModal({
@@ -170,12 +119,11 @@ export default function KegiatanFormModal({
 
   const jenisKelaminLabel = jenisKelamin || "Semua peserta";
 
-  const selectedKelasForSummary =
-    isJamaahSelected
-      ? [JEMAAH_CLASS]
-      : selectedKelas.length === 0 || allKelasSelected
-        ? [...KELAS_OPTIONS]
-        : KELAS_OPTIONS.filter((kelas) => selectedKelas.includes(kelas));
+  const selectedKelasForSummary = isJamaahSelected
+    ? [JEMAAH_CLASS]
+    : selectedKelas.length === 0 || allKelasSelected
+      ? [...KELAS_OPTIONS]
+      : KELAS_OPTIONS.filter((kelas) => selectedKelas.includes(kelas));
 
   function getValidationErrors(): FieldErrors {
     return validateClient(
@@ -252,10 +200,7 @@ export default function KegiatanFormModal({
   }
 
   function toggleAllKelompok() {
-    setSelectedKelompok(
-      allKelompokSelected ? [] : [...KELOMPOK_OPTIONS],
-    );
-
+    setSelectedKelompok(allKelompokSelected ? [] : [...KELOMPOK_OPTIONS]);
     setStepError("");
   }
 
@@ -311,20 +256,6 @@ export default function KegiatanFormModal({
     return clientErrors[field] || fieldErrors[field];
   }
 
-  function optionClass(checked: boolean) {
-    return `${styles.option} ${checked
-      ? "border-[#287A50] bg-[#E6F2EA]"
-      : "border-[#E5EAE6] bg-white hover:border-[#65B98A]/40 hover:bg-[#F5F7F5]"
-      } ${loading ? "cursor-not-allowed opacity-60" : ""}`;
-  }
-
-  function modeCardClass(checked: boolean) {
-    return `flex min-h-[52px] min-w-0 cursor-pointer items-start gap-2 rounded-xl border p-2.5 text-left transition ${checked
-      ? "border-[#287A50] bg-[#E6F2EA]"
-      : "border-[#E5EAE6] bg-white hover:border-[#65B98A]/40 hover:bg-[#F5F7F5]"
-      } ${loading ? "cursor-not-allowed opacity-60" : ""}`;
-  }
-
   function validateCurrentStep(): boolean {
     setStepError("");
 
@@ -342,9 +273,7 @@ export default function KegiatanFormModal({
       ];
 
       if (activityErrors.some(Boolean)) {
-        setStepError(
-          "Periksa kembali informasi kegiatan yang bertanda merah.",
-        );
+        setStepError("Periksa kembali informasi kegiatan yang bertanda merah.");
         return false;
       }
 
@@ -352,10 +281,7 @@ export default function KegiatanFormModal({
     }
 
     if (currentStep === 2) {
-      if (
-        groupMode === "specific" &&
-        effectiveKelompok.length === 0
-      ) {
+      if (groupMode === "specific" && effectiveKelompok.length === 0) {
         setStepError(
           "Pilih setidaknya satu kelompok atau pilih semua kelompok.",
         );
@@ -412,9 +338,7 @@ export default function KegiatanFormModal({
     });
   }
 
-  async function handleFormSubmit(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
+  async function handleFormSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (
@@ -436,10 +360,7 @@ export default function KegiatanFormModal({
       return;
     }
 
-    if (
-      groupMode === "specific" &&
-      effectiveKelompok.length === 0
-    ) {
+    if (groupMode === "specific" && effectiveKelompok.length === 0) {
       setStepError(
         "Pilih setidaknya satu kelompok atau pilih semua kelompok.",
       );
@@ -468,13 +389,15 @@ export default function KegiatanFormModal({
         noValidate
         className="flex max-h-[90dvh] min-h-0 w-full flex-col overflow-hidden bg-white"
       >
+        {/* Header */}
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#E5EAE6] px-4 py-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-2.5">
             <div
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${mode === "add"
-                ? "bg-[#E6F2EA] text-[#287A50]"
-                : "bg-blue-50 text-blue-700"
-                }`}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+                mode === "add"
+                  ? "bg-[#E6F2EA] text-[#287A50]"
+                  : "bg-blue-50 text-blue-700"
+              }`}
             >
               {mode === "add" ? (
                 <svg
@@ -519,12 +442,12 @@ export default function KegiatanFormModal({
             </div>
           </div>
 
-          <button
-            type="button"
+          <IconButton
+            label="Tutup formulir"
+            variant="ghost"
+            size="md"
             onClick={onClose}
             disabled={loading}
-            aria-label="Tutup formulir"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[#78827C] transition hover:bg-[#F0F4F1] hover:text-[#202824] disabled:opacity-50"
           >
             <svg
               viewBox="0 0 24 24"
@@ -540,783 +463,70 @@ export default function KegiatanFormModal({
                 d="m6 6 12 12M18 6 6 18"
               />
             </svg>
-          </button>
+          </IconButton>
         </header>
 
-        <div className="shrink-0 border-b border-[#E5EAE6] px-4 py-3 sm:px-5">
-          <div className="grid grid-cols-3 gap-2">
-            {STEPS.map((step) => {
-              const active = currentStep === step.number;
-              const completed = currentStep > step.number;
-              const canVisit = step.number < currentStep;
+        {/* Step Indicator */}
+        <StepIndicator
+          currentStep={currentStep}
+          loading={loading}
+          onGoToStep={goToStep}
+        />
 
-              return (
-                <button
-                  key={step.number}
-                  type="button"
-                  onClick={() => {
-                    if (canVisit) goToStep(step.number);
-                  }}
-                  disabled={
-                    loading ||
-                    submitLockRef.current ||
-                    navigationLockRef.current ||
-                    !canVisit
-                  }
-                  aria-current={active ? "step" : undefined}
-                  className="min-w-0 text-left disabled:cursor-default"
-                >
-                  <div
-                    className={`mb-2 h-1 rounded-full transition ${completed || active
-                      ? "bg-[#287A50]"
-                      : "bg-[#E5EAE6]"
-                      }`}
-                  />
-
-                  <div className="flex min-w-0 items-start gap-1.5">
-                    <span
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8px] font-semibold ${active || completed
-                        ? "bg-[#287A50] text-white"
-                        : "bg-[#F5F7F5] text-[#78827C]"
-                        }`}
-                    >
-                      {completed ? (
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          className="h-3 w-3"
-                          aria-hidden="true"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="m5 12 4 4L19 6"
-                          />
-                        </svg>
-                      ) : (
-                        step.number
-                      )}
-                    </span>
-
-                    <span className="min-w-0">
-                      <span
-                        className={`block wrap-break-word text-[9px] font-semibold leading-4 ${active ? "text-[#287A50]" : "text-[#78827C]"
-                          }`}
-                      >
-                        {step.title}
-                      </span>
-                      <span className="mt-0.5 hidden text-[8px] leading-3.5 text-[#9AA39D] sm:block">
-                        {step.description}
-                      </span>
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
+        {/* Step Content */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4">
-          <section hidden={currentStep !== 1} className="space-y-3">
-            <div className="rounded-xl border border-[#E5EAE6] bg-white p-3.5 shadow-xs sm:p-4">
-              <div className="mb-3 flex items-center gap-2.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#E6F2EA] text-[#287A50]">
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-4 w-4"
-                  >
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M12 11v5" />
-                    <path d="M12 8h.01" />
-                  </svg>
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-[11px] font-bold leading-4 text-[#202824]">
-                    Informasi Utama
-                  </h3>
-                  <p className="text-[8px] leading-4 text-[#78827C]">
-                    Tentukan nama yang menggambarkan kegiatan.
-                  </p>
-                </div>
-              </div>
+          {currentStep === 1 && (
+            <StepInformasi
+              activity={activity}
+              loading={loading}
+              onUpdateActivity={updateActivity}
+              getFieldError={getFieldError}
+              renderError={renderError}
+            />
+          )}
 
-              <div>
-                <label htmlFor="nama" className={styles.label}>
-                  Nama kegiatan <span className="text-red-600">*</span>
-                </label>
-                <input
-                  id="nama"
-                  name="nama"
-                  type="text"
-                  required
-                  maxLength={150}
-                  placeholder="Contoh: Pengajian Rutin"
-                  value={activity.nama}
-                  onChange={(event) =>
-                    updateActivity("nama", event.target.value)
-                  }
-                  disabled={loading}
-                  aria-invalid={Boolean(getFieldError("nama"))}
-                  aria-describedby={
-                    getFieldError("nama") ? "nama-error" : undefined
-                  }
-                  className={styles.input}
-                />
-                <div id="nama-error">
-                  {renderError(getFieldError("nama"))}
-                </div>
-              </div>
-            </div>
+          {currentStep === 2 && (
+            <StepSasaran
+              groupMode={groupMode}
+              effectiveKelompok={effectiveKelompok}
+              allKelompokSelected={allKelompokSelected}
+              selectedKelas={selectedKelas}
+              allKelasSelected={allKelasSelected}
+              isJamaahSelected={isJamaahSelected}
+              kelasLabel={kelasLabel}
+              jenisKelamin={jenisKelamin}
+              jenisKelaminLabel={jenisKelaminLabel}
+              loading={loading}
+              onChangeGroupMode={changeGroupMode}
+              onToggleKelompok={toggleKelompok}
+              onToggleAllKelompok={toggleAllKelompok}
+              onToggleKelas={toggleKelas}
+              onToggleAllKelas={toggleAllKelas}
+              onSetJenisKelamin={(opt) => {
+                setJenisKelamin(opt);
+                setStepError("");
+              }}
+              kelompokError={clientErrors.kelompok || fieldErrors.kelompok}
+              kelasError={clientErrors.kelas || fieldErrors.kelas}
+              jenisKelaminError={
+                clientErrors.jenis_kelamin || fieldErrors.jenis_kelamin
+              }
+              renderError={renderError}
+            />
+          )}
 
-            <div className="rounded-xl border border-[#E5EAE6] bg-white p-3.5 shadow-xs sm:p-4">
-              <div className="mb-3 flex items-center gap-2.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#E6F2EA] text-[#287A50]">
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-4 w-4"
-                  >
-                    <rect x="3.5" y="5" width="17" height="15" rx="2" />
-                    <path d="M7.5 3v4M16.5 3v4M3.5 9h17" />
-                  </svg>
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-[11px] font-bold leading-4 text-[#202824]">
-                    Jadwal Kegiatan
-                  </h3>
-                  <p className="text-[8px] leading-4 text-[#78827C]">
-                    Atur rentang tanggal dan waktu pelaksanaan.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-x-2.5 gap-y-3 sm:gap-x-3">
-                <div className="min-w-0">
-                  <label htmlFor="tanggal_mulai" className={styles.label}>
-                    Tanggal mulai <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    id="tanggal_mulai"
-                    name="tanggal_mulai"
-                    type="date"
-                    required
-                    value={activity.tanggal_mulai}
-                    onChange={(event) =>
-                      updateActivity("tanggal_mulai", event.target.value)
-                    }
-                    disabled={loading}
-                    aria-invalid={Boolean(
-                      getFieldError("tanggal_mulai"),
-                    )}
-                    className={styles.input}
-                  />
-                  {renderError(getFieldError("tanggal_mulai"))}
-                </div>
-
-                <div className="min-w-0">
-                  <label htmlFor="tanggal_selesai" className={styles.label}>
-                    Tanggal selesai <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    id="tanggal_selesai"
-                    name="tanggal_selesai"
-                    type="date"
-                    required
-                    min={activity.tanggal_mulai || undefined}
-                    value={activity.tanggal_selesai}
-                    onChange={(event) =>
-                      updateActivity("tanggal_selesai", event.target.value)
-                    }
-                    disabled={loading}
-                    aria-invalid={Boolean(
-                      getFieldError("tanggal_selesai"),
-                    )}
-                    className={styles.input}
-                  />
-                  {renderError(getFieldError("tanggal_selesai"))}
-                </div>
-
-                <div className="min-w-0">
-                  <label htmlFor="jam_mulai" className={styles.label}>
-                    Jam mulai <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    id="jam_mulai"
-                    name="jam_mulai"
-                    type="time"
-                    required
-                    value={activity.jam_mulai}
-                    onChange={(event) =>
-                      updateActivity("jam_mulai", event.target.value)
-                    }
-                    disabled={loading}
-                    aria-invalid={Boolean(getFieldError("jam_mulai"))}
-                    className={styles.input}
-                  />
-                  {renderError(getFieldError("jam_mulai"))}
-                </div>
-
-                <div className="min-w-0">
-                  <label htmlFor="jam_selesai" className={styles.label}>
-                    Jam selesai <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    id="jam_selesai"
-                    name="jam_selesai"
-                    type="time"
-                    required
-                    value={activity.jam_selesai}
-                    onChange={(event) =>
-                      updateActivity("jam_selesai", event.target.value)
-                    }
-                    disabled={loading}
-                    aria-invalid={Boolean(getFieldError("jam_selesai"))}
-                    className={styles.input}
-                  />
-                  {renderError(getFieldError("jam_selesai"))}
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-[#E5EAE6] bg-white p-3.5 shadow-xs sm:p-4">
-              <div className="mb-3 flex items-center gap-2.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#E6F2EA] text-[#287A50]">
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-4 w-4"
-                  >
-                    <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
-                    <circle cx="12" cy="10" r="2.5" />
-                  </svg>
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-[11px] font-bold leading-4 text-[#202824]">
-                    Lokasi Pelaksanaan
-                  </h3>
-                  <p className="text-[8px] leading-4 text-[#78827C]">
-                    Masukkan tempat kegiatan akan berlangsung.
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="lokasi" className={styles.label}>
-                  Lokasi <span className="text-red-600">*</span>
-                </label>
-                <input
-                  id="lokasi"
-                  name="lokasi"
-                  type="text"
-                  required
-                  maxLength={200}
-                  placeholder="Contoh: Balai Pertemuan"
-                  value={activity.lokasi}
-                  onChange={(event) =>
-                    updateActivity("lokasi", event.target.value)
-                  }
-                  disabled={loading}
-                  aria-invalid={Boolean(getFieldError("lokasi"))}
-                  className={styles.input}
-                />
-                {renderError(getFieldError("lokasi"))}
-              </div>
-            </div>
-          </section>
-
-          <section hidden={currentStep !== 2} className="space-y-3">
-            <div className="rounded-xl border border-[#E5EAE6] bg-white p-3.5 shadow-xs sm:p-4">
-              <div className="mb-3 flex items-center gap-2.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#E6F2EA] text-[#287A50]">
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-4 w-4"
-                  >
-                    <path d="M12 21s-7-4.5-7-11a7 7 0 1 1 14 0c0 6.5-7 11-7 11Z" />
-                    <circle cx="12" cy="10" r="2.5" />
-                  </svg>
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-[11px] font-bold leading-4 text-[#202824]">
-                    Sasaran Kegiatan
-                  </h3>
-                  <p className="text-[8px] leading-4 text-[#78827C]">
-                    Tentukan kelompok dan kriteria peserta kegiatan.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="rounded-xl border border-[#E5EAE6] bg-white p-3">
-                  <div className="mb-2.5">
-                    <h4 className={styles.subheading}>Kelompok</h4>
-                    <p className={`mt-1 ${styles.description}`}>
-                      Pilih semua kelompok atau tentukan kelompok tertentu.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {(
-                      [
-                        {
-                          value: "all",
-                          title: "Semua kelompok",
-                          description: "Berlaku untuk seluruh kelompok.",
-                        },
-                        {
-                          value: "specific",
-                          title: "Kelompok tertentu",
-                          description: "Pilih kelompok sesuai sasaran.",
-                        },
-                      ] as const
-                    ).map((item) => {
-                      const checked = groupMode === item.value;
-
-                      return (
-                        <button
-                          key={item.value}
-                          type="button"
-                          onClick={() => changeGroupMode(item.value)}
-                          disabled={loading}
-                          aria-pressed={checked}
-                          className={modeCardClass(checked)}
-                        >
-                          <span
-                            className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${checked
-                              ? "border-[#287A50]"
-                              : "border-[#E5EAE6]"
-                              }`}
-                          >
-                            {checked && (
-                              <span className="h-1.5 w-1.5 rounded-full bg-[#287A50]" />
-                            )}
-                          </span>
-
-                          <span className="min-w-0">
-                            <span className="block wrap-break-word text-[9px] font-semibold text-[#202824]">
-                              {item.title}
-                            </span>
-                            <span className="mt-1 block text-[9px] leading-4 text-[#78827C]">
-                              {item.description}
-                            </span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {groupMode === "specific" && (
-                    <div className="mt-3 rounded-xl border border-[#E5EAE6] p-3">
-                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-[9px] font-semibold text-[#202824]">
-                            Pilih kelompok
-                          </p>
-                          <p className="mt-0.5 text-[9px] text-[#78827C]">
-                            {effectiveKelompok.length} dari{" "}
-                            {KELOMPOK_OPTIONS.length} dipilih
-                          </p>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={toggleAllKelompok}
-                          disabled={loading}
-                          className={styles.action}
-                        >
-                          {allKelompokSelected
-                            ? "Hapus semua"
-                            : "Pilih semua"}
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        {KELOMPOK_OPTIONS.map((kelompok) => {
-                          const checked =
-                            effectiveKelompok.includes(kelompok);
-
-                          return (
-                            <label
-                              key={kelompok}
-                              className={optionClass(checked)}
-                            >
-                              <input
-                                type="checkbox"
-                                name="kelompok"
-                                value={kelompok}
-                                checked={checked}
-                                onChange={() => toggleKelompok(kelompok)}
-                                disabled={loading}
-                                className="h-3.5 w-3.5 shrink-0 accent-[#287A50]"
-                              />
-                              <span className={styles.optionText}>
-                                {kelompok}
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {groupMode === "all" && (
-                    <p className="mt-2.5 rounded-xl bg-[#F5F7F5] px-3 py-2 text-[9px] leading-4 text-[#78827C]">
-                      Kegiatan berlaku untuk seluruh kelompok yang terdaftar.
-                    </p>
-                  )}
-
-                  {renderError(clientErrors.kelompok || fieldErrors.kelompok)}
-                </div>
-
-                <div className="rounded-xl border border-[#E5EAE6] bg-white p-3">
-                  <div className="mb-2.5 flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <h4 className={styles.subheading}>Kelas peserta</h4>
-                      <p className={`mt-1 ${styles.description}`}>
-                        Pilih Jamaah untuk menyertakan semua peserta. Jika memilih kelas khusus, peserta harus memiliki salah satu kelas tersebut.
-                      </p>
-                    </div>
-
-                    <span className="shrink-0 rounded-md bg-[#F5F7F5] px-2 py-1 text-[8px] font-medium text-[#78827C]">
-                      {kelasLabel}
-                    </span>
-                  </div>
-
-                  <div className="rounded-xl border border-[#E5EAE6] bg-white p-3 shadow-xs sm:p-3.5">
-                    <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-[9px] font-medium text-[#202824]">
-                        Pilih kelas
-                      </p>
-                      <button
-                        type="button"
-                        onClick={toggleAllKelas}
-                        disabled={loading}
-                        className={styles.action}
-                      >
-                        {allKelasSelected ? "Hapus semua" : "Pilih semua"}
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      {KELAS_OPTIONS.map((kelas) => {
-                        const checked = selectedKelas.includes(kelas);
-
-                        return (
-                          <label key={kelas} className={optionClass(checked)}>
-                            <input
-                              type="checkbox"
-                              name="kelas"
-                              value={kelas}
-                              checked={checked}
-                              onChange={() => toggleKelas(kelas)}
-                              disabled={loading}
-                              className="h-3.5 w-3.5 shrink-0 accent-[#287A50]"
-                            />
-                            <span className={styles.optionText}>{kelas}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {isJamaahSelected && (
-                    <p className="mt-2.5 rounded-xl bg-[#E6F2EA] px-3 py-2 text-[9px] leading-4 text-[#206440]">
-                      Sasaran Jamaah mencakup seluruh peserta. Pilihan kelas khusus lainnya otomatis dinonaktifkan.
-                    </p>
-                  )}
-
-                  {renderError(clientErrors.kelas || fieldErrors.kelas)}
-                </div>
-
-                <div className="rounded-xl border border-[#E5EAE6] bg-white p-3">
-                  <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <h4 className={styles.subheading}>Jenis kelamin</h4>
-                      <p className={`mt-1 ${styles.description}`}>
-                        Tentukan peserta berdasarkan jenis kelamin.
-                      </p>
-                    </div>
-
-                    <span className="shrink-0 text-[9px] text-[#78827C]">
-                      {jenisKelaminLabel}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-                    {(["", ...JENIS_KELAMIN_OPTIONS] as string[]).map(
-                      (option) => {
-                        const checked = jenisKelamin === option;
-
-                        return (
-                          <label
-                            key={option || "semua"}
-                            className={`flex min-h-9 min-w-0 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2 transition ${checked
-                              ? "border-[#287A50] bg-[#E6F2EA] text-[#206440]"
-                              : "border-[#E5EAE6] text-[#202824] hover:border-[#65B98A]/40 hover:bg-[#F5F7F5]"
-                              } ${loading ? "cursor-not-allowed opacity-60" : ""}`}
-                          >
-                            <input
-                              type="radio"
-                              name="jenis_kelamin"
-                              value={option}
-                              checked={checked}
-                              onChange={() => {
-                                setJenisKelamin(option);
-                                setStepError("");
-                              }}
-                              disabled={loading}
-                              className="h-3.5 w-3.5 shrink-0 accent-[#287A50]"
-                            />
-                            <span className="wrap-break-word text-center text-[9px] font-medium">
-                              {option || "Semua"}
-                            </span>
-                          </label>
-                        );
-                      },
-                    )}
-                  </div>
-
-                  {renderError(
-                    clientErrors.jenis_kelamin ||
-                    fieldErrors.jenis_kelamin,
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section hidden={currentStep !== 3} className="space-y-3">
-            <div className="rounded-xl border border-[#E5EAE6] bg-white p-3.5 shadow-xs sm:p-4">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#E6F2EA] text-[#287A50]">
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-4 w-4"
-                  >
-                    <path d="m9 12 2 2 4-4" />
-                    <circle cx="12" cy="12" r="9" />
-                  </svg>
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-[11px] font-bold leading-4 text-[#202824]">
-                    Ringkasan & Konfirmasi
-                  </h3>
-                  <p className="text-[8px] leading-4 text-[#78827C]">
-                    Periksa kembali informasi dan sasaran sebelum menyimpan.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2.5">
-              <div className="rounded-xl border border-[#E5EAE6] bg-white p-3 shadow-xs sm:p-3.5">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h4 className={styles.subheading}>Informasi Kegiatan</h4>
-                  <button
-                    type="button"
-                    onClick={() => goToStep(1)}
-                    disabled={loading}
-                    className={styles.action}
-                  >
-                    Ubah
-                  </button>
-                </div>
-
-                <div className="space-y-2.5">
-                  <div>
-                    <p className="text-[9px] text-[#78827C]">
-                      Nama kegiatan
-                    </p>
-                    <p className="mt-0.5 wrap-break-word text-[9px] font-semibold leading-4 text-[#202824]">
-                      {activity.nama.trim() || "Belum diisi"}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[9px] text-[#78827C]">
-                        Tanggal mulai
-                      </p>
-                      <p className="mt-0.5 wrap-break-word text-[9px] font-medium leading-4 text-[#202824]">
-                        {formatDate(activity.tanggal_mulai)}
-                      </p>
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-[9px] text-[#78827C]">
-                        Tanggal selesai
-                      </p>
-                      <p className="mt-0.5 wrap-break-word text-[9px] font-medium leading-4 text-[#202824]">
-                        {formatDate(activity.tanggal_selesai)}
-                      </p>
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-[9px] text-[#78827C]">Jam mulai</p>
-                      <p className="mt-0.5 text-[9px] font-medium text-[#202824]">
-                        {formatTime(activity.jam_mulai)}
-                      </p>
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-[9px] text-[#78827C]">
-                        Jam selesai
-                      </p>
-                      <p className="mt-0.5 text-[9px] font-medium text-[#202824]">
-                        {formatTime(activity.jam_selesai)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-[#E5EAE6] pt-2.5">
-                    <p className="text-[9px] text-[#78827C]">Lokasi</p>
-                    <p className="mt-0.5 wrap-break-word text-[9px] font-medium leading-4 text-[#202824]">
-                      {activity.lokasi.trim() || "Belum diisi"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-[#E5EAE6] bg-white p-3 shadow-xs sm:p-3.5">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h4 className={styles.subheading}>Sasaran Peserta</h4>
-                  <button
-                    type="button"
-                    onClick={() => goToStep(2)}
-                    disabled={loading}
-                    className={styles.action}
-                  >
-                    Ubah
-                  </button>
-                </div>
-
-                <div className="space-y-2.5">
-                  <div>
-                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-[9px] font-medium text-[#202824]">
-                        Kelompok
-                      </p>
-                      {groupMode === "specific" && (
-                        <span className="text-[9px] text-[#78827C]">
-                          {effectiveKelompok.length} dipilih
-                        </span>
-                      )}
-                    </div>
-
-                    {groupMode === "all" ? (
-                      <p className="text-[9px] leading-4 text-[#202824]">
-                        Semua kelompok
-                      </p>
-                    ) : effectiveKelompok.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {effectiveKelompok.map((kelompok) => (
-                          <span
-                            key={kelompok}
-                            className="max-w-full wrap-break-word rounded-md bg-[#E6F2EA] px-2 py-1 text-[9px] font-medium text-[#206440]"
-                          >
-                            {kelompok}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-[9px] text-red-600">
-                        Belum ada kelompok yang dipilih.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="border-t border-[#E5EAE6] pt-3">
-                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-[9px] font-medium text-[#202824]">
-                        Kelas peserta
-                      </p>
-                      <span className="text-[9px] text-[#78827C]">
-                        {kelasLabel}
-                      </span>
-                    </div>
-
-                    {selectedKelasForSummary.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedKelasForSummary.map((kelas) => (
-                          <span
-                            key={kelas}
-                            className="max-w-full wrap-break-word rounded-md bg-[#F5F7F5] px-2 py-1 text-[9px] font-medium text-[#202824]"
-                          >
-                            {kelas}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-[9px] text-[#78827C]">
-                        Tidak ada kelas yang tersedia.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="border-t border-[#E5EAE6] pt-3">
-                    <p className="text-[9px] font-medium text-[#202824]">
-                      Jenis kelamin
-                    </p>
-                    <p className="mt-0.5 text-[9px] text-[#202824]">
-                      {jenisKelaminLabel}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2 rounded-xl border border-[#65B98A]/30 bg-[#E6F2EA] px-3 py-2.5">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#287A50]"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 9v3m0 4h.01M10.3 3.86 1.82 18.5A2 2 0 0 0 3.55 21h16.9a2 2 0 0 0 1.73-2.5L13.7 3.86a2 2 0 0 0-3.4 0Z"
-                  />
-                </svg>
-
-                <p className="text-[9px] leading-4 text-[#206440]">
-                  Pastikan informasi dan sasaran sudah sesuai. Data hanya
-                  dikirim setelah kamu menekan tombol simpan.
-                </p>
-              </div>
-            </div>
-          </section>
+          {currentStep === 3 && (
+            <StepKonfirmasi
+              activity={activity}
+              groupMode={groupMode}
+              effectiveKelompok={effectiveKelompok}
+              selectedKelasForSummary={selectedKelasForSummary}
+              kelasLabel={kelasLabel}
+              jenisKelaminLabel={jenisKelaminLabel}
+              loading={loading}
+              onGoToStep={goToStep}
+            />
+          )}
 
           {(stepError || error) && (
             <div
@@ -1328,6 +538,7 @@ export default function KegiatanFormModal({
           )}
         </div>
 
+        {/* Footer */}
         <footer className="flex shrink-0 flex-col gap-2.5 border-t border-[#E5EAE6] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <p className="text-[9px] leading-4 text-[#78827C]">
             {currentStep < 3 ? (
@@ -1340,101 +551,87 @@ export default function KegiatanFormModal({
           </p>
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={onClose}
               disabled={loading}
-              className={`${styles.button} w-full border border-[#E5EAE6] bg-white text-[#202824] hover:bg-[#F0F4F1] sm:w-auto`}
+              className="w-full sm:w-auto"
             >
               Batal
-            </button>
+            </Button>
 
             {currentStep > 1 && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => goToStep(currentStep - 1)}
                 disabled={loading || navigationLockRef.current}
-                className={`${styles.button} w-full border border-[#E5EAE6] bg-white text-[#202824] hover:bg-[#F0F4F1] sm:w-auto`}
+                className="w-full sm:w-auto"
+                leftIcon={
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-3.5 w-3.5"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19 12H5m7 7-7-7 7-7"
+                    />
+                  </svg>
+                }
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="h-3.5 w-3.5"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M19 12H5m7 7-7-7 7-7"
-                  />
-                </svg>
                 Kembali
-              </button>
+              </Button>
             )}
 
             {currentStep < 3 ? (
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                size="sm"
                 onClick={handleNext}
                 disabled={loading || navigationLockRef.current}
-                className={`${styles.button} w-full bg-[#287A50] text-white hover:bg-[#206440] sm:w-auto`}
+                className="w-full sm:w-auto"
+                rightIcon={
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-3.5 w-3.5"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 12h14m-7-7 7 7-7 7"
+                    />
+                  </svg>
+                }
               >
                 Lanjut
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="h-3.5 w-3.5"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M5 12h14m-7-7 7 7-7 7"
-                  />
-                </svg>
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 type="submit"
+                variant="primary"
+                size="sm"
+                isLoading={loading}
                 disabled={
                   loading ||
                   submitLockRef.current ||
-                  (groupMode === "specific" &&
-                    effectiveKelompok.length === 0)
+                  (groupMode === "specific" && effectiveKelompok.length === 0)
                 }
-                className={`${styles.button} w-full bg-[#287A50] text-white hover:bg-[#206440] sm:min-w-36 sm:w-auto`}
-              >
-                {loading ? (
-                  <>
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      className="h-3.5 w-3.5 animate-spin"
-                      aria-hidden="true"
-                    >
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="9"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        opacity=".25"
-                      />
-                      <path
-                        d="M21 12a9 9 0 0 0-9-9"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    Menyimpan...
-                  </>
-                ) : (
-                  <>
+                className="w-full sm:min-w-36 sm:w-auto"
+                leftIcon={
+                  !loading && (
                     <svg
                       viewBox="0 0 24 24"
                       fill="none"
@@ -1449,10 +646,11 @@ export default function KegiatanFormModal({
                         d="m5 12 4 4L19 6"
                       />
                     </svg>
-                    {mode === "add" ? "Simpan Kegiatan" : "Simpan Perubahan"}
-                  </>
-                )}
-              </button>
+                  )
+                }
+              >
+                {mode === "add" ? "Simpan Kegiatan" : "Simpan Perubahan"}
+              </Button>
             )}
           </div>
         </footer>

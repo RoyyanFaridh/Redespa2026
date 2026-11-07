@@ -125,7 +125,7 @@ export default function LogoutButton({ onCloseMenu }: Props) {
                   </h2>
 
                   <p className="mt-1 text-[11px] leading-4 text-[#78827C]">
-                    Anda akan keluar dari panel administrasi GENARA.
+                    Anda akan keluar dari panel administrasi REDESPA.
                   </p>
                 </div>
               </div>

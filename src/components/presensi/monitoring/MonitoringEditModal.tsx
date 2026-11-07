@@ -7,6 +7,7 @@ import {
   MonitoringPeserta,
   PresensiStatus,
 } from "../../../backend/presensi/types";
+import { Button } from "../../common";
 
 type Props = {
   peserta: MonitoringPeserta | null;
@@ -328,22 +329,27 @@ export default function MonitoringEditModal({
 
           {/* FOOTER */}
           <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#E5EAE6] bg-[#F5F7F5]/50 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-end">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="md"
               onClick={onClose}
               disabled={loading}
-              className="h-9 w-full rounded-xl border border-[#E5EAE6] bg-white px-4 text-xs font-medium text-[#78827C] transition hover:bg-[#F5F7F5] hover:text-[#202824] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+              className="w-full sm:w-auto"
             >
               Batal
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="submit"
-              disabled={loading || !status}
-              className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-[#287A50] px-5 text-xs font-semibold text-white shadow-xs transition hover:bg-[#206440] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+              variant="primary"
+              size="md"
+              isLoading={loading}
+              disabled={!status}
+              className="w-full sm:w-auto"
             >
-              {loading ? "Menyimpan..." : "Simpan"}
-            </button>
+              Simpan
+            </Button>
           </div>
         </form>
       </div>

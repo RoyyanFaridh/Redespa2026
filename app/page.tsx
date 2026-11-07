@@ -3,9 +3,9 @@ import Link from "next/link";
 const features = [
   {
     number: "01",
-    title: "Kelola Generus",
+    title: "Kelola Jamaah",
     description:
-      "Kelola data Generus secara terpusat berdasarkan desa dan kelompok.",
+      "Kelola data Jamaah secara terpusat berdasarkan desa dan kelompok.",
     icon: (
       <svg
         viewBox="0 0 24 24"
@@ -51,7 +51,7 @@ const features = [
     number: "03",
     title: "Presensi QR",
     description:
-      "Catat kehadiran dengan memindai QR personal Generus melalui perangkat admin.",
+      "Catat kehadiran dengan memindai QR personal Jamaah melalui perangkat admin.",
     icon: (
       <svg
         viewBox="0 0 24 24"
@@ -82,11 +82,11 @@ export default function Home() {
         <header className="flex h-16 items-center justify-between">
           <div>
             <p className="text-sm font-semibold tracking-tight text-teal-700">
-              GENARA
+              REDESPA
             </p>
 
             <p className="text-[10px] text-gray-400">
-              Generus Administrasi dan Presensi
+              Rekap Data Jamaah Desa Pandak
             </p>
           </div>
 
@@ -124,7 +124,7 @@ export default function Home() {
             </p>
 
             <p className="mx-auto mt-3 max-w-md text-xs leading-5 text-gray-500">
-              Kelola data Generus, kegiatan, dan presensi secara terpusat, modern, dan akurat.
+              Kelola data Jamaah, kegiatan, dan presensi secara terpusat, modern, dan akurat.
             </p>
 
             <Link

@@ -8,6 +8,7 @@ import {
   getAvatarColor,
 } from "../../backend/mudamudi/format";
 import ModalWrapper from "./ModalWrapper";
+import { Button } from "../common";
 
 type Props = {
   data: Mudamudi;
@@ -59,7 +60,7 @@ export default function DetailModal({ data, onClose }: Props) {
                 {toTitleCase(data.nama)}
               </h2>
               <p className="mt-0.5 text-[9px] leading-4 text-[#78827C]">
-                Detail Data Generus
+                Detail Data Jamaah
               </p>
             </div>
           </div>
@@ -153,13 +154,14 @@ export default function DetailModal({ data, onClose }: Props) {
         </div>
 
         <footer className="flex shrink-0 items-center justify-end border-t border-[#E5EAE6] bg-[#F5F7F5] px-4 py-3 sm:px-5">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="md"
             onClick={onClose}
-            className="inline-flex min-h-9 items-center justify-center rounded-xl border border-[#E5EAE6] bg-white px-3.5 py-2 text-[9px] font-semibold text-[#202824] transition hover:bg-[#F0F4F1] active:scale-[0.98]"
           >
             Tutup
-          </button>
+          </Button>
         </footer>
       </div>
     </ModalWrapper>

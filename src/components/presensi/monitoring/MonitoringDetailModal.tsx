@@ -4,6 +4,7 @@
 import { MonitoringPeserta } from "../../../backend/presensi/types";
 
 import MonitoringStatusBadge from "./MonitoringStatusBadge";
+import { Button } from "../../common";
 
 type Props = {
   peserta: MonitoringPeserta | null;
@@ -216,13 +217,14 @@ export default function MonitoringDetailModal({ peserta, onClose }: Props) {
 
         {/* FOOTER */}
         <div className="flex shrink-0 justify-end border-t border-[#E5EAE6] bg-[#F5F7F5]/50 px-5 py-3.5">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="md"
             onClick={onClose}
-            className="h-9 rounded-xl border border-[#E5EAE6] bg-white px-4 text-xs font-medium text-[#78827C] transition hover:bg-[#F5F7F5] hover:text-[#202824] active:scale-[0.98]"
           >
             Tutup
-          </button>
+          </Button>
         </div>
       </div>
     </div>
