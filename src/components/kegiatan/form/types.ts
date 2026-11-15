@@ -1,4 +1,5 @@
 export type GroupMode = "all" | "specific";
+export type JenisPeserta = "jamaah" | "mudamudi";
 
 export type ActivityForm = {
   nama: string;
@@ -7,6 +8,7 @@ export type ActivityForm = {
   jam_mulai: string;
   jam_selesai: string;
   lokasi: string;
+  jenis_peserta: JenisPeserta | "";
 };
 
 export const JEMAAH_CLASS = "Jamaah";

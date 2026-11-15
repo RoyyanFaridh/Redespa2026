@@ -28,7 +28,7 @@ const menuItems = [
     ),
   },
   {
-    label: "Jamaah",
+    label: "Muda-Mudi",
     href: "/admin/mudamudi",
     icon: (
       <svg
@@ -39,8 +39,27 @@ const menuItems = [
         className="h-4 w-4"
         aria-hidden="true"
       >
+        <path
+          d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 16v-1a3 3 0 00-2-2.83M4 12.17A3 3 0 002 15v1h4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    label: "Jamaah",
+    href: "/admin/jamaah",
+    icon: (
+      <svg
+        viewBox="0 0 20 20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        className="h-4 w-4"
+        aria-hidden="true"
+      >
         <circle cx="10" cy="6" r="3" />
-
         <path
           d="M4.5 17c.5-3 2.4-4.5 5.5-4.5s5 1.5 5.5 4.5"
           strokeLinecap="round"
@@ -61,7 +80,6 @@ const menuItems = [
         aria-hidden="true"
       >
         <rect x="3" y="4.5" width="14" height="12" rx="1.5" />
-
         <path d="M6.5 3v3M13.5 3v3M3 8h14" strokeLinecap="round" />
       </svg>
     ),

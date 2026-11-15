@@ -48,6 +48,16 @@
   --color-status-info: #2563EB;
   --color-status-info-bg: #EFF6FF;
   --font-sans: var(--font-poppins), system-ui, -apple-system, sans-serif;
+  --container-8xl: 90rem;
+  --container-9xl: 96rem;
+}
+
+@utility max-w-8xl {
+  max-width: 90rem;
+}
+
+@utility max-w-9xl {
+  max-width: 96rem;
 }
 
 body {

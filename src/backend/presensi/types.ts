@@ -32,37 +32,14 @@ export type PresensiTerbaru = {
   lokasi: string;
 };
 
-export type SubmitPresensiResult = {
-  presensiId: number;
-  waktuCheckin: string;
-  status: PresensiStatus;
-  metode: PresensiMetode;
-  keterangan: string | null;
-  deviceToken: string | null;
-  kegiatan: {
-    id: number;
-    nama: string;
-    tanggalMulai: string;
-    tanggalSelesai: string;
-    jamMulai: string;
-    jamSelesai: string;
-    lokasi: string;
-  };
-  mudamudi: {
-    id: number;
-    nama: string;
-    kelas: string;
-    kelompok: string;
-    jenisKelamin: string | null;
-  };
-};
-
 export type MonitoringPeserta = {
   presensi_id: number | null;
-  mudamudi_id: number;
+  peserta_id: number; // ID di tabel mudamudi atau jamaah
+  mudamudi_id: number | null;
+  jamaah_id?: number | null;
   nama: string;
   kelompok: string;
-  kelas: string[];
+  kelas: string[]; // Kosong [] untuk Jamaah
   jenis_kelamin: string | null;
   waktu_checkin: string | null;
   status: PresensiStatus | null;
@@ -79,6 +56,7 @@ export type MonitoringPresensi = {
     jam_mulai: string;
     jam_selesai: string;
     lokasi: string;
+    jenis_peserta?: "jamaah" | "mudamudi" | null;
   };
   totalPeserta: number;
   totalHadir: number;
@@ -95,13 +73,16 @@ export type UpdatePresensiStatusInput = {
   status: PresensiStatus;
 };
 
-export type RekapitulasiMudaMudi = {
+export type RekapitulasiPeserta = {
   id: number;
   nama: string;
   kelompok: string | null;
   kelas: string[];
   jenis_kelamin: string | null;
 };
+
+// Aliaskan untuk backwards compatibility
+export type RekapitulasiMudaMudi = RekapitulasiPeserta;
 
 export type RekapitulasiStatus = PresensiStatus | "tidak_berlaku";
 
@@ -113,6 +94,7 @@ export type RekapitulasiKegiatan = {
   jam_mulai: string;
   jam_selesai: string;
   lokasi: string;
+  jenis_peserta?: "jamaah" | "mudamudi" | null;
   kelompok: string[] | null;
   kelas: string[] | null;
   jenis_kelamin: string | null;
@@ -120,7 +102,9 @@ export type RekapitulasiKegiatan = {
 
 export type RekapitulasiKehadiran = {
   kegiatan_id: number;
-  mudamudi_id: number;
+  peserta_id: number;
+  mudamudi_id?: number | null;
+  jamaah_id?: number | null;
   status: RekapitulasiStatus;
   metode: PresensiMetode | null;
   waktu_checkin: string | null;
@@ -128,33 +112,9 @@ export type RekapitulasiKehadiran = {
 };
 
 export type RekapitulasiPresensi = {
-  mudamudi: RekapitulasiMudaMudi[];
+  peserta: RekapitulasiPeserta[];
+  mudamudi: RekapitulasiMudaMudi[]; // legacy alias
   kegiatan: RekapitulasiKegiatan[];
   kehadiran: RekapitulasiKehadiran[];
+  jenis_peserta?: "jamaah" | "mudamudi";
 };
-
-export type DeviceCheckResult =
-  | {
-    status: "known";
-    mudamudi: {
-      id: number;
-      nama: string;
-    };
-  }
-  | {
-    status: "unknown";
-  };
-
-export type IdentityVerificationResult =
-  | {
-    success: true;
-    mudamudi: {
-      id: number;
-      nama: string;
-    };
-    deviceToken: string;
-  }
-  | {
-    success: false;
-    error: string;
-  };

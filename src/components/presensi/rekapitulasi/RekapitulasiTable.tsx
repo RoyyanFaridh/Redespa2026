@@ -8,7 +8,7 @@ import type {
   RekapitulasiMudaMudi,
 } from "../../../backend/presensi/types";
 
-import { isMudamudiTargeted } from "../../../backend/presensi/target";
+import { isMudamudiTargeted, isJamaahTargeted } from "../../../backend/presensi/target";
 import { formatRentangTanggal } from "../../../backend/kegiatan/format";
 import Pagination from "./Pagination";
 import RekapitulasiLegend from "./RekapitulasiLegend";
@@ -187,7 +187,8 @@ export default function RekapitulasiTable({
   const attendanceMap = new Map<string, RekapitulasiStatus>();
 
   kehadiran.forEach((item) => {
-    attendanceMap.set(`${item.mudamudi_id}-${item.kegiatan_id}`, item.status);
+    const pId = item.peserta_id ?? item.mudamudi_id ?? item.jamaah_id;
+    attendanceMap.set(`${pId}-${item.kegiatan_id}`, item.status);
   });
 
   function getStatus(
@@ -198,10 +199,12 @@ export default function RekapitulasiTable({
     const statusPresensi = attendanceMap.get(key);
     const kegiatanSelesai = isKegiatanSelesai(kegiatanItem);
 
-    if (
-      statusPresensi === "tidak_berlaku" ||
-      !isMudamudiTargeted(kegiatanItem, mudamudi)
-    ) {
+    const isTarget =
+      kegiatanItem.jenis_peserta === "jamaah"
+        ? isJamaahTargeted(kegiatanItem, mudamudi)
+        : isMudamudiTargeted(kegiatanItem, mudamudi);
+
+    if (statusPresensi === "tidak_berlaku" || !isTarget) {
       return "tidak_berlaku";
     }
 

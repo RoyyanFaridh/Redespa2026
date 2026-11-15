@@ -1,3 +1,4 @@
+
 export const KELAS_OPTIONS = [
   "PAUD",
   "Caberawit",
@@ -5,7 +6,6 @@ export const KELAS_OPTIONS = [
   "Remaja",
   "Usia Nikah",
   "MT",
-  "Jamaah",
 ];
 
 export const KELOMPOK_OPTIONS = [

@@ -39,7 +39,9 @@ export function useMudamudiFilter(initialData: Mudamudi[]) {
 
     if (filterKelas.length > 0) {
       result = result.filter((item) =>
-        filterKelas.includes(item.kelas ?? ""),
+        (item.kelas ?? []).some((kelas) =>
+          filterKelas.includes(kelas),
+        ),
       );
     }
 

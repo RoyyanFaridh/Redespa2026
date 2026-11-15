@@ -8,7 +8,7 @@ import type {
   RekapitulasiMudaMudi,
 } from "./types";
 
-import { isMudamudiTargeted } from "./target";
+import { isMudamudiTargeted, isJamaahTargeted } from "./target";
 
 type FilterValue = string | string[];
 
@@ -167,18 +167,26 @@ export async function exportRekapitulasiExcel({
       continue;
     }
 
-    attendanceMap.set(`${item.mudamudi_id}-${item.kegiatan_id}`, item.status);
+    const pId = item.peserta_id ?? item.mudamudi_id ?? item.jamaah_id;
+    attendanceMap.set(`${pId}-${item.kegiatan_id}`, item.status);
   }
 
   function getStatus(
     mudamudi: RekapitulasiMudaMudi,
     itemKegiatan: RekapitulasiKegiatan,
   ): PresensiStatus | null {
-    if (!isMudamudiTargeted(itemKegiatan, mudamudi)) {
+    const isTarget =
+      itemKegiatan.jenis_peserta === "jamaah"
+        ? isJamaahTargeted(itemKegiatan, mudamudi)
+        : isMudamudiTargeted(itemKegiatan, mudamudi);
+
+    if (!isTarget) {
       return null;
     }
 
-    return attendanceMap.get(`${mudamudi.id}-${itemKegiatan.id}`) ?? "alpa";
+    const pId = itemKegiatan.jenis_peserta === "jamaah" ? (mudamudi as any).jamaah_id || mudamudi.id : (mudamudi as any).mudamudi_id || mudamudi.id;
+
+    return attendanceMap.get(`${pId}-${itemKegiatan.id}`) ?? "alpa";
   }
 
   const totals: Record<PresensiStatus, number> = {

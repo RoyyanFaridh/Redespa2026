@@ -3,20 +3,22 @@ import React, { type ReactNode } from "react";
 export interface PageContainerProps {
   children: ReactNode;
   className?: string;
-  maxWidth?: "5xl" | "6xl" | "7xl" | "full";
+  maxWidth?: "5xl" | "6xl" | "7xl" | "8xl" | "9xl" | "full";
 }
 
 const MAX_WIDTH_STYLES = {
   "5xl": "max-w-5xl",
   "6xl": "max-w-6xl",
   "7xl": "max-w-7xl",
+  "8xl": "max-w-8xl",
+  "9xl": "max-w-9xl",
   full: "max-w-full",
 };
 
 export function PageContainer({
   children,
   className = "",
-  maxWidth = "7xl",
+  maxWidth = "9xl",
 }: PageContainerProps) {
   return (
     <main className="min-h-screen bg-[#F5F7F5]">

@@ -92,7 +92,9 @@ export default function ExportModal({
 
       const matchKelas =
         selectedKelas.length === 0 ||
-        selectedKelas.includes(item.kelas);
+        (item.kelas ?? []).some((kelas) =>
+          selectedKelas.includes(kelas),
+        );
 
       return matchKelompok && matchJenisKelamin && matchKelas;
     });
@@ -151,7 +153,7 @@ export default function ExportModal({
 
       onClose();
     } catch (error) {
-      console.error("Gagal mengekspor data Jamaah:", error);
+      console.error("Gagal mengekspor data Muda-Mudi:", error);
 
       setExportError(
         "Export gagal. Silakan coba kembali. Jika masalah berlanjut, periksa konsol aplikasi.",
@@ -182,7 +184,7 @@ export default function ExportModal({
 
             <div className="min-w-0">
               <h2 className="text-xs font-semibold leading-5 text-[#202824]">
-                Ekspor Data Jamaah
+                Ekspor Data Muda-Mudi
               </h2>
 
               <p className="mt-0.5 text-[10px] leading-4 text-[#78827C]">
@@ -290,7 +292,7 @@ export default function ExportModal({
               </span>
 
               <span className="text-[10px] text-[#78827C]">
-                Jamaah
+                Muda-Mudi
               </span>
             </div>
           </div>

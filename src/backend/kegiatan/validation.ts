@@ -16,8 +16,13 @@ export function validateClient(
   kelompok: string[],
   kelas: string[],
   jenisKelamin: string,
+  jenisPeserta?: string,
 ): FieldErrors {
   const errors: FieldErrors = {};
+
+  if (!jenisPeserta || !["jamaah", "mudamudi"].includes(jenisPeserta)) {
+    errors.jenis_peserta = "Jenis peserta wajib dipilih (Jamaah atau Muda-Mudi).";
+  }
 
   if (!nama.trim()) {
     errors.nama = "Nama kegiatan wajib diisi.";

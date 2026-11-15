@@ -7,6 +7,9 @@ import {
 import { type GroupMode, formStyles, JEMAAH_CLASS } from "./types";
 
 export interface StepSasaranProps {
+  jenisPeserta: "jamaah" | "mudamudi" | "";
+  onSetJenisPeserta: (val: "jamaah" | "mudamudi") => void;
+  jenisPesertaError?: string;
   groupMode: GroupMode;
   effectiveKelompok: string[];
   allKelompokSelected: boolean;
@@ -30,6 +33,9 @@ export interface StepSasaranProps {
 }
 
 export function StepSasaran({
+  jenisPeserta,
+  onSetJenisPeserta,
+  jenisPesertaError,
   groupMode,
   effectiveKelompok,
   allKelompokSelected,
@@ -97,6 +103,67 @@ export function StepSasaran({
         </div>
 
         <div className="space-y-4">
+          {/* Jenis Peserta */}
+          <div className="rounded-xl border border-[#E5EAE6] bg-white p-3">
+            <div className="mb-2.5">
+              <h4 className={formStyles.subheading}>
+                Jenis Peserta <span className="text-red-600">*</span>
+              </h4>
+              <p className={`mt-1 ${formStyles.description}`}>
+                Pilih sasaran utama peserta kegiatan: Jamaah atau Muda-Mudi.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                {
+                  value: "jamaah" as const,
+                  title: "Jamaah",
+                  description: "Seluruh warga (anak, remaja, dewasa, lansia). Tanpa filter kelas.",
+                },
+                {
+                  value: "mudamudi" as const,
+                  title: "Muda-Mudi",
+                  description: "Khusus generus muda dengan kriteria jenjang kelas.",
+                },
+              ].map((item) => {
+                const checked = jenisPeserta === item.value;
+
+                return (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => onSetJenisPeserta(item.value)}
+                    disabled={loading}
+                    aria-pressed={checked}
+                    className={modeCardClass(checked)}
+                  >
+                    <span
+                      className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${
+                        checked ? "border-[#287A50]" : "border-[#E5EAE6]"
+                      }`}
+                    >
+                      {checked && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#287A50]" />
+                      )}
+                    </span>
+
+                    <span className="min-w-0">
+                      <span className="block wrap-break-word text-[9px] font-semibold text-[#202824]">
+                        {item.title}
+                      </span>
+                      <span className="mt-1 block text-[9px] leading-4 text-[#78827C]">
+                        {item.description}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {renderError(jenisPesertaError)}
+          </div>
+
           {/* Kelompok */}
           <div className="rounded-xl border border-[#E5EAE6] bg-white p-3">
             <div className="mb-2.5">
@@ -210,66 +277,70 @@ export function StepSasaran({
             {renderError(kelompokError)}
           </div>
 
-          {/* Kelas Peserta */}
-          <div className="rounded-xl border border-[#E5EAE6] bg-white p-3">
-            <div className="mb-2.5 flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h4 className={formStyles.subheading}>Kelas peserta</h4>
-                <p className={`mt-1 ${formStyles.description}`}>
-                  Pilih Jamaah untuk menyertakan semua peserta. Jika memilih kelas khusus, peserta harus memiliki salah satu kelas tersebut.
-                </p>
+          {/* Kelas Peserta (Hanya untuk Muda-Mudi) */}
+          {jenisPeserta === "mudamudi" ? (
+            <div className="rounded-xl border border-[#E5EAE6] bg-white p-3">
+              <div className="mb-2.5 flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h4 className={formStyles.subheading}>Kelas peserta (Muda-Mudi)</h4>
+                  <p className={`mt-1 ${formStyles.description}`}>
+                    Pilih jenjang kelas sasaran. Jika memilih beberapa kelas, peserta yang masuk di salah satunya akan disertakan.
+                  </p>
+                </div>
+
+                <span className="shrink-0 rounded-md bg-[#F5F7F5] px-2 py-1 text-[8px] font-medium text-[#78827C]">
+                  {kelasLabel}
+                </span>
               </div>
 
-              <span className="shrink-0 rounded-md bg-[#F5F7F5] px-2 py-1 text-[8px] font-medium text-[#78827C]">
-                {kelasLabel}
-              </span>
+              <div className="rounded-xl border border-[#E5EAE6] bg-white p-3 shadow-xs sm:p-3.5">
+                <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[9px] font-medium text-[#202824]">
+                    Pilih kelas
+                  </p>
+                  <button
+                    type="button"
+                    onClick={onToggleAllKelas}
+                    disabled={loading}
+                    className={formStyles.action}
+                  >
+                    {allKelasSelected ? "Hapus semua" : "Pilih semua"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {KELAS_OPTIONS.filter((k) => k !== "Jamaah").map((kelas) => {
+                    const checked = selectedKelas.includes(kelas);
+
+                    return (
+                      <label key={kelas} className={optionClass(checked)}>
+                        <input
+                          type="checkbox"
+                          name="kelas"
+                          value={kelas}
+                          checked={checked}
+                          onChange={() => onToggleKelas(kelas)}
+                          disabled={loading}
+                          className="h-3.5 w-3.5 shrink-0 accent-[#287A50]"
+                        />
+                        <span className={formStyles.optionText}>{kelas}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {renderError(kelasError)}
             </div>
-
-            <div className="rounded-xl border border-[#E5EAE6] bg-white p-3 shadow-xs sm:p-3.5">
-              <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[9px] font-medium text-[#202824]">
-                  Pilih kelas
-                </p>
-                <button
-                  type="button"
-                  onClick={onToggleAllKelas}
-                  disabled={loading}
-                  className={formStyles.action}
-                >
-                  {allKelasSelected ? "Hapus semua" : "Pilih semua"}
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                {KELAS_OPTIONS.map((kelas) => {
-                  const checked = selectedKelas.includes(kelas);
-
-                  return (
-                    <label key={kelas} className={optionClass(checked)}>
-                      <input
-                        type="checkbox"
-                        name="kelas"
-                        value={kelas}
-                        checked={checked}
-                        onChange={() => onToggleKelas(kelas)}
-                        disabled={loading}
-                        className="h-3.5 w-3.5 shrink-0 accent-[#287A50]"
-                      />
-                      <span className={formStyles.optionText}>{kelas}</span>
-                    </label>
-                  );
-                })}
-              </div>
+          ) : jenisPeserta === "jamaah" ? (
+            <div className="rounded-xl border border-[#287A50]/20 bg-[#F4F9F6] p-3 text-[9px] text-[#287A50]">
+              <strong>Jenis Peserta: Jamaah</strong>. Kegiatan ini mencakup seluruh warga Jamaah tanpa filter kelas.
             </div>
-
-            {isJamaahSelected && (
-              <p className="mt-2.5 rounded-xl bg-[#E6F2EA] px-3 py-2 text-[9px] leading-4 text-[#206440]">
-                Sasaran Jamaah mencakup seluruh peserta. Pilihan kelas khusus lainnya otomatis dinonaktifkan.
-              </p>
-            )}
-
-            {renderError(kelasError)}
-          </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-[#E5EAE6] p-3 text-center text-[9px] text-[#78827C]">
+              Pilih jenis peserta di atas terlebih dahulu untuk menentukan kriteria sasaran.
+            </div>
+          )}
 
           {/* Jenis Kelamin */}
           <div className="rounded-xl border border-[#E5EAE6] bg-white p-3">

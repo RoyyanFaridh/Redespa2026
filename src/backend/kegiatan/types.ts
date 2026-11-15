@@ -1,3 +1,5 @@
+export type JenisPeserta = "jamaah" | "mudamudi";
+
 export type Kegiatan = {
   id: number;
   nama: string;
@@ -6,6 +8,7 @@ export type Kegiatan = {
   jam_mulai: string;
   jam_selesai: string;
   lokasi: string;
+  jenis_peserta?: JenisPeserta | null;
   kelompok: string[] | null;
   kelas: string[] | null;
   jenis_kelamin: string | null;
@@ -29,6 +32,7 @@ export type FieldErrors = {
   jam_mulai?: string;
   jam_selesai?: string;
   lokasi?: string;
+  jenis_peserta?: string;
   kelompok?: string;
   kelas?: string;
   jenis_kelamin?: string;

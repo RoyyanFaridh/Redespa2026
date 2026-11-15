@@ -347,7 +347,7 @@ export default function MonitoringTable({ peserta, onDetail, onEdit }: Props) {
           <tbody className="divide-y divide-[#E5EAE6]">
             {paginatedPeserta.map((item, index) => (
               <tr
-                key={item.mudamudi_id}
+                key={item.peserta_id || item.mudamudi_id || index}
                 className="group transition-colors hover:bg-[#E6F2EA]/30"
               >
                 <td className="px-3.5 py-3 text-center">
@@ -373,7 +373,11 @@ export default function MonitoringTable({ peserta, onDetail, onEdit }: Props) {
                 </td>
 
                 <td className="px-3 py-3 text-xs text-[#202824]">
-                  {item.kelas || "-"}
+                  {Array.isArray(item.kelas)
+                    ? item.kelas.length > 0
+                      ? item.kelas.join(", ")
+                      : "-"
+                    : item.kelas || "-"}
                 </td>
 
                 <td className="whitespace-nowrap px-3 py-3">
@@ -415,9 +419,9 @@ export default function MonitoringTable({ peserta, onDetail, onEdit }: Props) {
 
       {/* MOBILE LIST */}
       <div className="space-y-3 p-3.5 lg:hidden">
-        {paginatedPeserta.map((item) => (
+        {paginatedPeserta.map((item, index) => (
           <article
-            key={item.mudamudi_id}
+            key={item.peserta_id || item.mudamudi_id || index}
             className="overflow-hidden rounded-2xl border border-[#E5EAE6] bg-white shadow-xs transition hover:border-[#65B98A]/40"
           >
             <div className="p-3.5">
@@ -454,7 +458,11 @@ export default function MonitoringTable({ peserta, onDetail, onEdit }: Props) {
                     Kelas
                   </p>
                   <p className="mt-0.5 truncate text-xs font-medium text-[#202824]">
-                    {item.kelas || "-"}
+                    {Array.isArray(item.kelas)
+                      ? item.kelas.length > 0
+                        ? item.kelas.join(", ")
+                        : "-"
+                      : item.kelas || "-"}
                   </p>
                 </div>
               </div>

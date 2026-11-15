@@ -136,6 +136,25 @@ export function StepKonfirmasi({
 
           <div className="space-y-2.5">
             <div>
+              <p className="text-[9px] font-medium text-[#202824]">Jenis Peserta</p>
+              <div className="mt-1">
+                {activity.jenis_peserta === "jamaah" ? (
+                  <span className="inline-flex rounded-md bg-[#287A50] px-2 py-0.5 text-[9px] font-semibold text-white">
+                    Jamaah
+                  </span>
+                ) : activity.jenis_peserta === "mudamudi" ? (
+                  <span className="inline-flex rounded-md bg-[#287A50] px-2 py-0.5 text-[9px] font-semibold text-white">
+                    Muda-Mudi
+                  </span>
+                ) : (
+                  <span className="inline-flex rounded-md bg-amber-100 px-2 py-0.5 text-[9px] font-semibold text-amber-800">
+                    Belum dipilih
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-[#E5EAE6] pt-2.5">
               <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[9px] font-medium text-[#202824]">Kelompok</p>
                 {groupMode === "specific" && (
@@ -167,31 +186,33 @@ export function StepKonfirmasi({
               )}
             </div>
 
-            <div className="border-t border-[#E5EAE6] pt-3">
-              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[9px] font-medium text-[#202824]">
-                  Kelas peserta
-                </p>
-                <span className="text-[9px] text-[#78827C]">{kelasLabel}</span>
-              </div>
-
-              {selectedKelasForSummary.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedKelasForSummary.map((kelas) => (
-                    <span
-                      key={kelas}
-                      className="max-w-full wrap-break-word rounded-md bg-[#F5F7F5] px-2 py-1 text-[9px] font-medium text-[#202824]"
-                    >
-                      {kelas}
-                    </span>
-                  ))}
+            {activity.jenis_peserta === "mudamudi" && (
+              <div className="border-t border-[#E5EAE6] pt-3">
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[9px] font-medium text-[#202824]">
+                    Kelas peserta
+                  </p>
+                  <span className="text-[9px] text-[#78827C]">{kelasLabel}</span>
                 </div>
-              ) : (
-                <p className="text-[9px] text-[#78827C]">
-                  Tidak ada kelas yang tersedia.
-                </p>
-              )}
-            </div>
+
+                {selectedKelasForSummary.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedKelasForSummary.map((kelas) => (
+                      <span
+                        key={kelas}
+                        className="max-w-full wrap-break-word rounded-md bg-[#F5F7F5] px-2 py-1 text-[9px] font-medium text-[#202824]"
+                      >
+                        {kelas}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[9px] text-[#78827C]">
+                    Semua jenjang Muda-Mudi
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="border-t border-[#E5EAE6] pt-3">
               <p className="text-[9px] font-medium text-[#202824]">

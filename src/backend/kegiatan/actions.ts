@@ -196,19 +196,43 @@ export async function getKegiatan() {
 
   const supabase = await createClient();
 
+  // Memilih kolom secara aman. jenis_peserta diambil jika sudah ada di DB
   const { data, error } = await supabase
     .from("kegiatan")
     .select(
-      "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, kelompok, kelas, jenis_kelamin, created_at, created_by",
+      "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, jenis_peserta, kelompok, kelas, jenis_kelamin, created_at, created_by",
     )
     .order("tanggal_mulai", { ascending: false })
     .order("jam_mulai", { ascending: false });
 
   if (error) {
-    throw new Error(error.message);
+    // Fallback jika kolom jenis_peserta belum ada di tabel database
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from("kegiatan")
+      .select(
+        "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, kelompok, kelas, jenis_kelamin, created_at, created_by",
+      )
+      .order("tanggal_mulai", { ascending: false })
+      .order("jam_mulai", { ascending: false });
+
+    if (fallbackError) {
+      throw new Error(fallbackError.message);
+    }
+
+    const mapped = (fallbackData ?? []).map((k: any) => ({
+      ...k,
+      jenis_peserta: null, // Jangan menebak jenis peserta historis
+    }));
+
+    return attachCreatorInfo(mapped);
   }
 
-  return attachCreatorInfo(data ?? []);
+  const mapped = (data ?? []).map((k: any) => ({
+    ...k,
+    jenis_peserta: k.jenis_peserta ?? null,
+  }));
+
+  return attachCreatorInfo(mapped);
 }
 
 export async function addKegiatan(formData: FormData) {
@@ -222,10 +246,15 @@ export async function addKegiatan(formData: FormData) {
   const jamMulai = String(formData.get("jam_mulai") ?? "").trim();
   const jamSelesai = String(formData.get("jam_selesai") ?? "").trim();
   const lokasi = String(formData.get("lokasi") ?? "").trim();
+  const jenisPeserta = String(formData.get("jenis_peserta") ?? "").trim();
 
   const kelompok = getStringArray(formData, "kelompok");
-  const kelas = getStringArray(formData, "kelas");
+  const kelas = jenisPeserta === "jamaah" ? [] : getStringArray(formData, "kelas");
   const jenisKelamin = String(formData.get("jenis_kelamin") ?? "").trim();
+
+  if (!jenisPeserta || !["jamaah", "mudamudi"].includes(jenisPeserta)) {
+    return { error: "Jenis peserta wajib dipilih (Jamaah atau Muda-Mudi)" };
+  }
 
   const validationError = validateServer(
     nama,
@@ -246,7 +275,7 @@ export async function addKegiatan(formData: FormData) {
   const kelompokTersimpan =
     kelompok.length > 0 ? [...kelompok].sort() : null;
 
-  const kelasTersimpan = normalizeKelasTarget(kelas);
+  const kelasTersimpan = jenisPeserta === "jamaah" ? null : normalizeKelasTarget(kelas);
 
   const { data: candidates, error: candidatesError } = await supabase
     .from("kegiatan")
@@ -275,7 +304,7 @@ export async function addKegiatan(formData: FormData) {
     return { error: "Kegiatan dengan data yang sama sudah ada" };
   }
 
-  const { error } = await supabase.from("kegiatan").insert({
+  const insertPayload: Record<string, any> = {
     nama,
     tanggal_mulai: tanggalMulai,
     tanggal_selesai: tanggalSelesai,
@@ -286,10 +315,21 @@ export async function addKegiatan(formData: FormData) {
     kelas: kelasTersimpan,
     jenis_kelamin: jenisKelamin || null,
     created_by: user.id,
+  };
+
+  // Coba insert dengan jenis_peserta terlebih dahulu
+  let insertResult = await supabase.from("kegiatan").insert({
+    ...insertPayload,
+    jenis_peserta: jenisPeserta,
   });
 
-  if (error) {
-    return { error: error.message };
+  if (insertResult.error && insertResult.error.message?.includes("jenis_peserta")) {
+    // Fallback jika migrasi kolom jenis_peserta belum dijalankan
+    insertResult = await supabase.from("kegiatan").insert(insertPayload);
+  }
+
+  if (insertResult.error) {
+    return { error: insertResult.error.message };
   }
 
   revalidatePath("/admin/kegiatan");
@@ -313,10 +353,15 @@ export async function updateKegiatan(id: number, formData: FormData) {
   const jamMulai = String(formData.get("jam_mulai") ?? "").trim();
   const jamSelesai = String(formData.get("jam_selesai") ?? "").trim();
   const lokasi = String(formData.get("lokasi") ?? "").trim();
+  const jenisPeserta = String(formData.get("jenis_peserta") ?? "").trim();
 
   const kelompok = getStringArray(formData, "kelompok");
-  const kelas = getStringArray(formData, "kelas");
+  const kelas = jenisPeserta === "jamaah" ? [] : getStringArray(formData, "kelas");
   const jenisKelamin = String(formData.get("jenis_kelamin") ?? "").trim();
+
+  if (!jenisPeserta || !["jamaah", "mudamudi"].includes(jenisPeserta)) {
+    return { error: "Jenis peserta wajib dipilih (Jamaah atau Muda-Mudi)" };
+  }
 
   const validationError = validateServer(
     nama,
@@ -334,7 +379,7 @@ export async function updateKegiatan(id: number, formData: FormData) {
     return { error: validationError };
   }
 
-  const kelasTersimpan = normalizeKelasTarget(kelas);
+  const kelasTersimpan = jenisPeserta === "jamaah" ? null : normalizeKelasTarget(kelas);
 
   const { data: existing, error: existingError } = await supabase
     .from("kegiatan")
@@ -387,27 +432,40 @@ export async function updateKegiatan(id: number, formData: FormData) {
     return { error: "Kegiatan dengan data yang sama sudah ada" };
   }
 
-  const { data: updated, error } = await supabase
+  const updatePayload: Record<string, any> = {
+    nama,
+    tanggal_mulai: tanggalMulai,
+    tanggal_selesai: tanggalSelesai,
+    jam_mulai: jamMulai,
+    jam_selesai: jamSelesai,
+    lokasi,
+    kelompok: kelompokTersimpan,
+    kelas: kelasTersimpan,
+    jenis_kelamin: jenisKelamin || null,
+  };
+
+  let updateResult = await supabase
     .from("kegiatan")
     .update({
-      nama,
-      tanggal_mulai: tanggalMulai,
-      tanggal_selesai: tanggalSelesai,
-      jam_mulai: jamMulai,
-      jam_selesai: jamSelesai,
-      lokasi,
-      kelompok: kelompokTersimpan,
-      kelas: kelasTersimpan,
-      jenis_kelamin: jenisKelamin || null,
+      ...updatePayload,
+      jenis_peserta: jenisPeserta,
     })
     .eq("id", id)
     .select("id");
 
-  if (error) {
-    return { error: error.message };
+  if (updateResult.error && updateResult.error.message?.includes("jenis_peserta")) {
+    updateResult = await supabase
+      .from("kegiatan")
+      .update(updatePayload)
+      .eq("id", id)
+      .select("id");
   }
 
-  if (!updated || updated.length === 0) {
+  if (updateResult.error) {
+    return { error: updateResult.error.message };
+  }
+
+  if (!updateResult.data || updateResult.data.length === 0) {
     return {
       error: "Kegiatan gagal diperbarui. Periksa kembali kewenangan admin.",
     };

@@ -50,6 +50,7 @@ type Props = {
 };
 
 const EMPTY_DATA: RekapitulasiPresensi = {
+  peserta: [],
   mudamudi: [],
   kegiatan: [],
   kehadiran: [],

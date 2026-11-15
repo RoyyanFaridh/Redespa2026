@@ -225,7 +225,7 @@ export default function MonitoringPage({ kegiatan }: Props) {
   async function handleSaveStatus(status: PresensiStatus, keterangan: string) {
     if (!editPeserta || selectedKegiatanId === null || editLoading) return;
 
-    const pesertaId = editPeserta.mudamudi_id;
+    const pesertaId = editPeserta.peserta_id ?? editPeserta.mudamudi_id ?? 0;
     const kegiatanId = selectedKegiatanId;
 
     setEditLoading(true);
@@ -235,6 +235,7 @@ export default function MonitoringPage({ kegiatan }: Props) {
       const result = await updatePresensiStatus({
         presensiId: editPeserta.presensi_id,
         kegiatanId,
+        pesertaId,
         mudamudiId: pesertaId,
         status,
         keterangan,
@@ -255,8 +256,9 @@ export default function MonitoringPage({ kegiatan }: Props) {
       setData((current) => {
         if (!current) return current;
 
-        const peserta = current.peserta.map((item) =>
-          item.mudamudi_id === updated.mudamudiId
+        const peserta = current.peserta.map((item) => {
+          const currentId = item.peserta_id ?? item.mudamudi_id;
+          return currentId === updated.pesertaId || currentId === updated.mudamudiId
             ? {
               ...item,
               presensi_id: updated.presensiId,
@@ -265,8 +267,8 @@ export default function MonitoringPage({ kegiatan }: Props) {
               metode: updated.metode,
               keterangan: updated.keterangan,
             }
-            : item,
-        );
+            : item;
+        });
 
         return {
           ...current,

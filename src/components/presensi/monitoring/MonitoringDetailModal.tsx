@@ -145,7 +145,11 @@ export default function MonitoringDetailModal({ peserta, onClose }: Props) {
                   </p>
 
                   <p className="mt-0.5 truncate text-xs font-medium text-[#202824]">
-                    {peserta.kelas}
+                    {Array.isArray(peserta.kelas)
+                      ? peserta.kelas.length > 0
+                        ? peserta.kelas.join(", ")
+                        : "-"
+                      : peserta.kelas || "-"}
                   </p>
                 </div>
 

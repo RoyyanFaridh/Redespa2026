@@ -98,9 +98,11 @@ export async function getRekapitulasiPresensiExport(
 
   return {
     data: {
+      peserta: allResults.flatMap((result) => result.data.peserta || result.data.mudamudi),
       mudamudi: allResults.flatMap((result) => result.data.mudamudi),
       kegiatan: firstResult.data.kegiatan,
       kehadiran: allResults.flatMap((result) => result.data.kehadiran),
+      jenis_peserta: firstResult.data.jenis_peserta,
     },
     pagination: {
       page: 1,
@@ -113,17 +115,25 @@ export async function getRekapitulasiPresensiExport(
 
 export async function createManualPresensi(input: {
   kegiatanId: number;
-  mudamudiId: number;
+  pesertaId?: number;
+  mudamudiId?: number;
   status: PresensiStatus;
   keterangan?: string | null;
 }) {
-  return createManualPresensiAdmin(input);
+  return createManualPresensiAdmin({
+    kegiatanId: input.kegiatanId,
+    pesertaId: input.pesertaId ?? input.mudamudiId ?? 0,
+    mudamudiId: input.mudamudiId,
+    status: input.status,
+    keterangan: input.keterangan,
+  });
 }
 
 export async function updatePresensiStatus(input: {
   presensiId: number | null;
   kegiatanId: number;
-  mudamudiId: number;
+  pesertaId?: number;
+  mudamudiId?: number;
   status: PresensiStatus;
   keterangan?: string | null;
 }) {

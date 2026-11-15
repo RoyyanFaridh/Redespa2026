@@ -1,3 +1,4 @@
+
 export type Mudamudi = {
   id: number;
   kelompok: string;
@@ -7,7 +8,7 @@ export type Mudamudi = {
   tahun_lahir: number | null;
   no_hp: string | null;
   pekerjaan: string | null;
-  kelas: string;
+  kelas: string[];
   qr_id: string;
   created_at: string;
 };

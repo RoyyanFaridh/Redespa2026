@@ -18,11 +18,9 @@ type Props = {
 export default function DetailModal({ data, onClose }: Props) {
   const avatarColor = getAvatarColor(data.nama);
 
-  const kelasList = Array.isArray(data.kelas)
-    ? data.kelas
-    : typeof data.kelas === "string"
-      ? data.kelas.split(",")
-      : [];
+  const kelasList: string[] = (data.kelas ?? [])
+    .map((kelas: string) => kelas.trim())
+    .filter((kelas: string) => kelas.length > 0);
 
   function DetailItem({
     label,
@@ -60,7 +58,7 @@ export default function DetailModal({ data, onClose }: Props) {
                 {toTitleCase(data.nama)}
               </h2>
               <p className="mt-0.5 text-[9px] leading-4 text-[#78827C]">
-                Detail Data Jamaah
+                Detail Data Muda-Mudi
               </p>
             </div>
           </div>
@@ -95,7 +93,7 @@ export default function DetailModal({ data, onClose }: Props) {
               </h3>
 
               <div className="flex flex-wrap items-center gap-1">
-                {kelasList.map((kelas) => String(kelas).trim()).filter(Boolean).map((kelas) => (
+                {kelasList.map((kelas) => (
                   <span
                     key={kelas}
                     className="inline-flex rounded-full border border-[#D5E8DC] bg-[#E6F2EA] px-2 py-0.5 text-[9px] font-semibold text-[#287A50]"

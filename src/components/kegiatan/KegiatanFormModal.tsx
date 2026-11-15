@@ -40,10 +40,7 @@ function getInitialGroupMode(initialData: Kegiatan | undefined): GroupMode {
 function normalizeKelas(kelas: string[] | null | undefined): string[] {
   if (!Array.isArray(kelas)) return [];
 
-  if (kelas.includes(JEMAAH_CLASS)) {
-    return [JEMAAH_CLASS];
-  }
-
+  // Jangan gunakan JEMAAH_CLASS karena Jamaah bukan jenjang kelas Muda-Mudi
   return KELAS_OPTIONS.filter((item) => kelas.includes(item));
 }
 
@@ -76,6 +73,7 @@ export default function KegiatanFormModal({
     jam_mulai: initialData?.jam_mulai?.slice(0, 5) ?? "",
     jam_selesai: initialData?.jam_selesai?.slice(0, 5) ?? "",
     lokasi: initialData?.lokasi ?? "",
+    jenis_peserta: initialData?.jenis_peserta ?? "",
   });
 
   const [groupMode, setGroupMode] = useState<GroupMode>(() =>
@@ -109,10 +107,10 @@ export default function KegiatanFormModal({
     KELAS_OPTIONS.length > 0 &&
     KELAS_OPTIONS.every((kelas) => selectedKelas.includes(kelas));
 
-  const isJamaahSelected = selectedKelas.includes(JEMAAH_CLASS);
+  const isJamaahSelected = activity.jenis_peserta === "jamaah";
 
   const kelasLabel = isJamaahSelected
-    ? "Semua peserta"
+    ? "-"
     : selectedKelas.length === 0 || allKelasSelected
       ? "Semua kelas"
       : `${selectedKelas.length} kelas`;
@@ -120,7 +118,7 @@ export default function KegiatanFormModal({
   const jenisKelaminLabel = jenisKelamin || "Semua peserta";
 
   const selectedKelasForSummary = isJamaahSelected
-    ? [JEMAAH_CLASS]
+    ? []
     : selectedKelas.length === 0 || allKelasSelected
       ? [...KELAS_OPTIONS]
       : KELAS_OPTIONS.filter((kelas) => selectedKelas.includes(kelas));
@@ -134,8 +132,9 @@ export default function KegiatanFormModal({
       activity.jam_selesai,
       activity.lokasi,
       groupMode === "all" ? [] : effectiveKelompok,
-      selectedKelas,
+      activity.jenis_peserta === "jamaah" ? [] : selectedKelas,
       jenisKelamin,
+      activity.jenis_peserta,
     );
   }
 
@@ -147,6 +146,11 @@ export default function KegiatanFormModal({
 
     setActivity(nextActivity);
 
+    // Jika ganti ke jamaah, bersihkan kelas
+    if (field === "jenis_peserta" && value === "jamaah") {
+      setSelectedKelas([]);
+    }
+
     const validation = validateClient(
       nextActivity.nama,
       nextActivity.tanggal_mulai,
@@ -155,8 +159,9 @@ export default function KegiatanFormModal({
       nextActivity.jam_selesai,
       nextActivity.lokasi,
       groupMode === "all" ? [] : effectiveKelompok,
-      selectedKelas,
+      nextActivity.jenis_peserta === "jamaah" ? [] : selectedKelas,
       jenisKelamin,
+      nextActivity.jenis_peserta,
     );
 
     setClientErrors((current) => ({
@@ -205,19 +210,11 @@ export default function KegiatanFormModal({
   }
 
   function toggleKelas(kelas: string) {
-    setSelectedKelas((current) => {
-      if (kelas === JEMAAH_CLASS) {
-        return current.includes(JEMAAH_CLASS) ? [] : [JEMAAH_CLASS];
-      }
-
-      if (current.includes(JEMAAH_CLASS)) {
-        return [kelas];
-      }
-
-      return current.includes(kelas)
+    setSelectedKelas((current) =>
+      current.includes(kelas)
         ? current.filter((item) => item !== kelas)
-        : [...current, kelas];
-    });
+        : [...current, kelas],
+    );
 
     setStepError("");
   }
@@ -230,10 +227,6 @@ export default function KegiatanFormModal({
 
       if (allSelected) {
         return [];
-      }
-
-      if (KELAS_OPTIONS.includes(JEMAAH_CLASS)) {
-        return [JEMAAH_CLASS];
       }
 
       return [...KELAS_OPTIONS];
@@ -281,6 +274,11 @@ export default function KegiatanFormModal({
     }
 
     if (currentStep === 2) {
+      if (validation.jenis_peserta) {
+        setStepError("Pilih jenis peserta (Jamaah atau Muda-Mudi).");
+        return false;
+      }
+
       if (groupMode === "specific" && effectiveKelompok.length === 0) {
         setStepError(
           "Pilih setidaknya satu kelompok atau pilih semua kelompok.",
@@ -473,6 +471,24 @@ export default function KegiatanFormModal({
           onGoToStep={goToStep}
         />
 
+        {/* Hidden inputs agar nilai langkah 1 & 2 tetap masuk ke FormData saat submit di langkah 3 */}
+        <input type="hidden" name="nama" value={activity.nama} />
+        <input type="hidden" name="tanggal_mulai" value={activity.tanggal_mulai} />
+        <input type="hidden" name="tanggal_selesai" value={activity.tanggal_selesai} />
+        <input type="hidden" name="jam_mulai" value={activity.jam_mulai} />
+        <input type="hidden" name="jam_selesai" value={activity.jam_selesai} />
+        <input type="hidden" name="lokasi" value={activity.lokasi} />
+        <input type="hidden" name="jenis_peserta" value={activity.jenis_peserta} />
+        <input type="hidden" name="jenis_kelamin" value={jenisKelamin} />
+        {groupMode === "specific" &&
+          effectiveKelompok.map((kel) => (
+            <input key={kel} type="hidden" name="kelompok" value={kel} />
+          ))}
+        {activity.jenis_peserta === "mudamudi" &&
+          selectedKelas.map((k) => (
+            <input key={k} type="hidden" name="kelas" value={k} />
+          ))}
+
         {/* Step Content */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4">
           {currentStep === 1 && (
@@ -487,6 +503,11 @@ export default function KegiatanFormModal({
 
           {currentStep === 2 && (
             <StepSasaran
+              jenisPeserta={activity.jenis_peserta}
+              onSetJenisPeserta={(val) => updateActivity("jenis_peserta", val)}
+              jenisPesertaError={
+                clientErrors.jenis_peserta || fieldErrors.jenis_peserta
+              }
               groupMode={groupMode}
               effectiveKelompok={effectiveKelompok}
               allKelompokSelected={allKelompokSelected}

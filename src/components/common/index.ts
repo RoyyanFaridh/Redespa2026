@@ -8,4 +8,5 @@ export { PageContainer, type PageContainerProps } from "./PageContainer";
 export { Pagination, type PaginationProps } from "./Pagination";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { Card, CardHeader, CardBody, CardFooter, type CardProps } from "./Card";
+export { BrandLogo } from "./BrandLogo";
 

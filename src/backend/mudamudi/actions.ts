@@ -24,6 +24,10 @@ type ActionResult = {
 
 type ClassValue = string | string[] | null | undefined;
 
+const MUDAMUDI_KELAS_OPTIONS = KELAS_OPTIONS.filter(
+  (item) => item !== "Jamaah",
+);
+
 function parseClasses(value: ClassValue): string[] {
   const values = Array.isArray(value)
     ? value
@@ -41,18 +45,18 @@ function parseClasses(value: ClassValue): string[] {
 }
 
 function normalizeClasses(value: ClassValue): string[] {
-  const classes = parseClasses(value);
-
-  if (!classes.includes("Jamaah")) {
-    classes.push("Jamaah");
-  }
+  const classes = parseClasses(value).filter(
+    (item) => item !== "Jamaah",
+  );
 
   return [
-    ...KELAS_OPTIONS.filter((item) => classes.includes(item)),
+    ...MUDAMUDI_KELAS_OPTIONS.filter((item) =>
+      classes.includes(item),
+    ),
     ...classes.filter(
       (item) =>
-        !KELAS_OPTIONS.includes(
-          item as (typeof KELAS_OPTIONS)[number],
+        !MUDAMUDI_KELAS_OPTIONS.includes(
+          item as (typeof MUDAMUDI_KELAS_OPTIONS)[number],
         ),
     ),
   ];
@@ -63,10 +67,12 @@ function validateClasses(classes: string[]): boolean {
     return false;
   }
 
-  return classes.every((item) =>
-    KELAS_OPTIONS.includes(
-      item as (typeof KELAS_OPTIONS)[number],
-    ),
+  return classes.every(
+    (item) =>
+      item !== "Jamaah" &&
+      MUDAMUDI_KELAS_OPTIONS.includes(
+        item as (typeof MUDAMUDI_KELAS_OPTIONS)[number],
+      ),
   );
 }
 
@@ -139,7 +145,7 @@ function validate(
   }
 
   if (!validateClasses(kelas)) {
-    errors.kelas = "Pilih minimal satu kelas yang valid";
+    errors.kelas = "Pilih minimal satu kelas Generus/Muda-Mudi yang valid";
   }
 
   if (!validateYear(tahunLahir)) {
@@ -651,7 +657,7 @@ export async function importMudamudi(
 
     if (!validateClasses(rawClasses)) {
       errors.push(
-        `Baris ${rowNumber}: Kelas tidak valid atau belum dipilih`,
+        `Baris ${rowNumber}: Kelas tidak valid, mengandung kelas Jamaah, atau belum dipilih`,
       );
       skipped++;
       return;

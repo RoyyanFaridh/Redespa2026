@@ -1,14 +1,14 @@
-
 "use server";
 
 import { createAdminClient } from "../supabase/admin";
 import { requireAdmin } from "../auth/admin";
 import { isKegiatanAktif, buildDateTime } from "./helpers";
-import { isMudamudiTargeted } from "./target";
+import { isMudamudiTargeted, isJamaahTargeted } from "./target";
 import type { PresensiStatus, PresensiMetode } from "./types";
 
 const HADIR_TOLERANCE_MINUTES = 10;
-const MUDA_MUDI_QR_PREFIX = "KMM_PANDAK:MUDA_MUDI:";
+const MUDA_MUDI_QR_PREFIXES = ["SIKEMA:MUDA_MUDI:", "KMM_PANDAK:MUDA_MUDI:"];
+const JAMAAH_QR_PREFIXES = ["SIKEMA:JAMAAH:", "KMM_PANDAK:JAMAAH:"];
 
 type Kegiatan = {
   id: number;
@@ -18,12 +18,13 @@ type Kegiatan = {
   jam_mulai: string;
   jam_selesai: string;
   lokasi: string;
+  jenis_peserta?: "jamaah" | "mudamudi" | null;
   kelompok: string[] | null;
   kelas: string[] | null;
   jenis_kelamin: string | null;
 };
 
-type Mudamudi = {
+type PesertaInfo = {
   id: number;
   nama: string;
   kelompok: string | null;
@@ -32,51 +33,61 @@ type Mudamudi = {
   tahun_lahir: number | null;
 };
 
-export type ScanMudamudiQRResult =
+export type ScanQRResult =
   | {
-    success: true;
-    type: "success";
-    message: string;
-    presensiId: number;
-    waktuCheckin: string;
-    status: PresensiStatus;
-    metode: PresensiMetode;
-    kegiatan: Kegiatan;
-    mudamudi: Mudamudi;
-  }
+      success: true;
+      type: "success";
+      message: string;
+      presensiId: number;
+      waktuCheckin: string;
+      status: PresensiStatus;
+      metode: PresensiMetode;
+      kegiatan: Kegiatan;
+      peserta: PesertaInfo;
+      mudamudi?: PesertaInfo; // backward compat
+    }
   | {
-    success: false;
-    type:
-    | "invalid_qr"
-    | "mudamudi_not_found"
-    | "kegiatan_not_found"
-    | "kegiatan_inactive"
-    | "not_target"
-    | "already_present"
-    | "not_authorized"
-    | "database_error";
-    message: string;
-    mudamudi?: Mudamudi;
-    kegiatan?: Kegiatan;
-  };
+      success: false;
+      type:
+        | "invalid_qr"
+        | "qr_mismatch"
+        | "peserta_not_found"
+        | "mudamudi_not_found"
+        | "kegiatan_not_found"
+        | "kegiatan_inactive"
+        | "not_target"
+        | "already_present"
+        | "not_authorized"
+        | "database_error";
+      message: string;
+      peserta?: PesertaInfo;
+      mudamudi?: PesertaInfo;
+      kegiatan?: Kegiatan;
+    };
 
-function parseMudamudiQR(qrText: string): string | null {
+export type ScanMudamudiQRResult = ScanQRResult;
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function parseQR(qrText: string): { type: "mudamudi" | "jamaah" | "unknown"; qrId: string | null } {
   const value = qrText.trim();
 
-  if (!value.startsWith(MUDA_MUDI_QR_PREFIX)) {
-    return null;
+  for (const prefix of MUDA_MUDI_QR_PREFIXES) {
+    if (value.startsWith(prefix)) {
+      const qrId = value.slice(prefix.length).trim();
+      return { type: UUID_REGEX.test(qrId) ? "mudamudi" : "unknown", qrId };
+    }
   }
 
-  const qrId = value.slice(MUDA_MUDI_QR_PREFIX.length).trim();
-
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-  if (!uuidRegex.test(qrId)) {
-    return null;
+  for (const prefix of JAMAAH_QR_PREFIXES) {
+    if (value.startsWith(prefix)) {
+      const qrId = value.slice(prefix.length).trim();
+      return { type: UUID_REGEX.test(qrId) ? "jamaah" : "unknown", qrId };
+    }
   }
 
-  return qrId;
+  return { type: "unknown", qrId: null };
 }
 
 function determinePresensiStatus(
@@ -85,7 +96,6 @@ function determinePresensiStatus(
   waktuCheckin: Date,
 ): PresensiStatus {
   const waktuMulai = buildDateTime(tanggalMulai, jamMulai);
-
   const batasHadir = new Date(
     waktuMulai.getTime() + HADIR_TOLERANCE_MINUTES * 60 * 1000,
   );
@@ -95,54 +105,49 @@ function determinePresensiStatus(
     : "terlambat";
 }
 
-async function getKegiatanByIdInternal(
+export async function getKegiatanById(
   kegiatanId: number,
 ): Promise<Kegiatan | null> {
+  await requireAdmin();
+
   if (!Number.isInteger(kegiatanId) || kegiatanId <= 0) {
     return null;
   }
 
   const supabase = createAdminClient();
 
+  // Ambil data kegiatan
   const { data, error } = await supabase
     .from("kegiatan")
     .select(
-      `
-        id,
-        nama,
-        tanggal_mulai,
-        tanggal_selesai,
-        jam_mulai,
-        jam_selesai,
-        lokasi,
-        kelompok,
-        kelas,
-        jenis_kelamin
-      `,
+      "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, kelompok, kelas, jenis_kelamin",
     )
     .eq("id", kegiatanId)
     .maybeSingle();
 
-  if (error) {
-    console.error("[getKegiatanByIdInternal] Database error:", error);
+  if (error || !data) {
     return null;
   }
 
-  return data as Kegiatan | null;
+  // Coba ambil jenis_peserta
+  const { data: withJenis } = await supabase
+    .from("kegiatan")
+    .select("jenis_peserta")
+    .eq("id", kegiatanId)
+    .maybeSingle();
+
+  const jenisPeserta = withJenis?.jenis_peserta ?? null;
+
+  return {
+    ...data,
+    jenis_peserta: jenisPeserta,
+  } as Kegiatan;
 }
 
-export async function getKegiatanById(
-  kegiatanId: number,
-): Promise<Kegiatan | null> {
-  await requireAdmin();
-
-  return getKegiatanByIdInternal(kegiatanId);
-}
-
-export async function scanMudamudiQR(
+export async function scanQR(
   qrText: string,
   kegiatanId: number,
-): Promise<ScanMudamudiQRResult> {
+): Promise<ScanQRResult> {
   await requireAdmin();
 
   if (typeof qrText !== "string" || !qrText.trim()) {
@@ -161,48 +166,9 @@ export async function scanMudamudiQR(
     };
   }
 
-  const qrId = parseMudamudiQR(qrText);
+  const kegiatan = await getKegiatanById(kegiatanId);
 
-  if (!qrId) {
-    return {
-      success: false,
-      type: "invalid_qr",
-      message: "QR Code bukan QR Muda-Mudi KMM Pandak.",
-    };
-  }
-
-  const supabase = createAdminClient();
-
-  const { data: kegiatanData, error: kegiatanError } = await supabase
-    .from("kegiatan")
-    .select(
-      `
-        id,
-        nama,
-        tanggal_mulai,
-        tanggal_selesai,
-        jam_mulai,
-        jam_selesai,
-        lokasi,
-        kelompok,
-        kelas,
-        jenis_kelamin
-      `,
-    )
-    .eq("id", kegiatanId)
-    .maybeSingle();
-
-  if (kegiatanError) {
-    console.error("[scanMudamudiQR] Kegiatan lookup error:", kegiatanError);
-
-    return {
-      success: false,
-      type: "database_error",
-      message: "Terjadi kesalahan saat mencari kegiatan.",
-    };
-  }
-
-  if (!kegiatanData) {
+  if (!kegiatan) {
     return {
       success: false,
       type: "kegiatan_not_found",
@@ -210,42 +176,39 @@ export async function scanMudamudiQR(
     };
   }
 
-  const kegiatan = kegiatanData as Kegiatan;
+  const { type: qrType, qrId } = parseQR(qrText);
 
-  const { data: mudamudiData, error: mudamudiError } = await supabase
-    .from("mudamudi")
-    .select(
-      `
-        id,
-        nama,
-        kelompok,
-        kelas,
-        jenis_kelamin,
-        tahun_lahir
-      `,
-    )
-    .eq("qr_id", qrId)
-    .maybeSingle();
-
-  if (mudamudiError) {
-    console.error("[scanMudamudiQR] Mudamudi lookup error:", mudamudiError);
-
+  if (!qrId || qrType === "unknown") {
     return {
       success: false,
-      type: "database_error",
-      message: "Terjadi kesalahan saat mencari data Muda-Mudi.",
+      type: "invalid_qr",
+      message: "Format QR Code tidak dikenali oleh sistem REDESPA.",
+      kegiatan,
     };
   }
 
-  if (!mudamudiData) {
+  const jenisKegiatan = kegiatan.jenis_peserta || "mudamudi";
+
+  // Validasi kecocokan jenis QR dengan jenis kegiatan
+  if (jenisKegiatan === "jamaah" && qrType !== "jamaah") {
     return {
       success: false,
-      type: "mudamudi_not_found",
-      message: "QR Code tidak terdaftar pada data Muda-Mudi.",
+      type: "qr_mismatch",
+      message: "QR Code ini merupakan QR Muda-Mudi. Kegiatan ini menggunakan sasaran Jamaah.",
+      kegiatan,
     };
   }
 
-  const mudamudi = mudamudiData as Mudamudi;
+  if (jenisKegiatan === "mudamudi" && qrType !== "mudamudi") {
+    return {
+      success: false,
+      type: "qr_mismatch",
+      message: "QR Code ini merupakan QR Jamaah. Kegiatan ini menggunakan sasaran Muda-Mudi.",
+      kegiatan,
+    };
+  }
+
+  const supabase = createAdminClient();
 
   if (
     !isKegiatanAktif(
@@ -260,107 +223,218 @@ export async function scanMudamudiQR(
       type: "kegiatan_inactive",
       message: "Kegiatan belum dimulai atau sudah selesai.",
       kegiatan,
-      mudamudi,
     };
   }
 
-  if (!isMudamudiTargeted(kegiatan, mudamudi)) {
-    return {
-      success: false,
-      type: "not_target",
-      message: "Muda-Mudi tidak termasuk sasaran kegiatan.",
-      kegiatan,
-      mudamudi,
-    };
-  }
+  // Proses pencarian dan presensi sesuai jenis kegiatan
+  if (jenisKegiatan === "jamaah") {
+    const { data: jamaahData, error: jamaahError } = await supabase
+      .from("jamaah")
+      .select("id, nama, kelompok, jenis_kelamin, tahun_lahir")
+      .eq("qr_id", qrId)
+      .maybeSingle();
 
-  const { data: existingPresensi, error: existingError } = await supabase
-    .from("presensi")
-    .select("id")
-    .eq("kegiatan_id", kegiatanId)
-    .eq("mudamudi_id", mudamudi.id)
-    .maybeSingle();
-
-  if (existingError) {
-    console.error(
-      "[scanMudamudiQR] Existing presensi lookup error:",
-      existingError,
-    );
-
-    return {
-      success: false,
-      type: "database_error",
-      message: "Terjadi kesalahan saat mengecek presensi.",
-      kegiatan,
-      mudamudi,
-    };
-  }
-
-  if (existingPresensi) {
-    return {
-      success: false,
-      type: "already_present",
-      message: `${mudamudi.nama} sudah melakukan presensi.`,
-      kegiatan,
-      mudamudi,
-    };
-  }
-
-  const waktuCheckin = new Date();
-
-  const status = determinePresensiStatus(
-    kegiatan.tanggal_mulai,
-    kegiatan.jam_mulai,
-    waktuCheckin,
-  );
-
-  const { data: presensiData, error: presensiError } = await supabase
-    .from("presensi")
-    .insert({
-      kegiatan_id: kegiatanId,
-      mudamudi_id: mudamudi.id,
-      waktu_checkin: waktuCheckin.toISOString(),
-      status,
-      metode: "qr",
-      keterangan: null,
-    })
-    .select("id")
-    .single();
-
-  if (presensiError) {
-    if (presensiError.code === "23505") {
+    if (jamaahError || !jamaahData) {
       return {
         success: false,
-        type: "already_present",
-        message: `${mudamudi.nama} sudah melakukan presensi.`,
+        type: "peserta_not_found",
+        message: "QR Code tidak terdaftar pada data Jamaah.",
         kegiatan,
-        mudamudi,
       };
     }
 
-    console.error("[scanMudamudiQR] Insert presensi error:", presensiError);
+    const peserta: PesertaInfo = {
+      id: jamaahData.id,
+      nama: jamaahData.nama,
+      kelompok: jamaahData.kelompok,
+      kelas: [],
+      jenis_kelamin: jamaahData.jenis_kelamin,
+      tahun_lahir: jamaahData.tahun_lahir,
+    };
+
+    if (!isJamaahTargeted(kegiatan, peserta)) {
+      return {
+        success: false,
+        type: "not_target",
+        message: "Jamaah tidak termasuk sasaran kegiatan ini.",
+        kegiatan,
+        peserta,
+      };
+    }
+
+    // Cek duplikasi presensi jamaah_id
+    const { data: existing } = await supabase
+      .from("presensi")
+      .select("id")
+      .eq("kegiatan_id", kegiatanId)
+      .eq("jamaah_id", peserta.id)
+      .maybeSingle();
+
+    if (existing) {
+      return {
+        success: false,
+        type: "already_present",
+        message: `${peserta.nama} sudah melakukan presensi.`,
+        kegiatan,
+        peserta,
+      };
+    }
+
+    const waktuCheckin = new Date();
+    const status = determinePresensiStatus(
+      kegiatan.tanggal_mulai,
+      kegiatan.jam_mulai,
+      waktuCheckin,
+    );
+
+    const { data: presensiData, error: presensiError } = await supabase
+      .from("presensi")
+      .insert({
+        kegiatan_id: kegiatanId,
+        jamaah_id: peserta.id,
+        mudamudi_id: null,
+        waktu_checkin: waktuCheckin.toISOString(),
+        status,
+        metode: "qr",
+        keterangan: null,
+      })
+      .select("id")
+      .single();
+
+    if (presensiError) {
+      return {
+        success: false,
+        type: "database_error",
+        message: "Presensi gagal disimpan. Silakan coba lagi.",
+        kegiatan,
+        peserta,
+      };
+    }
 
     return {
-      success: false,
-      type: "database_error",
-      message: "Presensi gagal disimpan. Silakan coba lagi.",
+      success: true,
+      type: "success",
+      message:
+        status === "hadir"
+          ? `${peserta.nama} berhasil melakukan presensi.`
+          : `${peserta.nama} berhasil melakukan presensi terlambat.`,
+      presensiId: presensiData.id,
+      waktuCheckin: waktuCheckin.toISOString(),
+      status,
+      metode: "qr",
       kegiatan,
-      mudamudi,
+      peserta,
+    };
+  } else {
+    // Muda-Mudi
+    const { data: mudamudiData, error: mudamudiError } = await supabase
+      .from("mudamudi")
+      .select("id, nama, kelompok, kelas, jenis_kelamin, tahun_lahir")
+      .eq("qr_id", qrId)
+      .maybeSingle();
+
+    if (mudamudiError || !mudamudiData) {
+      return {
+        success: false,
+        type: "mudamudi_not_found",
+        message: "QR Code tidak terdaftar pada data Muda-Mudi.",
+        kegiatan,
+      };
+    }
+
+    const peserta: PesertaInfo = {
+      id: mudamudiData.id,
+      nama: mudamudiData.nama,
+      kelompok: mudamudiData.kelompok,
+      kelas: mudamudiData.kelas || [],
+      jenis_kelamin: mudamudiData.jenis_kelamin,
+      tahun_lahir: mudamudiData.tahun_lahir,
+    };
+
+    if (!isMudamudiTargeted(kegiatan, peserta)) {
+      return {
+        success: false,
+        type: "not_target",
+        message: "Muda-Mudi tidak termasuk sasaran kegiatan.",
+        kegiatan,
+        peserta,
+        mudamudi: peserta,
+      };
+    }
+
+    // Cek duplikasi presensi mudamudi_id
+    const { data: existing } = await supabase
+      .from("presensi")
+      .select("id")
+      .eq("kegiatan_id", kegiatanId)
+      .eq("mudamudi_id", peserta.id)
+      .maybeSingle();
+
+    if (existing) {
+      return {
+        success: false,
+        type: "already_present",
+        message: `${peserta.nama} sudah melakukan presensi.`,
+        kegiatan,
+        peserta,
+        mudamudi: peserta,
+      };
+    }
+
+    const waktuCheckin = new Date();
+    const status = determinePresensiStatus(
+      kegiatan.tanggal_mulai,
+      kegiatan.jam_mulai,
+      waktuCheckin,
+    );
+
+    const { data: presensiData, error: presensiError } = await supabase
+      .from("presensi")
+      .insert({
+        kegiatan_id: kegiatanId,
+        mudamudi_id: peserta.id,
+        jamaah_id: null,
+        waktu_checkin: waktuCheckin.toISOString(),
+        status,
+        metode: "qr",
+        keterangan: null,
+      })
+      .select("id")
+      .single();
+
+    if (presensiError) {
+      return {
+        success: false,
+        type: "database_error",
+        message: "Presensi gagal disimpan. Silakan coba lagi.",
+        kegiatan,
+        peserta,
+        mudamudi: peserta,
+      };
+    }
+
+    return {
+      success: true,
+      type: "success",
+      message:
+        status === "hadir"
+          ? `${peserta.nama} berhasil melakukan presensi.`
+          : `${peserta.nama} berhasil melakukan presensi terlambat.`,
+      presensiId: presensiData.id,
+      waktuCheckin: waktuCheckin.toISOString(),
+      status,
+      metode: "qr",
+      kegiatan,
+      peserta,
+      mudamudi: peserta,
     };
   }
+}
 
-  return {
-    success: true,
-    type: "success",
-    message:
-      status === "hadir"
-        ? `${mudamudi.nama} berhasil melakukan presensi.`
-        : `${mudamudi.nama} berhasil melakukan presensi terlambat.`,
-    presensiId: presensiData.id,
-    waktuCheckin: waktuCheckin.toISOString(),
-    status,
-    metode: "qr",
-    kegiatan,
-    mudamudi,
-  };
+// Alias untuk fungsi lama
+export async function scanMudamudiQR(
+  qrText: string,
+  kegiatanId: number,
+): Promise<ScanMudamudiQRResult> {
+  return scanQR(qrText, kegiatanId);
 }
