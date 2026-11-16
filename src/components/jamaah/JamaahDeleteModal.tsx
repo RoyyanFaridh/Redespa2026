@@ -1,8 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import type { Jamaah } from "../../backend/jamaah/types";
-import ModalWrapper from "../mudamudi/ModalWrapper";
-import { Button } from "../common";
+import { ModalWrapper, Button } from "../common";
 
 type Props = {
   data: Jamaah;
@@ -11,29 +11,69 @@ type Props = {
 };
 
 export default function JamaahDeleteModal({ data, onConfirm, onClose }: Props) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleConfirm() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      await onConfirm();
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <ModalWrapper onClose={onClose}>
-      <div className="p-6 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 mb-4">
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+    <ModalWrapper onClose={onClose} size="sm">
+      <div className="p-4 sm:p-5 flex flex-col items-center text-center">
+        {/* Warning icon */}
+        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-red-500 ring-4 ring-red-50/60">
+          <svg
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.75}
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+            />
           </svg>
         </div>
 
-        <h3 className="text-base font-bold text-gray-900">Hapus Data Jamaah</h3>
-        <p className="mt-2 text-xs text-gray-500">
-          Apakah Anda yakin ingin menghapus data <strong>{data.nama}</strong> dari kelompok <strong>{data.kelompok}</strong>? Tindakan ini tidak dapat dibatalkan.
+        {/* Title */}
+        <h3 className="text-sm font-bold text-[#202824]">Hapus Data Jamaah</h3>
+
+        {/* Body */}
+        <p className="mt-1.5 max-w-xs text-xs leading-relaxed text-[#78827C]">
+          Apakah Anda yakin ingin menghapus data{" "}
+          <strong className="text-[#202824]">{data.nama}</strong> dari kelompok{" "}
+          <strong className="text-[#202824]">{data.kelompok}</strong>? Tindakan ini tidak dapat dibatalkan.
         </p>
 
-        <div className="mt-6 flex justify-center gap-3">
-          <Button variant="outline" size="sm" onClick={onClose} className="text-xs">
+        {/* Action buttons */}
+        <div className="mt-4 flex w-full justify-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            disabled={loading}
+            className="text-xs"
+          >
             Batal
           </Button>
+
           <Button
+            type="button"
             variant="danger"
             size="sm"
-            onClick={onConfirm}
-            className="text-xs bg-red-600 text-white hover:bg-red-700"
+            onClick={handleConfirm}
+            isLoading={loading}
+            className="text-xs"
           >
             Hapus Jamaah
           </Button>

@@ -367,40 +367,39 @@ export default function RekapitulasiPage({ adminDesa }: Props) {
   }
 
   return (
-    <main className="min-h-screen bg-[#F5F7F5]">
-      <div className="mx-auto w-full px-4 py-6 sm:px-6 md:px-7 lg:px-8">
-        <div className="shrink-0 pb-5">
-          <PageHeader
-            eyebrow="Presensi"
-            title="Rekapitulasi Presensi"
-            description="Lihat riwayat kehadiran Jamaah pada setiap kegiatan."
-            actions={
-              <Button
-                variant="primary"
-                onClick={openExportModal}
-                aria-label="Ekspor Excel"
-                title="Ekspor Excel"
-                leftIcon={
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.8}
-                    className="h-4 w-4"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"
-                    />
-                  </svg>
-                }
-              >
-                <span className="hidden sm:inline">Ekspor Excel</span>
-              </Button>
-            }
-          />
+    <div className="w-full">
+      <div className="shrink-0 pb-5">
+        <PageHeader
+          eyebrow="Presensi"
+          title="Rekapitulasi Presensi"
+          description="Lihat riwayat kehadiran Jamaah pada setiap kegiatan."
+          actions={
+            <Button
+              variant="primary"
+              onClick={openExportModal}
+              aria-label="Ekspor Excel"
+              title="Ekspor Excel"
+              leftIcon={
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"
+                  />
+                </svg>
+              }
+            >
+              <span className="hidden sm:inline">Ekspor Excel</span>
+            </Button>
+          }
+        />
 
           {error && (
             <div
@@ -469,7 +468,6 @@ export default function RekapitulasiPage({ adminDesa }: Props) {
             />
           </div>
         </div>
-      </div>
 
       {showExportModal && (
         <RekapitulasiExportModal
@@ -482,6 +480,6 @@ export default function RekapitulasiPage({ adminDesa }: Props) {
           onExport={handleExportExcel}
         />
       )}
-    </main>
+    </div>
   );
 }

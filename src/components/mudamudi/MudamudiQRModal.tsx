@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRef, useState } from "react";
@@ -7,7 +6,7 @@ import { toPng } from "html-to-image";
 
 import { Mudamudi } from "../../backend/mudamudi/types";
 import { toTitleCase } from "../../backend/mudamudi/format";
-import { Button } from "../common";
+import { ModalWrapper, Button } from "../common";
 
 type Props = {
   data: Mudamudi;
@@ -59,8 +58,8 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 backdrop-blur-xs">
-      <div className="relative flex max-h-[95vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-[#E5EAE6] bg-white shadow-xl">
+    <ModalWrapper onClose={onClose} size="md">
+      <div className="flex flex-col overflow-hidden bg-white">
         <div className="shrink-0 border-b border-[#E5EAE6] px-5 py-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
@@ -242,6 +241,6 @@ export default function MudamudiQRModal({ data, onClose }: Props) {
           </div>
         </div>
       </div>
-    </div>
+    </ModalWrapper>
   );
 }

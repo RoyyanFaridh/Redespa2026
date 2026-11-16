@@ -1,10 +1,12 @@
+
 "use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
+
 import { createClient } from "../../src/backend/supabase/client";
+import { Button } from "../../src/components/common/Button";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -18,338 +20,400 @@ export default function LoginPage() {
 
   async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (loading) return;
+
     setError("");
     setLoading(true);
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error: authError } =
+        await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
 
-    setLoading(false);
+      if (authError) {
+        setError(
+          "Email atau kata sandi tidak valid. Periksa kembali kredensial Anda."
+        );
+        return;
+      }
 
-    if (authError) {
-      setError("Email atau kata sandi tidak valid. Silakan periksa kembali.");
-      return;
+      router.push("/admin");
+      router.refresh();
+    } catch (err) {
+      console.error("Login gagal:", err);
+      setError("Terjadi kesalahan. Silakan coba kembali.");
+    } finally {
+      setLoading(false);
     }
-
-    router.push("/admin");
-    router.refresh();
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col justify-between bg-[#F4F6F4] text-[#202824] selection:bg-[#287A50]/20 selection:text-[#287A50]">
-      {/* Background Decorative Patterns */}
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F3F6F3] px-4 py-8 text-[#202824] sm:px-6">
+      {/* Background */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
-      >
-        {/* Soft Radial Ambient Lights */}
-        <div className="absolute -top-32 left-1/2 h-[450px] w-[700px] -translate-x-1/2 rounded-full bg-[#E6F2EA]/70 blur-3xl" />
-        <div className="absolute -bottom-20 right-10 h-[350px] w-[350px] rounded-full bg-[#E6F2EA]/50 blur-3xl" />
+        className="pointer-events-none absolute -left-40 -top-40 h-96 w-96 rounded-full bg-[#DCEADF]/60 blur-3xl"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[#E2EBE3]/70 blur-3xl"
+      />
 
-        {/* Civic Watermark Line Accents */}
-        <div
-          className="absolute inset-0 opacity-[0.035]"
-          style={{
-            backgroundImage: `radial-gradient(#287A50 1px, transparent 1px)`,
-            backgroundSize: "24px 24px",
-          }}
-        />
-      </div>
-
-      {/* Top Header */}
-      <header className="mx-auto flex h-16 w-full max-w-9xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link
-          href="/"
-          className="group inline-flex items-center gap-2 rounded-xl border border-[#DCE3DE] bg-white px-3.5 py-1.5 text-xs font-medium text-[#78827C] shadow-2xs transition hover:border-[#287A50]/40 hover:text-[#287A50]"
-        >
-          <svg
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            className="h-3.5 w-3.5 transition group-hover:-translate-x-0.5"
-            aria-hidden="true"
+      <div className="relative w-full max-w-[960px]">
+        {/* Back navigation */}
+        <div className="mb-5 flex items-center justify-between px-1">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-[11px] font-medium text-[#78827C] transition-colors hover:text-[#287A50]"
           >
-            <path
-              d="M15.833 10H4.167m4.166 4.167L4.167 10l4.166-4.167"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>Kembali ke Beranda</span>
-        </Link>
-
-        {/* Civic Identifier Tag */}
-        <div className="flex items-center gap-2 text-[11px] font-semibold text-[#78827C]">
-          <span className="flex h-2 w-2 rounded-full bg-[#287A50]" />
-          <span>Desa Pandak • DI Yogyakarta</span>
-        </div>
-      </header>
-
-      {/* Main Container: The Civic Access Passcard */}
-      <main className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
-        <div className="w-full max-w-[430px]">
-          {/* Card Container */}
-          <div className="relative overflow-hidden rounded-3xl border border-[#DCE3DE] bg-white shadow-xl shadow-[#202824]/5">
-            {/* 1. Header Band: Official Civic Pass Style */}
-            <div className="relative bg-gradient-to-r from-[#1C5E3B] via-[#287A50] to-[#206440] p-6 text-white sm:p-7">
-              {/* Subtle Guilloche / Line Accent */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 opacity-10"
-                style={{
-                  backgroundImage: `repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 12px)`,
-                }}
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              className="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path
+                d="M15.5 10H4.5m4 4-4-4 4-4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
+            </svg>
+            Kembali ke Beranda
+          </Link>
 
-              <div className="relative z-10 flex items-start justify-between gap-3">
-                {/* Logo & Identity */}
-                <div className="flex items-center gap-3">
-                  <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-2 ring-white/30">
-                    <Image
-                      src="/icon.webp"
-                      alt="REDESPA"
-                      width={44}
-                      height={44}
-                      className="h-full w-full object-cover"
-                      priority
-                    />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#E6F2EA]">
-                      Kartu Akses Petugas
-                    </span>
-                    <h1 className="text-base font-bold tracking-tight text-white sm:text-lg">
-                      REDESPA PANDAK
-                    </h1>
-                  </div>
-                </div>
+          <span className="text-[10px] font-medium tracking-[0.14em] text-[#89938C]">
+            DESA PANDAK
+          </span>
+        </div>
 
-                {/* Simulated Security Smart Chip */}
-                <div className="flex flex-col items-end">
-                  <div className="flex h-7 w-9 items-center justify-center rounded-md border border-amber-300/40 bg-gradient-to-br from-amber-200/30 to-amber-400/20 shadow-2xs">
-                    <div className="grid h-3 w-5 grid-cols-2 gap-0.5 rounded-xs border border-amber-300/60 bg-amber-200/40 p-0.5" />
-                  </div>
-                  <span className="mt-1 text-[8px] font-mono tracking-wider text-emerald-100/70">
-                    SEC-ID
-                  </span>
-                </div>
+        {/* Login Card */}
+        <div className="grid overflow-hidden rounded-2xl border border-[#E3E9E4] bg-white shadow-[0_20px_70px_rgba(35,65,43,0.09)] md:min-h-[550px] md:grid-cols-[0.95fr_1.05fr]">
+          {/* Left: Brand Panel */}
+          <section className="relative flex min-h-[230px] flex-col justify-between overflow-hidden bg-[#245D40] p-6 text-white sm:p-9 md:min-h-[550px] md:p-10">
+            {/* Subtle background pattern */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 opacity-[0.07]"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(255,255,255,0.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.35) 1px, transparent 1px)",
+                backgroundSize: "36px 36px",
+              }}
+            />
+
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full border border-white/[0.10]"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full border border-white/[0.10]"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full border border-white/[0.08]"
+            />
+
+            {/* Brand */}
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  className="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <rect x="3.5" y="4" width="17" height="16" rx="2.5" />
+                  <path
+                    d="M8 8h8M8 12h8M8 16h4"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="17" cy="16" r="1" fill="currentColor" stroke="none" />
+                </svg>
               </div>
 
-              {/* Sub-strip: Kelompok Binaan */}
-              <div className="relative z-10 mt-4 flex items-center justify-between border-t border-white/15 pt-3 text-[10px] text-emerald-100/80">
-                <span>Cakupan: 6 Kelompok Wilayah</span>
-                <span className="font-semibold text-white">Portal Resmi</span>
+              <div>
+                <p className="text-[15px] font-bold tracking-[0.16em]">
+                  REDESPA
+                </p>
+                <p className="mt-0.5 text-[9px] tracking-[0.08em] text-white/60">
+                  DESA PANDAK
+                </p>
               </div>
             </div>
 
-            {/* 2. Card Body: Formulir Otorisasi */}
-            <div className="p-6 sm:p-7">
-              <div className="mb-5">
-                <h2 className="text-sm font-bold tracking-tight text-[#202824]">
-                  Otorisasi Petugas
+            {/* Main identity */}
+            <div className="relative z-10 mt-9 md:mt-0">
+              <div className="mb-5 flex items-center gap-2">
+                <span className="h-[2px] w-7 rounded-full bg-[#A9D1B2]" />
+                <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#C4DDCA]">
+                  Sistem Informasi
+                </span>
+              </div>
+
+              <h1 className="max-w-[340px] text-[27px] font-semibold leading-[1.3] tracking-tight sm:text-[32px]">
+                Data Generus dan Jamaah,
+                <span className="text-[#B8D9C0]">
+                  {" "}
+                  lebih tertata.
+                </span>
+              </h1>
+
+              <p className="mt-5 max-w-[310px] text-[12px] leading-[1.9] text-white/70">
+                REDESPA membantu pengelolaan data, kegiatan, dan presensi
+                dalam satu sistem informasi terpadu.
+              </p>
+
+              {/* Feature labels */}
+              <div className="mt-7 flex flex-wrap gap-2">
+                <span className="rounded-md border border-white/15 bg-white/[0.07] px-3 py-1.5 text-[9px] font-medium text-white/80">
+                  Data Generus
+                </span>
+                <span className="rounded-md border border-white/15 bg-white/[0.07] px-3 py-1.5 text-[9px] font-medium text-white/80">
+                  Data Jamaah
+                </span>
+                <span className="rounded-md border border-white/15 bg-white/[0.07] px-3 py-1.5 text-[9px] font-medium text-white/80">
+                  Presensi
+                </span>
+              </div>
+            </div>
+
+            {/* Bottom information */}
+            <div className="relative z-10 mt-8 hidden items-center justify-between border-t border-white/15 pt-5 md:flex">
+              <p className="text-[10px] text-white/50">
+                Portal Pengelolaan Data
+              </p>
+              <p className="text-[10px] tracking-wide text-white/50">
+                REDESPA
+              </p>
+            </div>
+
+            <div className="relative z-10 mt-7 flex items-center justify-between border-t border-white/15 pt-4 md:hidden">
+              <p className="text-[9px] text-white/50">
+                Portal Pengelolaan Data
+              </p>
+              <p className="text-[9px] text-white/50">
+                REDESPA
+              </p>
+            </div>
+          </section>
+
+          {/* Right: Login Form */}
+          <section className="flex flex-col justify-center px-6 py-9 sm:px-10 sm:py-12 md:px-12 lg:px-14">
+            <div className="mx-auto w-full max-w-[350px]">
+              {/* Heading */}
+              <div className="mb-8">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-md bg-[#EAF3EC] px-2.5 py-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#287A50]" />
+                  <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#287A50]">
+                    Portal Petugas
+                  </span>
+                </div>
+
+                <h2 className="text-[25px] font-semibold tracking-tight text-[#202824]">
+                  Masuk ke REDESPA
                 </h2>
-                <p className="mt-0.5 text-xs text-[#78827C]">
-                  Masukkan akun admin untuk membuka rekapitulasi data.
+
+                <p className="mt-2 text-[12px] leading-[1.8] text-[#78827C]">
+                  Silakan masuk menggunakan akun petugas yang telah
+                  terdaftar.
                 </p>
               </div>
 
-              {/* Error Alert */}
-              {error && (
-                <div
-                  role="alert"
-                  className="mb-4 flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700"
-                >
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    className="mt-0.5 h-4 w-4 shrink-0 text-rose-600"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <p className="leading-5">{error}</p>
-                </div>
-              )}
-
-              <form onSubmit={handleLogin} className="space-y-4">
-                {/* Field Email */}
+              <form onSubmit={handleLogin} className="space-y-5">
+                {/* Email */}
                 <div>
                   <label
                     htmlFor="email"
-                    className="mb-1.5 block text-xs font-semibold text-[#202824]"
+                    className="mb-2 block text-[11px] font-semibold text-[#37423B]"
                   >
-                    Email Akun Petugas
+                    Email
                   </label>
-                  <div className="relative">
-                    <div className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-[#78827C]">
-                      <svg
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className="h-4 w-4"
-                        aria-hidden="true"
-                      >
-                        <path d="M3 4a2 2 0 0 0-2 2v1.161l8.441 4.221a1.25 1.25 0 0 0 1.118 0L19 7.162V6a2 2 0 0 0-2-2H3Z" />
-                        <path d="m19 8.839-7.77 3.885a2.75 2.75 0 0 1-2.46 0L1 8.839V14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.839Z" />
-                      </svg>
-                    </div>
-                    <input
-                      id="email"
-                      type="email"
-                      placeholder="admin@redespa.desa.id"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      autoComplete="email"
-                      required
-                      className="h-11 w-full rounded-xl border border-[#DCE3DE] bg-[#F9FAF9] pl-10 pr-3.5 text-xs text-[#202824] placeholder:text-[#8E9892] transition hover:bg-white focus:border-[#287A50] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#287A50]/20"
-                    />
-                  </div>
-                </div>
 
-                {/* Field Password */}
-                <div>
-                  <label
-                    htmlFor="password"
-                    className="mb-1.5 block text-xs font-semibold text-[#202824]"
-                  >
-                    Kata Sandi
-                  </label>
                   <div className="relative">
-                    <div className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-[#78827C]">
-                      <svg
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className="h-4 w-4"
-                        aria-hidden="true"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoComplete="current-password"
-                      required
-                      className="h-11 w-full rounded-xl border border-[#DCE3DE] bg-[#F9FAF9] pl-10 pr-12 text-xs text-[#202824] placeholder:text-[#8E9892] transition hover:bg-white focus:border-[#287A50] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#287A50]/20"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute inset-y-0 right-3 flex items-center px-1 text-xs font-medium text-[#78827C] transition hover:text-[#287A50]"
-                    >
-                      {showPassword ? "Tutup" : "Lihat"}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Submit Action */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#287A50] text-xs font-semibold text-white shadow-sm transition hover:bg-[#206440] hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loading ? (
-                    <>
-                      <svg
-                        className="h-4 w-4 animate-spin text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      <span>Memverifikasi Kredensial...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Buka Dashboard Petugas</span>
+                    <div className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-[#929D95]">
                       <svg
                         viewBox="0 0 20 20"
                         fill="none"
                         stroke="currentColor"
-                        strokeWidth={2}
-                        className="h-3.5 w-3.5"
+                        strokeWidth="1.5"
+                        className="h-4 w-4"
                         aria-hidden="true"
                       >
+                        <rect
+                          x="2.5"
+                          y="4"
+                          width="15"
+                          height="12"
+                          rx="2"
+                        />
                         <path
-                          d="M4.167 10h11.666m-4.166-4.167 4.166 4.167-4.166 4.167"
+                          d="m3.5 5 6.5 5 6.5-5"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
                       </svg>
-                    </>
-                  )}
-                </button>
+                    </div>
+
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="nama@email.com"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      autoComplete="email"
+                      required
+                      disabled={loading}
+                      className="h-11 w-full rounded-lg border border-[#E2E8E3] bg-[#FAFCFA] pl-10 pr-3 text-xs text-[#202824] outline-none transition-all placeholder:text-[#A5ADA7] hover:border-[#C6D4C9] focus:border-[#287A50] focus:bg-white focus:ring-4 focus:ring-[#287A50]/[0.07] disabled:cursor-not-allowed disabled:bg-[#F5F7F5]"
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="mb-2 block text-[11px] font-semibold text-[#37423B]"
+                  >
+                    Kata Sandi
+                  </label>
+
+                  <div className="relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-[#929D95]">
+                      <svg
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        className="h-4 w-4"
+                        aria-hidden="true"
+                      >
+                        <rect
+                          x="3.5"
+                          y="8.5"
+                          width="13"
+                          height="9"
+                          rx="2"
+                        />
+                        <path
+                          d="M6.5 8.5V6a3.5 3.5 0 0 1 7 0v2.5"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M10 12v2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Masukkan kata sandi"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      autoComplete="current-password"
+                      required
+                      disabled={loading}
+                      className="h-11 w-full rounded-lg border border-[#E2E8E3] bg-[#FAFCFA] pl-10 pr-[76px] text-xs text-[#202824] outline-none transition-all placeholder:text-[#A5ADA7] hover:border-[#C6D4C9] focus:border-[#287A50] focus:bg-white focus:ring-4 focus:ring-[#287A50]/[0.07] disabled:cursor-not-allowed disabled:bg-[#F5F7F5]"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      disabled={loading}
+                      aria-label={
+                        showPassword
+                          ? "Sembunyikan kata sandi"
+                          : "Tampilkan kata sandi"
+                      }
+                      className="absolute inset-y-0 right-3 flex items-center text-[10px] font-medium text-[#78827C] transition-colors hover:text-[#287A50] disabled:cursor-not-allowed"
+                    >
+                      {showPassword ? "Sembunyikan" : "Lihat"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Error message */}
+                {error && (
+                  <div
+                    role="alert"
+                    className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[11px] leading-5 text-red-700"
+                  >
+                    <svg
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="mt-0.5 h-4 w-4 shrink-0"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <p>{error}</p>
+                  </div>
+                )}
+
+                {/* Submit */}
+                <div className="pt-1">
+                  <Button
+                    type="submit"
+                    size="lg"
+                    isLoading={loading}
+                    disabled={loading}
+                    className="h-11 w-full justify-center !rounded-lg !text-xs font-semibold shadow-[0_3px_9px_rgba(40,122,80,0.16)] transition-all"
+                  >
+                    {loading ? "Memproses..." : "Masuk"}
+                  </Button>
+                </div>
               </form>
-            </div>
 
-            {/* 3. Card Bottom Stub: Perforated Pass Strip */}
-            <div className="relative border-t border-dashed border-[#DCE3DE] bg-[#FBFDFB] px-6 py-3.5">
-              {/* Left & Right Perforation Cutout Accents */}
-              <div
-                aria-hidden="true"
-                className="absolute -left-2.5 -top-2.5 h-5 w-5 rounded-full border border-[#DCE3DE] bg-[#F4F6F4]"
-              />
-              <div
-                aria-hidden="true"
-                className="absolute -right-2.5 -top-2.5 h-5 w-5 rounded-full border border-[#DCE3DE] bg-[#F4F6F4]"
-              />
+              {/* Access information */}
+              <div className="mt-8 flex items-start gap-2.5 border-t border-[#EDF0ED] pt-5">
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-[#89958D]"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M10 2.5 3.5 5v4.5c0 4.1 2.8 6.7 6.5 8 3.7-1.3 6.5-3.9 6.5-8V5L10 2.5Z"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="m7.5 10 1.7 1.7 3.5-3.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
 
-              <div className="flex items-center justify-between text-[10px] text-[#78827C]">
-                {/* Simulated Barcode Motif */}
-                <div className="flex items-center gap-0.5">
-                  <span className="h-4 w-0.5 bg-[#202824]" />
-                  <span className="h-4 w-1 bg-[#202824]" />
-                  <span className="h-4 w-0.5 bg-[#78827C]" />
-                  <span className="h-4 w-1.5 bg-[#202824]" />
-                  <span className="h-4 w-0.5 bg-[#202824]" />
-                  <span className="h-4 w-1 bg-[#287A50]" />
-                  <span className="h-4 w-0.5 bg-[#202824]" />
-                  <span className="h-4 w-1 bg-[#202824]" />
-                </div>
-
-                <div className="text-right">
-                  <p className="font-mono font-semibold text-[#202824]">
-                    REDESPA-2026-PANDAK
-                  </p>
-                  <p className="text-[9px]">Enkripsi Terverifikasi</p>
-                </div>
+                <p className="text-[10px] leading-[1.8] text-[#929D95]">
+                  Halaman ini hanya dapat diakses oleh petugas REDESPA
+                  dengan akun yang telah terdaftar.
+                </p>
               </div>
             </div>
-          </div>
+          </section>
         </div>
-      </main>
 
-      {/* Footer */}
-      <footer className="mx-auto w-full max-w-9xl px-4 py-4 text-center text-[11px] text-[#78827C] sm:px-6 lg:px-8">
-        &copy; {new Date().getFullYear()} REDESPA Desa Pandak. Seluruh hak cipta
-        dilindungi.
-      </footer>
-    </div>
+        {/* Footer */}
+        <footer className="mt-5 flex items-center justify-center px-2 text-[10px] text-[#9AA39D]">
+          © {new Date().getFullYear()} REDESPA Desa Pandak
+        </footer>
+      </div>
+    </main>
   );
 }

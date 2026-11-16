@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Mudamudi } from "../../backend/mudamudi/types";
@@ -7,8 +6,7 @@ import {
   getInitials,
   getAvatarColor,
 } from "../../backend/mudamudi/format";
-import ModalWrapper from "./ModalWrapper";
-import { Button } from "../common";
+import { ModalWrapper, Button, Badge, InfoRow } from "../common";
 
 type Props = {
   data: Mudamudi;
@@ -21,25 +19,6 @@ export default function DetailModal({ data, onClose }: Props) {
   const kelasList: string[] = (data.kelas ?? [])
     .map((kelas: string) => kelas.trim())
     .filter((kelas: string) => kelas.length > 0);
-
-  function DetailItem({
-    label,
-    value,
-  }: {
-    label: string;
-    value: string | number | null;
-  }) {
-    return (
-      <div className="min-w-0">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.05em] text-[#78827C]">
-          {label}
-        </p>
-        <p className="mt-1 wrap-break-word text-[10px] font-medium leading-4 text-[#202824]">
-          {value ?? "-"}
-        </p>
-      </div>
-    );
-  }
 
   return (
     <ModalWrapper onClose={onClose} size="md">
@@ -86,20 +65,18 @@ export default function DetailModal({ data, onClose }: Props) {
         </header>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
-          <section className="rounded-xl border border-[#E5EAE6] bg-[#F5F7F5] p-3.5">
-            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+          {/* Section: Kelompok & Kelas */}
+          <section className="rounded-xl border border-[#E5EAE6] bg-[#F5F7F5] p-3.5 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5EAE6] pb-2">
               <h3 className="text-[10px] font-semibold tracking-tight text-[#202824]">
                 Kelompok & Kelas
               </h3>
 
               <div className="flex flex-wrap items-center gap-1">
                 {kelasList.map((kelas) => (
-                  <span
-                    key={kelas}
-                    className="inline-flex rounded-full border border-[#D5E8DC] bg-[#E6F2EA] px-2 py-0.5 text-[9px] font-semibold text-[#287A50]"
-                  >
+                  <Badge key={kelas} variant="success" size="sm">
                     {kelas}
-                  </span>
+                  </Badge>
                 ))}
 
                 {kelasList.length === 0 && (
@@ -108,45 +85,27 @@ export default function DetailModal({ data, onClose }: Props) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <DetailItem label="Kelompok" value={data.kelompok} />
-              <DetailItem
-                label="Jenis Kelamin"
-                value={data.jenis_kelamin}
-              />
+            <div className="space-y-2">
+              <InfoRow label="Kelompok" value={data.kelompok || "-"} />
+              <InfoRow label="Jenis Kelamin" value={data.jenis_kelamin || "-"} />
             </div>
           </section>
 
-          <section className="rounded-xl border border-[#E5EAE6] bg-white p-3.5 shadow-xs">
-            <h3 className="mb-2.5 text-[10px] font-semibold tracking-tight text-[#202824]">
+          {/* Section: Informasi Pribadi */}
+          <section className="rounded-xl border border-[#E5EAE6] bg-white p-3.5 shadow-xs space-y-3">
+            <h3 className="text-[10px] font-semibold tracking-tight text-[#202824] border-b border-[#E5EAE6] pb-2">
               Informasi Pribadi
             </h3>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <DetailItem
-                label="Nama Lengkap"
-                value={toTitleCase(data.nama)}
-              />
-              <DetailItem
-                label="Tempat Lahir"
-                value={data.tempat_lahir}
-              />
-              <DetailItem
+            <div className="space-y-2">
+              <InfoRow label="Nama Lengkap" value={toTitleCase(data.nama)} />
+              <InfoRow label="Tempat Lahir" value={data.tempat_lahir || "-"} />
+              <InfoRow
                 label="Tahun Lahir"
-                value={
-                  data.tahun_lahir !== null
-                    ? String(data.tahun_lahir)
-                    : null
-                }
+                value={data.tahun_lahir !== null ? String(data.tahun_lahir) : "-"}
               />
-              <DetailItem
-                label="Pekerjaan"
-                value={data.pekerjaan}
-              />
-              <DetailItem
-                label="No. HP"
-                value={data.no_hp}
-              />
+              <InfoRow label="Pekerjaan" value={data.pekerjaan || "-"} />
+              <InfoRow label="No. HP" value={data.no_hp || "-"} />
             </div>
           </section>
         </div>

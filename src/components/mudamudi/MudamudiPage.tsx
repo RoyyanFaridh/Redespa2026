@@ -18,7 +18,7 @@ import type {
 
 import { validateClient } from "../../backend/mudamudi/validation";
 import { useMudamudiFilter } from "./useMudamudiFilter";
-import { PageHeader, Button } from "../common";
+import { PageContainer, PageHeader, Button, StatCard, ContentGrid } from "../common";
 
 import SearchFilterBar from "./SearchFilterBar";
 import MudamudiTableView from "./MudamudiTableView";
@@ -297,79 +297,130 @@ export default function MudamudiPage({ initialData }: Props) {
     router.refresh();
   }
 
+  // Statistik computed dari data aktual
+  const totalLaki = initialData.filter((j) => j.jenis_kelamin === "Laki-laki").length;
+  const totalPerempuan = initialData.filter((j) => j.jenis_kelamin === "Perempuan").length;
+  const totalKelompok = new Set(initialData.map((j) => j.kelompok).filter(Boolean)).size;
+
   return (
-    <main className="min-h-screen bg-[#F5F7F5]">
-      <div className="mx-auto w-full px-4 py-6 sm:px-6 md:px-7 lg:px-8">
-        <header className="pb-5">
-          <PageHeader
-            eyebrow="REDESPA"
-            title="Data Jamaah"
-            description="Kelola data anggota Jamaah yang digunakan untuk presensi."
-            actions={
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="md"
-                  onClick={() => setShowImportModal(true)}
-                  aria-label="Import data"
-                  title="Import data"
-                  leftIcon={<UploadIcon />}
-                >
-                  <span className="hidden md:inline">Import</span>
-                </Button>
+    <PageContainer maxWidth="9xl">
+      <header className="pb-1">
+        <PageHeader
+          eyebrow="REDESPA"
+          title="Data Muda-Mudi"
+          description="Kelola data generasi penerus Muda-Mudi Desa Pandak."
+          actions={
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowImportModal(true)}
+                aria-label="Import data"
+                title="Import data"
+                leftIcon={<UploadIcon />}
+              >
+                <span className="hidden sm:inline">Import</span>
+              </Button>
 
-                <ExportDropdown
-                  onExportData={() => setShowExportModal(true)}
-                  onExportQR={handleExportQR}
-                  isExportingQR={isExportingQR}
-                />
+              <ExportDropdown
+                onExportData={() => setShowExportModal(true)}
+                onExportQR={handleExportQR}
+                isExportingQR={isExportingQR}
+              />
 
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="md"
-                  onClick={openAddModal}
-                  aria-label="Tambah Jamaah"
-                  title="Tambah Jamaah"
-                >
-                  <span className="md:hidden">+</span>
-                  <span className="hidden md:inline">+ Tambah Jamaah</span>
-                </Button>
-              </>
-            }
-          />
-        </header>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={openAddModal}
+                aria-label="Tambah Muda-Mudi"
+                title="Tambah Muda-Mudi"
+              >
+                <span className="sm:hidden">+ Tambah</span>
+                <span className="hidden sm:inline">+ Tambah Muda-Mudi</span>
+              </Button>
+            </div>
+          }
+        />
+      </header>
 
-        <section className="pt-1">
-          <SearchFilterBar
-            search={filter.search}
-            setSearch={filter.setSearch}
-            filterKelas={filter.filterKelas}
-            setFilterKelas={filter.setFilterKelas}
-            filterKelompok={filter.filterKelompok}
-            setFilterKelompok={filter.setFilterKelompok}
-            filterJenisKelamin={filter.filterJenisKelamin}
-            setFilterJenisKelamin={filter.setFilterJenisKelamin}
-            sortConfig={filter.sortConfig}
-            setSortConfig={filter.setSortConfig}
-            hasActiveFilters={filter.hasActiveFilters}
-            onReset={filter.resetAll}
-          />
+      {/* Summary KPI Cards */}
+      <ContentGrid columns={4} className="grid-cols-2 lg:grid-cols-4 mb-1">
+        <StatCard
+          size="sm"
+          label="TOTAL MUDA-MUDI"
+          value={initialData.length}
+          description="Terdaftar dalam database"
+          icon={
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+            </svg>
+          }
+        />
+        <StatCard
+          size="sm"
+          label="LAKI-LAKI"
+          value={totalLaki}
+          description={`${initialData.length > 0 ? Math.round((totalLaki / initialData.length) * 100) : 0}% dari total`}
+          icon={
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+          }
+        />
+        <StatCard
+          size="sm"
+          label="PEREMPUAN"
+          value={totalPerempuan}
+          description={`${initialData.length > 0 ? Math.round((totalPerempuan / initialData.length) * 100) : 0}% dari total`}
+          icon={
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+          }
+        />
+        <StatCard
+          size="sm"
+          label="KELOMPOK"
+          value={totalKelompok}
+          description="Kelompok terdistribusi"
+          icon={
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
+            </svg>
+          }
+        />
+      </ContentGrid>
 
-          <MudamudiTableView
-            data={filter.displayedData}
-            totalCount={initialData.length}
-            sortIndicator={filter.sortIndicator}
-            toggleSort={filter.toggleSort}
-            filterKey={filter.filterKey}
-            onDetail={openDetailModal}
-            onEdit={openEditModal}
-            onDelete={openDeleteModal}
-            onShowQR={openQRModal}
-          />
-        </section>
-      </div>
+      <section className="pt-1">
+        <SearchFilterBar
+          search={filter.search}
+          setSearch={filter.setSearch}
+          filterKelas={filter.filterKelas}
+          setFilterKelas={filter.setFilterKelas}
+          filterKelompok={filter.filterKelompok}
+          setFilterKelompok={filter.setFilterKelompok}
+          filterJenisKelamin={filter.filterJenisKelamin}
+          setFilterJenisKelamin={filter.setFilterJenisKelamin}
+          sortConfig={filter.sortConfig}
+          setSortConfig={filter.setSortConfig}
+          hasActiveFilters={filter.hasActiveFilters}
+          onReset={filter.resetAll}
+        />
+
+        <MudamudiTableView
+          data={filter.displayedData}
+          totalCount={initialData.length}
+          sortIndicator={filter.sortIndicator}
+          toggleSort={filter.toggleSort}
+          filterKey={filter.filterKey}
+          onDetail={openDetailModal}
+          onEdit={openEditModal}
+          onDelete={openDeleteModal}
+          onShowQR={openQRModal}
+        />
+      </section>
 
       {detailData && (
         <DetailModal
@@ -466,6 +517,6 @@ export default function MudamudiPage({ initialData }: Props) {
           </div>
         </div>
       )}
-    </main>
+    </PageContainer>
   );
 }

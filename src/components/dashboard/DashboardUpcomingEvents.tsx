@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import type { Kegiatan } from "../../backend/kegiatan/types";
 import { formatRentangTanggal } from "../../backend/kegiatan/format";
+import { Badge } from "../common/Badge";
 
 type Props = {
   kegiatan: Kegiatan[];
@@ -39,9 +40,9 @@ export function DashboardUpcomingEvents({
 
         <div className="flex items-center gap-2">
           {kegiatanAktif > 0 && (
-            <span className="rounded-md bg-[#E6F2EA] px-2 py-0.5 text-[9px] font-medium text-[#287A50]">
+            <Badge variant="success" size="sm">
               {presensiHariIni} Check-in Hari Ini
-            </span>
+            </Badge>
           )}
           <Link
             href="/admin/kegiatan"

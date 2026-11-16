@@ -14,7 +14,7 @@ import {
 
 import { exportPresensiExcel } from "../../backend/mudamudi/exportExcel";
 
-import ModalWrapper from "./ModalWrapper";
+import { ModalWrapper } from "../common/ModalWrapper";
 import { DownloadIcon } from "./icons";
 import { Button } from "../common";
 

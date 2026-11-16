@@ -1,7 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { createClient } from "../../../src/backend/supabase/client";
+import {
+  PageContainer,
+  PageHeader,
+  ResponsiveCard,
+  Button,
+  FormInput,
+  Badge,
+  Avatar,
+  InfoRow,
+  Modal,
+} from "../../../src/components/common";
 
 type Profile = {
   id: string;
@@ -122,8 +133,7 @@ export default function ProfileForm({ user, profile }: Props) {
     setPasswordBaru("");
     setKonfirmasiPassword("");
 
-    setPasswordMessage("Password berhasil diperbarui.");
-
+    setPasswordMessage("Password berhasil diperbarui dengan aman.");
     setShowPasswordModal(false);
   }
 
@@ -140,7 +150,7 @@ export default function ProfileForm({ user, profile }: Props) {
       <button
         type="button"
         onClick={onClick}
-        className="absolute inset-y-0 right-2.5 flex items-center text-gray-400 transition hover:text-gray-600"
+        className="absolute inset-y-0 right-2.5 flex items-center text-[#78827C] transition hover:text-[#202824]"
         aria-label={label}
       >
         {visible ? (
@@ -180,334 +190,399 @@ export default function ProfileForm({ user, profile }: Props) {
     );
   }
 
-  function AccountRow({ label, value }: { label: string; value: string }) {
-    return (
-      <div className="flex items-start justify-between gap-6 border-b border-gray-100 py-4 last:border-0">
-        <p className="w-28 shrink-0 text-[11px] font-medium text-gray-500">
-          {label}
-        </p>
-
-        <p className="min-w-0 flex-1 wrap-break-word text-right text-[12px] font-medium text-gray-900">
-          {value || "-"}
-        </p>
-      </div>
-    );
-  }
+  const roleLabel = profile.desa ? "Admin Wilayah" : "Super Admin";
+  const wilayahLabel = profile.desa ?? "Seluruh Desa Pandak";
 
   return (
-    <main className="flex min-h-[calc(100vh-0px)] items-start bg-gray-50 px-4 py-6 md:h-screen md:overflow-hidden md:px-6 md:py-8">
-      <div className="mx-auto w-full max-w-3xl">
-        <div className="mb-5">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-teal-600">
-            Pengaturan
-          </p>
-
-          <h1 className="mt-1 text-lg font-semibold tracking-tight text-gray-900">
-            Profil Admin
-          </h1>
-
-          <p className="mt-1 text-[11px] leading-5 text-gray-500">
-            Kelola informasi akun dan password admin.
-          </p>
-        </div>
-
-        <section className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-[0_3px_12px_rgba(15,23,42,0.035)]">
-          <div className="border-b border-gray-100 px-5 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-[11px] font-semibold tracking-tight text-gray-800">
-                  Informasi Akun
-                </h2>
-
-                <p className="mt-0.5 text-[9px] leading-3.5 text-gray-400">
-                  Informasi akun yang terdaftar pada sistem REDESPA.
-                </p>
-              </div>
-
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-teal-100 bg-teal-50 text-teal-700">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="17"
-                  height="17"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 21a8 8 0 0 1 16 0" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="px-5 py-2">
-            <AccountRow label="Nama" value={profile.nama} />
-
-            <AccountRow label="Email" value={user.email} />
-
-            <AccountRow label="Wilayah" value={profile.desa ?? "Desa Pandak"} />
-          </div>
-
-          <div className="border-t border-gray-100 bg-gray-50/70 px-5 py-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-gray-700">
-                  Keamanan Akun
-                </p>
-
-                <p className="mt-0.5 text-[10px] text-gray-400">
-                  Perbarui password secara berkala untuk menjaga keamanan akun.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={openPasswordModal}
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 text-[11px] font-semibold text-white transition hover:bg-teal-700 active:bg-teal-800"
+    <PageContainer maxWidth="5xl">
+      <PageHeader
+        eyebrow="Pengaturan Akun"
+        title="Profil Admin"
+        description="Kelola informasi akun petugas, hak akses, dan pengaturan kata sandi sistem REDESPA."
+        actions={
+          <Button
+            variant="primary"
+            onClick={openPasswordModal}
+            leftIcon={
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect width="18" height="11" x="3" y="11" rx="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-                Ganti Password
-              </button>
+                <rect width="18" height="11" x="3" y="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            }
+          >
+            Ganti Password
+          </Button>
+        }
+      />
+
+      {/* Success Notification Alert */}
+      {passwordMessage && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-[#287A50]/30 bg-[#E6F2EA] px-4 py-3 text-xs text-[#206440] shadow-2xs"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#287A50] text-white">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </div>
+            <p className="font-medium">{passwordMessage}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPasswordMessage("")}
+            className="text-[11px] font-semibold text-[#287A50] hover:underline"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
+
+      {/* Identity Banner Card */}
+      <ResponsiveCard className="border border-[#E5EAE6] bg-white">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <Avatar name={profile.nama || user.email} size="lg" />
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-bold text-[#202824]">
+                  {profile.nama || "Petugas Administrasi"}
+                </h2>
+                <Badge variant={profile.desa ? "info" : "success"} dot size="sm">
+                  {roleLabel}
+                </Badge>
+              </div>
+              <p className="text-xs text-[#78827C]">{user.email}</p>
             </div>
           </div>
 
-          {passwordMessage && (
-            <div className="border-t border-gray-100 px-5 py-3">
-              <div className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2.5 text-[10px] font-medium text-green-700">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
+          <div className="flex items-center gap-2 border-t border-[#E5EAE6] pt-3 sm:border-t-0 sm:pt-0">
+            <span className="rounded-xl bg-[#F5F7F5] px-3 py-1.5 text-[11px] font-medium text-[#202824] border border-[#E5EAE6]">
+              Wilayah: <strong className="text-[#287A50]">{wilayahLabel}</strong>
+            </span>
+          </div>
+        </div>
+      </ResponsiveCard>
 
-                {passwordMessage}
-              </div>
-            </div>
-          )}
-        </section>
-      </div>
-
-      {showPasswordModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs"
-          onClick={closePasswordModal}
+      {/* Detail Account & Security Cards Grid */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {/* Left Card: Informasi Akun */}
+        <ResponsiveCard
+          title="Informasi Kredensial"
+          description="Data identitas terdaftar yang digunakan untuk autentikasi sistem."
         >
-          <div
-            className="w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-start justify-between border-b border-gray-100 px-5 py-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-teal-100 bg-teal-50 text-teal-700">
+          <div className="divide-y divide-[#E5EAE6]">
+            <div className="py-3 first:pt-0 last:pb-0">
+              <InfoRow label="Nama Petugas" value={profile.nama || "-"} />
+            </div>
+            <div className="py-3 first:pt-0 last:pb-0">
+              <InfoRow label="Email Resmi" value={user.email} />
+            </div>
+            <div className="py-3 first:pt-0 last:pb-0">
+              <InfoRow
+                label="Peran Akun"
+                value={
+                  <Badge variant={profile.desa ? "info" : "success"} size="sm">
+                    {roleLabel}
+                  </Badge>
+                }
+              />
+            </div>
+            <div className="py-3 first:pt-0 last:pb-0">
+              <InfoRow label="Wilayah Tugas" value={wilayahLabel} />
+            </div>
+            <div className="py-3 first:pt-0 last:pb-0">
+              <InfoRow
+                label="Status Akun"
+                value={
+                  <Badge variant="success" dot size="sm">
+                    Aktif & Terverifikasi
+                  </Badge>
+                }
+              />
+            </div>
+          </div>
+        </ResponsiveCard>
+
+        {/* Right Card: Pengaturan Keamanan */}
+        <ResponsiveCard
+          title="Keamanan & Proteksi Akun"
+          description="Konfigurasi otentikasi kata sandi akun admin."
+          footer={
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-[#78827C]">
+                Ingin memperbarui kata sandi?
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openPasswordModal}
+                leftIcon={
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
+                    width="13"
+                    height="13"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="1.8"
+                    strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <rect width="18" height="11" x="3" y="11" rx="2" />
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
+                }
+              >
+                Ganti Password
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <div className="rounded-xl border border-[#E5EAE6] bg-[#F5F7F5] p-3.5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#287A50]/15 text-[#287A50]">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                  </svg>
                 </div>
-
-                <div className="min-w-0">
-                  <h2 className="text-[11px] font-semibold tracking-tight text-gray-800">
-                    Ganti Password
-                  </h2>
-
-                  <p className="text-[9px] leading-3.5 text-gray-400">
-                    Masukkan password lama sebelum membuat password baru
+                <div>
+                  <h4 className="text-xs font-semibold text-[#202824]">
+                    Keamanan Password
+                  </h4>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-[#78827C]">
+                    Gunakan kombinasi minimal 6 karakter. Dianjurkan mengganti kata sandi secara berkala untuk menjaga integritas data presensi jamaah.
                   </p>
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={closePasswordModal}
-                disabled={passwordLoading}
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Tutup"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M18 6 6 18" />
-                  <path d="m6 6 12 12" />
-                </svg>
-              </button>
             </div>
 
-            <form
-              onSubmit={handleChangePassword}
-              className="space-y-4 px-5 py-5"
-            >
-              {passwordError && (
-                <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2.5 text-[10px] leading-4 text-red-600">
-                  {passwordError}
+            <div className="rounded-xl border border-[#E5EAE6] bg-[#F5F7F5] p-3.5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#287A50]/15 text-[#287A50]">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
                 </div>
-              )}
-
-              <div>
-                <label
-                  htmlFor="passwordLama"
-                  className="mb-1.5 block text-[11px] font-medium text-gray-700"
-                >
-                  Password Lama
-                </label>
-
-                <div className="relative">
-                  <input
-                    id="passwordLama"
-                    type={showPasswordLama ? "text" : "password"}
-                    value={passwordLama}
-                    onChange={(event) => setPasswordLama(event.target.value)}
-                    disabled={passwordLoading}
-                    autoComplete="current-password"
-                    className="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 pr-10 text-[11px] text-gray-900 outline-none transition placeholder:text-gray-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 disabled:bg-gray-50"
-                    placeholder="Masukkan password lama"
-                  />
-
-                  <PasswordToggle
-                    visible={showPasswordLama}
-                    onClick={() => setShowPasswordLama((value) => !value)}
-                    label={
-                      showPasswordLama
-                        ? "Sembunyikan password lama"
-                        : "Tampilkan password lama"
-                    }
-                  />
+                <div>
+                  <h4 className="text-xs font-semibold text-[#202824]">
+                    Sesi Login & Perangkat
+                  </h4>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-[#78827C]">
+                    Sesi terotentikasi secara aman menggunakan token cookie Supabase SSR. Pastikan selalu logout bila mengakses dari komputer bersama.
+                  </p>
                 </div>
               </div>
-
-              <div>
-                <label
-                  htmlFor="passwordBaru"
-                  className="mb-1.5 block text-[11px] font-medium text-gray-700"
-                >
-                  Password Baru
-                </label>
-
-                <div className="relative">
-                  <input
-                    id="passwordBaru"
-                    type={showPasswordBaru ? "text" : "password"}
-                    value={passwordBaru}
-                    onChange={(event) => setPasswordBaru(event.target.value)}
-                    disabled={passwordLoading}
-                    autoComplete="new-password"
-                    className="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 pr-10 text-[11px] text-gray-900 outline-none transition placeholder:text-gray-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 disabled:bg-gray-50"
-                    placeholder="Masukkan password baru"
-                  />
-
-                  <PasswordToggle
-                    visible={showPasswordBaru}
-                    onClick={() => setShowPasswordBaru((value) => !value)}
-                    label={
-                      showPasswordBaru
-                        ? "Sembunyikan password baru"
-                        : "Tampilkan password baru"
-                    }
-                  />
-                </div>
-
-                <p className="mt-1.5 text-[9px] text-gray-400">
-                  Minimal 6 karakter.
-                </p>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="konfirmasiPassword"
-                  className="mb-1.5 block text-[11px] font-medium text-gray-700"
-                >
-                  Konfirmasi Password Baru
-                </label>
-
-                <div className="relative">
-                  <input
-                    id="konfirmasiPassword"
-                    type={showKonfirmasi ? "text" : "password"}
-                    value={konfirmasiPassword}
-                    onChange={(event) =>
-                      setKonfirmasiPassword(event.target.value)
-                    }
-                    disabled={passwordLoading}
-                    autoComplete="new-password"
-                    className="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 pr-10 text-[11px] text-gray-900 outline-none transition placeholder:text-gray-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 disabled:bg-gray-50"
-                    placeholder="Ulangi password baru"
-                  />
-
-                  <PasswordToggle
-                    visible={showKonfirmasi}
-                    onClick={() => setShowKonfirmasi((value) => !value)}
-                    label={
-                      showKonfirmasi
-                        ? "Sembunyikan konfirmasi password"
-                        : "Tampilkan konfirmasi password"
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
-                <button
-                  type="button"
-                  onClick={closePasswordModal}
-                  disabled={passwordLoading}
-                  className="h-9 rounded-lg border border-gray-200 px-4 text-[11px] font-medium text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Batal
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={passwordLoading}
-                  className="h-9 rounded-lg bg-teal-700 px-4 text-[11px] font-semibold text-white shadow-xs transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {passwordLoading ? "Memproses..." : "Simpan Password"}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
-        </div>
+        </ResponsiveCard>
+      </div>
+
+      {/* Modal Ubah Password */}
+      {showPasswordModal && (
+        <Modal
+          title="Ganti Password Akun"
+          subtitle="Masukkan password lama untuk verifikasi keamanan sebelum mengatur password baru."
+          onClose={closePasswordModal}
+          size="sm"
+          headerIcon={
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#E6F2EA] text-[#287A50]">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+          }
+        >
+          <form onSubmit={handleChangePassword} className="space-y-4 pt-1">
+            {passwordError && (
+              <div
+                role="alert"
+                className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700"
+              >
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <p className="leading-4">{passwordError}</p>
+              </div>
+            )}
+
+            <div>
+              <label
+                htmlFor="passwordLama"
+                className="mb-1 block text-xs font-semibold text-[#202824]"
+              >
+                Password Lama
+              </label>
+              <div className="relative">
+                <FormInput
+                  id="passwordLama"
+                  type={showPasswordLama ? "text" : "password"}
+                  value={passwordLama}
+                  onChange={(e) => setPasswordLama(e.target.value)}
+                  disabled={passwordLoading}
+                  autoComplete="current-password"
+                  placeholder="Masukkan password lama"
+                  className="pr-10"
+                />
+                <PasswordToggle
+                  visible={showPasswordLama}
+                  onClick={() => setShowPasswordLama((v) => !v)}
+                  label={
+                    showPasswordLama
+                      ? "Sembunyikan password lama"
+                      : "Tampilkan password lama"
+                  }
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="passwordBaru"
+                className="mb-1 block text-xs font-semibold text-[#202824]"
+              >
+                Password Baru
+              </label>
+              <div className="relative">
+                <FormInput
+                  id="passwordBaru"
+                  type={showPasswordBaru ? "text" : "password"}
+                  value={passwordBaru}
+                  onChange={(e) => setPasswordBaru(e.target.value)}
+                  disabled={passwordLoading}
+                  autoComplete="new-password"
+                  placeholder="Masukkan password baru"
+                  helperText="Minimal 6 karakter"
+                  className="pr-10"
+                />
+                <PasswordToggle
+                  visible={showPasswordBaru}
+                  onClick={() => setShowPasswordBaru((v) => !v)}
+                  label={
+                    showPasswordBaru
+                      ? "Sembunyikan password baru"
+                      : "Tampilkan password baru"
+                  }
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="konfirmasiPassword"
+                className="mb-1 block text-xs font-semibold text-[#202824]"
+              >
+                Konfirmasi Password Baru
+              </label>
+              <div className="relative">
+                <FormInput
+                  id="konfirmasiPassword"
+                  type={showKonfirmasi ? "text" : "password"}
+                  value={konfirmasiPassword}
+                  onChange={(e) => setKonfirmasiPassword(e.target.value)}
+                  disabled={passwordLoading}
+                  autoComplete="new-password"
+                  placeholder="Ulangi password baru"
+                  className="pr-10"
+                />
+                <PasswordToggle
+                  visible={showKonfirmasi}
+                  onClick={() => setShowKonfirmasi((v) => !v)}
+                  label={
+                    showKonfirmasi
+                      ? "Sembunyikan konfirmasi password"
+                      : "Tampilkan konfirmasi password"
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-[#E5EAE6] pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                onClick={closePasswordModal}
+                disabled={passwordLoading}
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                isLoading={passwordLoading}
+              >
+                {passwordLoading ? "Menyimpan..." : "Simpan Password"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
       )}
-    </main>
+    </PageContainer>
   );
 }

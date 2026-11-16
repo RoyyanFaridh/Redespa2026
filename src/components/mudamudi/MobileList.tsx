@@ -8,7 +8,8 @@ import {
   getAvatarColor,
 } from "../../backend/mudamudi/format";
 import { DetailIcon, EditIcon, DeleteIcon } from "./icons";
-import { IconButton } from "../kegiatan/shared";
+import { IconButton } from "../common/IconButton";
+import { Badge } from "../common/Badge";
 
 type Props = {
   data: Mudamudi[];
@@ -164,12 +165,13 @@ export default function MobileList({
                       <div className="flex flex-wrap items-center gap-1">
                         {getKelasList(s.kelas).length > 0 ? (
                           getKelasList(s.kelas).map((kelas) => (
-                            <span
+                            <Badge
                               key={kelas}
-                              className="inline-flex items-center justify-center rounded-md border border-[#D5E8DC] bg-[#E6F2EA] px-2 py-1 text-[9px] font-semibold leading-tight text-[#287A50]"
+                              variant="success"
+                              size="sm"
                             >
                               {kelas}
-                            </span>
+                            </Badge>
                           ))
                         ) : (
                           <span>-</span>

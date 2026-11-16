@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import type { Kegiatan } from "../../backend/kegiatan/types";
+import { Badge } from "../common/Badge";
 
 type Props = {
   presensiHariIni: number;
@@ -38,15 +39,13 @@ export function DashboardTodayStatus({
           </div>
         </div>
 
-        <span
-          className={`shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-medium ${
-            kegiatanAktif > 0
-              ? "bg-[#E6F2EA] text-[#287A50]"
-              : "bg-[#F0F4F1] text-[#78827C]"
-          }`}
+        <Badge
+          variant={kegiatanAktif > 0 ? "success" : "neutral"}
+          size="sm"
+          dot
         >
           {kegiatanAktif > 0 ? "Jendela Terbuka" : "Tidak Ada Sesi Aktif"}
-        </span>
+        </Badge>
       </div>
 
       {/* Konten Status & Counter */}

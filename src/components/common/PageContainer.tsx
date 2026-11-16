@@ -21,10 +21,10 @@ export function PageContainer({
   maxWidth = "9xl",
 }: PageContainerProps) {
   return (
-    <main className="min-h-screen bg-[#F5F7F5]">
+    <main className="w-full min-h-screen bg-[#F5F7F5]">
       <div
         className={[
-          "mx-auto flex w-full flex-col gap-4 p-4 sm:p-6 md:p-8",
+          "mx-auto flex w-full flex-col gap-5 px-4 py-6 sm:px-6 md:px-7 lg:px-8",
           MAX_WIDTH_STYLES[maxWidth],
           className,
         ]
@@ -38,4 +38,3 @@ export function PageContainer({
 }
 
 export default PageContainer;
-

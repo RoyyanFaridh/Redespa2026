@@ -5,7 +5,7 @@ type Props = {
 const LEGEND_ITEMS = [
   {
     label: "Hadir",
-    className: "bg-emerald-500",
+    className: "bg-[#287A50]",
   },
   {
     label: "Terlambat",
@@ -17,7 +17,7 @@ const LEGEND_ITEMS = [
   },
   {
     label: "Sakit",
-    className: "bg-violet-500",
+    className: "bg-purple-500",
   },
   {
     label: "Alpa",
@@ -28,7 +28,7 @@ const LEGEND_ITEMS = [
 export default function RekapitulasiLegend({ className = "" }: Props) {
   return (
     <div
-      className={`flex flex-wrap items-center gap-x-3 gap-y-2 text-[9px] text-gray-600 ${className}`}
+      className={`flex flex-wrap items-center gap-x-3 gap-y-2 text-[10px] text-[#78827C] ${className}`}
       aria-label="Keterangan status kehadiran"
     >
       {LEGEND_ITEMS.map((item) => (
@@ -46,14 +46,14 @@ export default function RekapitulasiLegend({ className = "" }: Props) {
 
       <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
         <span
-          className="h-2 w-2 shrink-0 rounded-full border border-gray-300 bg-white"
+          className="h-2 w-2 shrink-0 rounded-full border border-[#E5EAE6] bg-white"
           aria-hidden="true"
         />
         Belum Hadir
       </span>
 
-      <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-gray-400">
-        <span className="inline-flex h-2 w-2 shrink-0 items-center justify-center text-[9px]">
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[#9AA39D]">
+        <span className="inline-flex h-2 w-2 shrink-0 items-center justify-center text-[10px]">
           -
         </span>
         Tidak Berlaku

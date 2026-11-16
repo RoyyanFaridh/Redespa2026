@@ -1,399 +1,659 @@
+
 "use client";
 
-import { useEffect, useState } from "react";
-import type { Jamaah, ModalState, FieldErrors } from "../../backend/jamaah/types";
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+
 import {
-  getJamaah,
   addJamaah,
   updateJamaah,
   deleteJamaah,
 } from "../../backend/jamaah/actions";
+
+import type {
+  Jamaah,
+  ModalState,
+  FieldErrors,
+} from "../../backend/jamaah/types";
+
 import { useJamaahFilter } from "./useJamaahFilter";
+
+import {
+  PageContainer,
+  PageHeader,
+  Button,
+  StatCard,
+  ContentGrid,
+} from "../common";
+
+import SearchFilterBar from "./SearchFilterBar";
+import JamaahTableView from "./JamaahTableView";
 import JamaahFormModal from "./JamaahFormModal";
-import JamaahDetailModal from "./JamaahDetailModal";
 import JamaahDeleteModal from "./JamaahDeleteModal";
+import JamaahDetailModal from "./JamaahDetailModal";
+import ExportModal from "./ExportModal";
+import ImportModal from "./ImportModal";
 import JamaahQRModal from "./JamaahQRModal";
-import JamaahExportModal from "./JamaahExportModal";
-import JamaahImportModal from "./JamaahImportModal";
-import { KELOMPOK_OPTIONS, JENIS_KELAMIN_OPTIONS } from "../../backend/jamaah/constants";
-import { toTitleCase, getInitials, getAvatarColor } from "../../backend/mudamudi/format";
-import { Button } from "../common";
+import ExportDropdown from "./ExportDropdown";
+
+import { exportJamaahQRBatchZip } from "../../backend/jamaah/exportQRBatch";
 
 type Props = {
   initialData: Jamaah[];
 };
 
+function UploadIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m7 9 5-5 5 5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 20h14" />
+    </svg>
+  );
+}
+
+function getActionError(result: unknown): string {
+  if (!result || typeof result !== "object") {
+    return "Terjadi kesalahan. Silakan coba kembali.";
+  }
+
+  const actionResult = result as {
+    message?: unknown;
+    errors?: unknown;
+  };
+
+  if (
+    typeof actionResult.message === "string" &&
+    actionResult.message.trim()
+  ) {
+    return actionResult.message;
+  }
+
+  if (Array.isArray(actionResult.errors)) {
+    return actionResult.errors.map((item) => String(item)).join(", ");
+  }
+
+  if (
+    actionResult.errors &&
+    typeof actionResult.errors === "object"
+  ) {
+    return Object.values(
+      actionResult.errors as Record<string, unknown>,
+    )
+      .flat()
+      .map((item) => String(item))
+      .join(", ");
+  }
+
+  if (typeof actionResult.errors === "string") {
+    return actionResult.errors;
+  }
+
+  return "Terjadi kesalahan. Silakan coba kembali.";
+}
+
 export default function JamaahPage({ initialData }: Props) {
-  const [data, setData] = useState<Jamaah[]>(initialData);
-  const [modalState, setModalState] = useState<ModalState>(null);
+  const router = useRouter();
+
+  // Modal dan data yang sedang dipilih
+  const [modal, setModal] = useState<ModalState | null>(null);
   const [detailData, setDetailData] = useState<Jamaah | null>(null);
   const [qrData, setQrData] = useState<Jamaah | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  // Import dan export
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+
+  // Progress export QR
+  const [isExportingQR, setIsExportingQR] = useState(false);
+  const [qrExportProgress, setQrExportProgress] = useState<{
+    current: number;
+    total: number;
+  } | null>(null);
+
+  // Error form
   const [error, setError] = useState("");
-  const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
-  const {
-    search,
-    setSearch,
-    filterJenisKelamin,
-    setFilterJenisKelamin,
-    filterKelompok,
-    setFilterKelompok,
-    sortConfig,
-    handleSort,
-    resetFilters,
-    displayedData,
-  } = useJamaahFilter(data);
+  // Filter, pencarian, dan sorting
+  const filter = useJamaahFilter(initialData);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search, filterJenisKelamin, filterKelompok, itemsPerPage]);
+  // =========================================================
+  // EXPORT QR BATCH
+  // =========================================================
 
-  const totalPages = Math.ceil(displayedData.length / itemsPerPage);
-  const paginatedData = displayedData.slice(
-    (page - 1) * itemsPerPage,
-    page * itemsPerPage,
-  );
+  async function handleExportQR() {
+    if (isExportingQR) return;
 
-  async function refreshData() {
     try {
-      const refreshed = await getJamaah();
-      setData(refreshed);
+      setIsExportingQR(true);
+      setError("");
+
+      setQrExportProgress({
+        current: 0,
+        total: initialData.length,
+      });
+
+      const blob = await exportJamaahQRBatchZip(
+        initialData,
+        (current, total) => {
+          setQrExportProgress({ current, total });
+        },
+      );
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+
+      anchor.href = url;
+      anchor.download = `QR-Code-Jamaah-${new Date()
+        .toISOString()
+        .slice(0, 10)}.zip`;
+
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+
+      URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Gagal refresh data Jamaah:", err);
+      console.error("Gagal export QR batch:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Gagal mendownload ZIP QR Code. Silakan coba kembali.",
+      );
+    } finally {
+      setIsExportingQR(false);
+      setQrExportProgress(null);
     }
   }
 
-  async function handleFormSubmit(e: React.FormEvent<HTMLFormElement>) {
+  // =========================================================
+  // MODAL HANDLERS
+  // =========================================================
+
+  function closeModal() {
+    setModal(null);
+    setFieldErrors({});
+    setError("");
+  }
+
+  function openAddModal() {
+    setError("");
+    setFieldErrors({});
+    setModal({ type: "add" });
+  }
+
+  function openEditModal(data: Jamaah) {
+    setError("");
+    setFieldErrors({});
+    setModal({
+      type: "edit",
+      data,
+    });
+  }
+
+  function openDeleteModal(data: Jamaah) {
+    setError("");
+    setFieldErrors({});
+    setModal({
+      type: "delete",
+      data,
+    });
+  }
+
+  function openDetailModal(data: Jamaah) {
+    setDetailData(data);
+  }
+
+  function closeDetailModal() {
+    setDetailData(null);
+  }
+
+  function openQRModal(data: Jamaah) {
+    setQrData(data);
+  }
+
+  function closeQRModal() {
+    setQrData(null);
+  }
+
+  // =========================================================
+  // TAMBAH JAMAAH
+  // =========================================================
+
+  async function handleAddSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    const formData = new FormData(e.currentTarget);
+
     setError("");
     setFieldErrors({});
 
-    const form = e.currentTarget;
-    const formData = new FormData(form);
+    try {
+      const result = await addJamaah(formData);
 
-    if (modalState?.type === "add") {
-      const res = await addJamaah(formData);
-      if (!res.success) {
-        if (res.errors) setFieldErrors(res.errors as any);
-        if (res.message) setError(res.message);
-      } else {
-        setModalState(null);
-        await refreshData();
+      if (!result.success) {
+        if (result.errors) {
+          setFieldErrors(result.errors as FieldErrors);
+        }
+
+        setError(getActionError(result));
+        return;
       }
-    } else if (modalState?.type === "edit") {
-      const res = await updateJamaah(modalState.data.id, formData);
-      if (!res.success) {
-        if (res.errors) setFieldErrors(res.errors as any);
-        if (res.message) setError(res.message);
-      } else {
-        setModalState(null);
-        await refreshData();
-      }
+
+      closeModal();
+      router.refresh();
+    } catch (err) {
+      console.error("Gagal menambahkan data Jamaah:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat menambahkan data Jamaah.",
+      );
     }
   }
 
-  async function handleDeleteConfirm() {
-    if (modalState?.type !== "delete") return;
-    const res = await deleteJamaah(modalState.data.id);
-    if (!res.success) {
-      alert(res.message || "Gagal menghapus data Jamaah.");
-    } else {
-      setModalState(null);
-      await refreshData();
+  // =========================================================
+  // EDIT JAMAAH
+  // =========================================================
+
+  async function handleEditSubmit(
+    e: FormEvent<HTMLFormElement>,
+    id: Jamaah["id"],
+  ) {
+    e.preventDefault();
+
+    const formData = new FormData(e.currentTarget);
+
+    setError("");
+    setFieldErrors({});
+
+    try {
+      const result = await updateJamaah(id, formData);
+
+      if (!result.success) {
+        if (result.errors) {
+          setFieldErrors(result.errors as FieldErrors);
+        }
+
+        setError(getActionError(result));
+        return;
+      }
+
+      closeModal();
+      router.refresh();
+    } catch (err) {
+      console.error("Gagal memperbarui data Jamaah:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat memperbarui data Jamaah.",
+      );
     }
   }
+
+  // =========================================================
+  // HAPUS JAMAAH
+  // =========================================================
+
+  async function handleDelete(id: Jamaah["id"]) {
+    setError("");
+
+    try {
+      const result = await deleteJamaah(id);
+
+      if (!result.success) {
+        alert(getActionError(result));
+        return;
+      }
+
+      closeModal();
+      router.refresh();
+    } catch (err) {
+      console.error("Gagal menghapus data Jamaah:", err);
+
+      alert(
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat menghapus data Jamaah.",
+      );
+    }
+  }
+
+  // =========================================================
+  // IMPORT SUCCESS
+  // =========================================================
+
+  function handleImportSuccess() {
+    setShowImportModal(false);
+    router.refresh();
+  }
+
+  // =========================================================
+  // STATISTIK JAMAAH
+  // =========================================================
+
+  const totalLaki = initialData.filter(
+    (item) => item.jenis_kelamin === "Laki-laki",
+  ).length;
+
+  const totalPerempuan = initialData.filter(
+    (item) => item.jenis_kelamin === "Perempuan",
+  ).length;
+
+  const totalKelompok = new Set(
+    initialData
+      .map((item) => item.kelompok)
+      .filter(Boolean),
+  ).size;
+
+  const persentaseLaki =
+    initialData.length > 0
+      ? Math.round((totalLaki / initialData.length) * 100)
+      : 0;
+
+  const persentasePerempuan =
+    initialData.length > 0
+      ? Math.round((totalPerempuan / initialData.length) * 100)
+      : 0;
+
+  // =========================================================
+  // RENDER
+  // =========================================================
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner / Actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-[#202824]">Data Jamaah</h1>
-          <p className="text-xs text-[#78827C]">
-            Kelola data seluruh warga jamaah, pencarian, cetak QR Code, dan ekspor data.
-          </p>
-        </div>
+    <PageContainer maxWidth="9xl">
+      {/* PAGE HEADER */}
+      <header className="pb-1">
+        <PageHeader
+          eyebrow="REDESPA"
+          title="Data Jamaah"
+          description="Kelola data warga jamaah Desa Pandak."
+          actions={
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowImportModal(true)}
+                aria-label="Import data Jamaah"
+                title="Import data Jamaah"
+                leftIcon={<UploadIcon />}
+              >
+                <span className="hidden sm:inline">Import</span>
+              </Button>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <JamaahImportModal onSuccess={refreshData} />
-          <JamaahExportModal
-            data={displayedData}
-            totalDataCount={data.length}
-            filteredCount={displayedData.length}
-          />
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => {
-              setFieldErrors({});
-              setError("");
-              setModalState({ type: "add" });
-            }}
-            className="flex items-center gap-1.5 bg-[#287A50] text-xs hover:bg-[#1E5E3D]"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <ExportDropdown
+                onExportData={() => setShowExportModal(true)}
+                onExportQR={handleExportQR}
+                isExportingQR={isExportingQR}
+              />
+
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={openAddModal}
+                aria-label="Tambah Jamaah"
+                title="Tambah Jamaah"
+              >
+                <span className="sm:hidden">+ Tambah</span>
+                <span className="hidden sm:inline">
+                  + Tambah Jamaah
+                </span>
+              </Button>
+            </div>
+          }
+        />
+      </header>
+
+      {/* SUMMARY KPI CARDS */}
+      <ContentGrid
+        columns={4}
+        className="mb-1 grid-cols-2 lg:grid-cols-4"
+      >
+        <StatCard
+          size="sm"
+          label="TOTAL JAMAAH"
+          value={initialData.length}
+          description="Terdaftar dalam database"
+          icon={
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
+              />
             </svg>
-            Tambah Jamaah
-          </Button>
-        </div>
-      </div>
+          }
+        />
 
-      {/* Filter & Search Bar */}
-      <div className="rounded-2xl border border-[#E5EAE6] bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {/* Search */}
-          <div>
-            <label className="block text-[11px] font-semibold text-[#78827C] mb-1">
-              Pencarian Nama
-            </label>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Ketik nama jamaah..."
-              className="w-full rounded-xl border border-[#E5EAE6] px-3 py-2 text-xs text-[#202824] placeholder:text-gray-400 focus:border-[#287A50] focus:outline-none"
-            />
-          </div>
-
-          {/* Kelompok */}
-          <div>
-            <label className="block text-[11px] font-semibold text-[#78827C] mb-1">
-              Kelompok
-            </label>
-            <select
-              value={filterKelompok[0] || ""}
-              onChange={(e) =>
-                setFilterKelompok(e.target.value ? [e.target.value] : [])
-              }
-              className="w-full rounded-xl border border-[#E5EAE6] px-3 py-2 text-xs text-[#202824] focus:border-[#287A50] focus:outline-none"
+        <StatCard
+          size="sm"
+          label="LAKI-LAKI"
+          value={totalLaki}
+          description={`${persentaseLaki}% dari total`}
+          icon={
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
             >
-              <option value="">Semua Kelompok</option>
-              {KELOMPOK_OPTIONS.map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </select>
-          </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+              />
+            </svg>
+          }
+        />
 
-          {/* Jenis Kelamin */}
-          <div>
-            <label className="block text-[11px] font-semibold text-[#78827C] mb-1">
-              Jenis Kelamin
-            </label>
-            <select
-              value={filterJenisKelamin[0] || ""}
-              onChange={(e) =>
-                setFilterJenisKelamin(e.target.value ? [e.target.value] : [])
-              }
-              className="w-full rounded-xl border border-[#E5EAE6] px-3 py-2 text-xs text-[#202824] focus:border-[#287A50] focus:outline-none"
+        <StatCard
+          size="sm"
+          label="PEREMPUAN"
+          value={totalPerempuan}
+          description={`${persentasePerempuan}% dari total`}
+          icon={
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
             >
-              <option value="">Semua Jenis Kelamin</option>
-              {JENIS_KELAMIN_OPTIONS.map((jk) => (
-                <option key={jk} value={jk}>
-                  {jk}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+              />
+            </svg>
+          }
+        />
 
-        {(search || filterKelompok.length > 0 || filterJenisKelamin.length > 0) && (
-          <div className="mt-3 flex justify-end">
-            <button
-              onClick={resetFilters}
-              className="text-xs font-semibold text-[#287A50] hover:underline"
+        <StatCard
+          size="sm"
+          label="KELOMPOK"
+          value={totalKelompok}
+          description="Kelompok terdistribusi"
+          icon={
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
             >
-              Reset Filter
-            </button>
-          </div>
-        )}
-      </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"
+              />
+            </svg>
+          }
+        />
+      </ContentGrid>
 
-      {/* Table Container */}
-      <div className="overflow-hidden rounded-2xl border border-[#E5EAE6] bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-[#E5EAE6] bg-[#F9FBFA] text-[11px] font-semibold text-[#78827C]">
-              <tr>
-                <th className="px-4 py-3.5">Nama Jamaah</th>
-                <th className="px-4 py-3.5">Kelompok</th>
-                <th className="px-4 py-3.5">Jenis Kelamin</th>
-                <th className="px-4 py-3.5">Tempat, Thn Lahir</th>
-                <th className="px-4 py-3.5">No. HP</th>
-                <th className="px-4 py-3.5 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F0F4F1]">
-              {paginatedData.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                    Tidak ada data Jamaah yang sesuai filter.
-                  </td>
-                </tr>
-              ) : (
-                paginatedData.map((item) => {
-                  const avatarColor = getAvatarColor(item.nama);
-                  return (
-                    <tr key={item.id} className="hover:bg-[#F9FBFA]/80 transition">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm"
-                            style={{ backgroundColor: avatarColor.bg }}
-                          >
-                            {getInitials(item.nama)}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-gray-900">
-                              {toTitleCase(item.nama)}
-                            </div>
-                            {item.pekerjaan && (
-                              <div className="text-[10px] text-gray-400">
-                                {item.pekerjaan}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center rounded-lg bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-700">
-                          {item.kelompok}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {item.jenis_kelamin || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {[item.tempat_lahir, item.tahun_lahir].filter(Boolean).join(", ") || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {item.no_hp || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            title="Kartu QR"
-                            onClick={() => setQrData(item)}
-                            className="rounded-lg p-1 text-[#287A50] hover:bg-[#E6F2EA]"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                            </svg>
-                          </button>
-                          <button
-                            title="Detail"
-                            onClick={() => setDetailData(item)}
-                            className="rounded-lg p-1 text-gray-500 hover:bg-gray-100"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          </button>
-                          <button
-                            title="Edit"
-                            onClick={() => {
-                              setFieldErrors({});
-                              setError("");
-                              setModalState({ type: "edit", data: item });
-                            }}
-                            className="rounded-lg p-1 text-blue-600 hover:bg-blue-50"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button
-                            title="Hapus"
-                            onClick={() => setModalState({ type: "delete", data: item })}
-                            className="rounded-lg p-1 text-red-600 hover:bg-red-50"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* SEARCH, FILTER, AND TABLE */}
+      <section className="pt-1">
+        <SearchFilterBar
+          search={filter.search}
+          setSearch={filter.setSearch}
+          filterKelompok={filter.filterKelompok}
+          setFilterKelompok={filter.setFilterKelompok}
+          filterJenisKelamin={filter.filterJenisKelamin}
+          setFilterJenisKelamin={filter.setFilterJenisKelamin}
+          sortConfig={filter.sortConfig}
+          setSortConfig={filter.setSortConfig}
+          hasActiveFilters={filter.hasActiveFilters}
+          onReset={filter.resetAll}
+        />
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-[#E5EAE6] px-4 py-3 text-xs text-gray-500">
-            <div>
-              Menampilkan {(page - 1) * itemsPerPage + 1} -{" "}
-              {Math.min(page * itemsPerPage, displayedData.length)} dari{" "}
-              {displayedData.length} data
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="text-xs"
-              >
-                Sebelumnya
-              </Button>
-              <span className="px-2">
-                {page} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="text-xs"
-              >
-                Selanjutnya
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+        <JamaahTableView
+          data={filter.displayedData}
+          totalCount={initialData.length}
+          sortIndicator={filter.sortIndicator}
+          toggleSort={filter.toggleSort}
+          filterKey={filter.filterKey}
+          onDetail={openDetailModal}
+          onEdit={openEditModal}
+          onDelete={openDeleteModal}
+          onShowQR={openQRModal}
+        />
+      </section>
 
-      {/* Modals */}
-      {(modalState?.type === "add" || modalState?.type === "edit") && (
+      {/* FORM MODAL: ADD */}
+      {modal?.type === "add" && (
         <JamaahFormModal
-          mode={modalState.type}
-          initialData={modalState.type === "edit" ? modalState.data : undefined}
+          mode="add"
           fieldErrors={fieldErrors}
           error={error}
-          onSubmit={handleFormSubmit}
-          onClose={() => setModalState(null)}
+          onSubmit={handleAddSubmit}
+          onClose={closeModal}
         />
       )}
 
-      {modalState?.type === "delete" && (
+      {/* FORM MODAL: EDIT */}
+      {modal?.type === "edit" && (
+        <JamaahFormModal
+          mode="edit"
+          initialData={modal.data}
+          fieldErrors={fieldErrors}
+          error={error}
+          onSubmit={(e: FormEvent<HTMLFormElement>) =>
+            handleEditSubmit(e, modal.data.id)
+          }
+          onClose={closeModal}
+        />
+      )}
+
+      {/* DELETE MODAL */}
+      {modal?.type === "delete" && (
         <JamaahDeleteModal
-          data={modalState.data}
-          onConfirm={handleDeleteConfirm}
-          onClose={() => setModalState(null)}
+          data={modal.data}
+          onConfirm={() => handleDelete(modal.data.id)}
+          onClose={closeModal}
         />
       )}
 
+      {/* DETAIL MODAL */}
       {detailData && (
         <JamaahDetailModal
           data={detailData}
-          onClose={() => setDetailData(null)}
+          onClose={closeDetailModal}
         />
       )}
 
+      {/* QR MODAL */}
       {qrData && (
         <JamaahQRModal
           data={qrData}
-          onClose={() => setQrData(null)}
+          onClose={closeQRModal}
         />
       )}
-    </div>
+
+      {/* EXPORT MODAL */}
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        data={filter.displayedData}
+        totalCount={initialData.length}
+      />
+
+      {/* IMPORT MODAL */}
+      <ImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={handleImportSuccess}
+      />
+
+      {/* QR EXPORT PROGRESS */}
+      {isExportingQR && qrExportProgress && (
+        <div className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-xl border border-[#287A50]/30 bg-white px-4 py-3 shadow-xl shadow-black/10 sm:bottom-6 sm:right-6">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#E6F2EA] text-[#287A50]">
+            <svg
+              className="h-4 w-4 animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-[#202824]">
+              Mengunduh QR Code Jamaah...
+            </p>
+
+            <p className="text-[10px] text-[#78827C]">
+              {qrExportProgress.current} dari {qrExportProgress.total} QR
+              diproses (
+              {Math.round(
+                (qrExportProgress.current /
+                  Math.max(qrExportProgress.total, 1)) *
+                  100,
+              )}
+              %)
+            </p>
+          </div>
+        </div>
+      )}
+    </PageContainer>
   );
 }

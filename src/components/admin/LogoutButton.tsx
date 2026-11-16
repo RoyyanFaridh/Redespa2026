@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../backend/supabase/client";
+import { Button } from "../common/Button";
 
 type Props = {
   onCloseMenu?: () => void;
@@ -138,23 +139,25 @@ export default function LogoutButton({ onCloseMenu }: Props) {
             </div>
 
             <div className="flex flex-col-reverse gap-2 border-t border-[#E5EAE6] bg-[#F5F7F5] px-5 py-3.5 sm:flex-row sm:justify-end">
-              <button
-                type="button"
+              <Button
+                variant="outline"
+                size="md"
                 onClick={closeConfirmation}
                 disabled={loading}
-                className="h-9 w-full rounded-xl border border-[#E5EAE6] bg-white px-4 text-[11px] font-medium text-[#78827C] transition-colors hover:bg-gray-50 hover:text-[#202824] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                className="w-full sm:w-auto"
               >
                 Batal
-              </button>
+              </Button>
 
-              <button
-                type="button"
+              <Button
+                variant="danger"
+                size="md"
                 onClick={handleLogout}
-                disabled={loading}
-                className="h-9 w-full rounded-xl bg-red-600 px-4 text-[11px] font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                isLoading={loading}
+                className="w-full sm:w-auto"
               >
                 {loading ? "Keluar..." : "Ya, Keluar"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

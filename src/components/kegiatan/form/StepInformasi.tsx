@@ -1,5 +1,7 @@
 import React, { type ReactNode } from "react";
 import { type ActivityForm, formStyles } from "./types";
+import { FormInput } from "../../common/FormInput";
+import { FormDatePicker } from "../../common/FormDatePicker";
 
 export interface StepInformasiProps {
   activity: ActivityForm;
@@ -41,31 +43,27 @@ export function StepInformasi({
             <h3 className="text-[11px] font-bold leading-4 text-[#202824]">
               Informasi Utama
             </h3>
-            <p className="text-[8px] leading-4 text-[#78827C]">
+            <p className="text-[9px] leading-4 text-[#78827C]">
               Tentukan nama yang menggambarkan kegiatan.
             </p>
           </div>
         </div>
 
         <div>
-          <label htmlFor="nama" className={formStyles.label}>
-            Nama kegiatan <span className="text-red-600">*</span>
-          </label>
-          <input
+          <FormInput
             id="nama"
             name="nama"
             type="text"
+            label="Nama kegiatan *"
             required
             maxLength={150}
             placeholder="Contoh: Pengajian Rutin"
             value={activity.nama}
             onChange={(event) => onUpdateActivity("nama", event.target.value)}
             disabled={loading}
-            aria-invalid={Boolean(getFieldError("nama"))}
-            aria-describedby={getFieldError("nama") ? "nama-error" : undefined}
-            className={formStyles.input}
+            error={getFieldError("nama")}
+            inputSize="lg"
           />
-          <div id="nama-error">{renderError(getFieldError("nama"))}</div>
         </div>
       </div>
 
@@ -91,7 +89,7 @@ export function StepInformasi({
             <h3 className="text-[11px] font-bold leading-4 text-[#202824]">
               Jadwal Kegiatan
             </h3>
-            <p className="text-[8px] leading-4 text-[#78827C]">
+            <p className="text-[9px] leading-4 text-[#78827C]">
               Atur rentang tanggal dan waktu pelaksanaan.
             </p>
           </div>
@@ -99,33 +97,26 @@ export function StepInformasi({
 
         <div className="grid grid-cols-2 gap-x-2.5 gap-y-3 sm:gap-x-3">
           <div className="min-w-0">
-            <label htmlFor="tanggal_mulai" className={formStyles.label}>
-              Tanggal mulai <span className="text-red-600">*</span>
-            </label>
-            <input
+            <FormDatePicker
               id="tanggal_mulai"
               name="tanggal_mulai"
-              type="date"
+              label="Tanggal mulai *"
               required
               value={activity.tanggal_mulai}
               onChange={(event) =>
                 onUpdateActivity("tanggal_mulai", event.target.value)
               }
               disabled={loading}
-              aria-invalid={Boolean(getFieldError("tanggal_mulai"))}
-              className={formStyles.input}
+              error={getFieldError("tanggal_mulai")}
+              inputSize="md"
             />
-            {renderError(getFieldError("tanggal_mulai"))}
           </div>
 
           <div className="min-w-0">
-            <label htmlFor="tanggal_selesai" className={formStyles.label}>
-              Tanggal selesai <span className="text-red-600">*</span>
-            </label>
-            <input
+            <FormDatePicker
               id="tanggal_selesai"
               name="tanggal_selesai"
-              type="date"
+              label="Tanggal selesai *"
               required
               min={activity.tanggal_mulai || undefined}
               value={activity.tanggal_selesai}
@@ -133,50 +124,43 @@ export function StepInformasi({
                 onUpdateActivity("tanggal_selesai", event.target.value)
               }
               disabled={loading}
-              aria-invalid={Boolean(getFieldError("tanggal_selesai"))}
-              className={formStyles.input}
+              error={getFieldError("tanggal_selesai")}
+              inputSize="md"
             />
-            {renderError(getFieldError("tanggal_selesai"))}
           </div>
 
           <div className="min-w-0">
-            <label htmlFor="jam_mulai" className={formStyles.label}>
-              Jam mulai <span className="text-red-600">*</span>
-            </label>
-            <input
+            <FormInput
               id="jam_mulai"
               name="jam_mulai"
               type="time"
+              label="Jam mulai *"
               required
               value={activity.jam_mulai}
               onChange={(event) =>
                 onUpdateActivity("jam_mulai", event.target.value)
               }
               disabled={loading}
-              aria-invalid={Boolean(getFieldError("jam_mulai"))}
-              className={formStyles.input}
+              error={getFieldError("jam_mulai")}
+              inputSize="md"
             />
-            {renderError(getFieldError("jam_mulai"))}
           </div>
 
           <div className="min-w-0">
-            <label htmlFor="jam_selesai" className={formStyles.label}>
-              Jam selesai <span className="text-red-600">*</span>
-            </label>
-            <input
+            <FormInput
               id="jam_selesai"
               name="jam_selesai"
               type="time"
+              label="Jam selesai *"
               required
               value={activity.jam_selesai}
               onChange={(event) =>
                 onUpdateActivity("jam_selesai", event.target.value)
               }
               disabled={loading}
-              aria-invalid={Boolean(getFieldError("jam_selesai"))}
-              className={formStyles.input}
+              error={getFieldError("jam_selesai")}
+              inputSize="md"
             />
-            {renderError(getFieldError("jam_selesai"))}
           </div>
         </div>
       </div>
@@ -203,30 +187,27 @@ export function StepInformasi({
             <h3 className="text-[11px] font-bold leading-4 text-[#202824]">
               Lokasi Pelaksanaan
             </h3>
-            <p className="text-[8px] leading-4 text-[#78827C]">
+            <p className="text-[9px] leading-4 text-[#78827C]">
               Masukkan tempat kegiatan akan berlangsung.
             </p>
           </div>
         </div>
 
         <div>
-          <label htmlFor="lokasi" className={formStyles.label}>
-            Lokasi <span className="text-red-600">*</span>
-          </label>
-          <input
+          <FormInput
             id="lokasi"
             name="lokasi"
             type="text"
+            label="Lokasi *"
             required
             maxLength={200}
-            placeholder="Contoh: Balai Pertemuan"
+            placeholder="Contoh: Balai Pertemuan / Masjid Al-Ikhlas"
             value={activity.lokasi}
             onChange={(event) => onUpdateActivity("lokasi", event.target.value)}
             disabled={loading}
-            aria-invalid={Boolean(getFieldError("lokasi"))}
-            className={formStyles.input}
+            error={getFieldError("lokasi")}
+            inputSize="lg"
           />
-          {renderError(getFieldError("lokasi"))}
         </div>
       </div>
     </section>

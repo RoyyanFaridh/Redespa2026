@@ -345,8 +345,8 @@ export default function MonitoringPage({ kegiatan }: Props) {
     Boolean(data) && !loading && !error && Boolean(selectedKegiatan);
 
   return (
-    <div className="mx-auto w-full space-y-4 px-4 py-6 sm:px-6 md:px-7 lg:px-8">
-      <div className="mb-5">
+    <div className="w-full space-y-4">
+      <div className="mb-2">
         <PageHeader
           eyebrow="Presensi"
           title="Monitoring Presensi"

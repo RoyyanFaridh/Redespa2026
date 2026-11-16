@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -8,6 +7,7 @@ import {
   JENIS_KELAMIN_OPTIONS,
 } from "../../backend/mudamudi/constants";
 import type { SortConfig, SortKey } from "../../backend/mudamudi/types";
+import { SearchInput, Button } from "../common";
 
 type SortOption = {
   label: string;
@@ -86,7 +86,7 @@ export default function SearchFilterBar({
     "h-3.5 w-3.5 shrink-0 rounded accent-[#287A50]";
 
   const optionClass =
-    "flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-600";
+    "flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-600 select-none";
 
   const sectionTitleClass =
     "mb-1.5 text-[11px] font-semibold text-gray-700";
@@ -107,12 +107,15 @@ export default function SearchFilterBar({
         key={`${label}-${value}`}
         className="inline-flex items-center gap-1 rounded-lg border border-[#E5EAE6] bg-[#E6F2EA] px-2 py-0.5 text-[11px] font-medium text-[#206440]"
       >
-        {label}: {value}
+        <span>
+          {label}: {value}
+        </span>
 
         <button
           type="button"
           onClick={() => removeChip(value, values, setter)}
           aria-label={`Hapus filter ${label} ${value}`}
+          className="ml-0.5 hover:text-red-600"
         >
           ×
         </button>
@@ -123,51 +126,40 @@ export default function SearchFilterBar({
   return (
     <div className="mb-4 space-y-2">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2.5">
-        <div className="relative">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" />
-          </svg>
-
-          <input
-            type="text"
-            placeholder="Cari nama Jamaah..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-10 w-full rounded-xl border border-[#E5EAE6] bg-white pl-9.5 pr-8 text-[12px] text-[#202824] outline-none transition placeholder:text-[#78827C] focus:border-[#287A50] focus:ring-2 focus:ring-[#65B98A]/20"
-          />
-
-          {search.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              aria-label="Hapus pencarian"
-              className="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-[#78827C] transition hover:bg-[#F0F4F1] hover:text-[#202824]"
-            >
-              ×
-            </button>
-          )}
-        </div>
+        <SearchInput
+          placeholder="Cari nama Jamaah..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onClear={() => setSearch("")}
+          inputSize="md"
+        />
 
         <button
           type="button"
           onClick={() => setShowFilter((prev) => !prev)}
-          className={`flex h-10 items-center justify-center gap-1.5 rounded-xl border px-3.5 text-[12px] font-medium shadow-xs transition ${showFilter || hasActiveFilters
+          className={`flex h-9 items-center justify-center gap-1.5 rounded-xl border px-3.5 text-[11px] font-medium shadow-xs transition ${
+            showFilter || hasActiveFilters
               ? "border-[#65B98A] bg-[#E6F2EA] text-[#287A50] ring-2 ring-[#65B98A]/20"
               : "border-[#E5EAE6] bg-white text-[#202824] hover:border-[#65B98A]/40 hover:bg-[#F0F4F1]"
-            }`}
+          }`}
         >
-          Filter
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="h-3.5 w-3.5"
+            aria-hidden="true"
+          >
+            <path
+              fillRule="evenodd"
+              d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.591L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <span>Filter</span>
 
           {activeFilterCount > 0 && (
-            <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#287A50] px-1 text-[10px] font-bold text-white">
+            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[#287A50] px-1 text-[9px] font-bold text-white">
               {activeFilterCount}
             </span>
           )}
@@ -188,6 +180,7 @@ export default function SearchFilterBar({
                 type="button"
                 onClick={() => setSearch("")}
                 aria-label="Hapus pencarian"
+                className="ml-0.5 hover:text-red-600"
               >
                 ×
               </button>
@@ -369,13 +362,14 @@ export default function SearchFilterBar({
               Reset filter
             </button>
 
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="sm"
               onClick={() => setShowFilter(false)}
-              className="rounded-xl bg-[#287A50] px-4 py-2 text-[11px] font-semibold text-white shadow-xs transition hover:bg-[#206440]"
             >
               Selesai
-            </button>
+            </Button>
           </div>
         </div>
       )}

@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
-
 import {
   getKegiatanStatus,
   getKegiatanStatusLabel,
 } from "../../backend/kegiatan/format";
-
 import type { Kegiatan } from "../../backend/kegiatan/types";
+import { StatusBadge as CommonStatusBadge } from "../common/StatusBadge";
+import { IconButton as CommonIconButton } from "../common/IconButton";
+import { EmptyState as CommonEmptyState } from "../common/EmptyState";
 
 type IconProps = { className?: string };
 type KegiatanStatus = ReturnType<typeof getKegiatanStatus>;
@@ -122,40 +123,28 @@ export function LocationIcon({ className = "h-3 w-3 shrink-0" }: IconProps) {
   );
 }
 
-const STATUS_STYLES = {
-  sedang_berlangsung: {
-    className: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-    dotClassName: "bg-emerald-500",
-  },
-  akan_berlangsung: {
-    className: "bg-amber-50 text-amber-700 ring-amber-600/20",
-    dotClassName: "bg-amber-500",
-  },
-  selesai: {
-    className: "bg-[#F5F7F5] text-[#78827C] ring-[#E5EAE6]",
-    dotClassName: "bg-[#9AA39D]",
-  },
-} as const;
-
 export function StatusBadge({ status }: { status: KegiatanStatus }) {
-  const style =
-    STATUS_STYLES[status as keyof typeof STATUS_STYLES] ??
-    STATUS_STYLES.selesai;
+  if (status === "sedang_berlangsung") {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#65B98A]/30 bg-[#E6F2EA] px-2.5 py-0.5 text-[10px] font-medium text-[#206440] select-none">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#287A50] animate-pulse" />
+        <span>{getKegiatanStatusLabel(status)}</span>
+      </span>
+    );
+  }
+
+  if (status === "akan_berlangsung") {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-medium text-amber-800 select-none">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+        <span>{getKegiatanStatusLabel(status)}</span>
+      </span>
+    );
+  }
 
   return (
-    <span
-      className={[
-        "inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5",
-        "text-[10px] font-medium leading-4 ring-1 ring-inset",
-        style.className,
-      ].join(" ")}
-    >
-      <span
-        className={[
-          "h-1.5 w-1.5 shrink-0 rounded-full",
-          style.dotClassName,
-        ].join(" ")}
-      />
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#E5EAE6] bg-[#F5F7F5] px-2.5 py-0.5 text-[10px] font-medium text-[#78827C] select-none">
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#9AA39D]" />
       <span>{getKegiatanStatusLabel(status)}</span>
     </span>
   );
@@ -186,19 +175,16 @@ export function CreatorText({
 
 export function EmptyState() {
   return (
-    <div className="mx-auto flex max-w-sm flex-col items-center px-6 py-8 text-center">
-      <span className="mb-2.5 flex h-9 w-9 items-center justify-center rounded-lg bg-[#E6F2EA] text-[#287A50]">
-        <CalendarIcon className="h-4 w-4" />
-      </span>
-
-      <p className="text-[11px] font-semibold text-[#202824]">
-        Tidak ada kegiatan
-      </p>
-
-      <p className="mt-1 text-[11px] leading-4.5 text-[#78827C]">
-        Belum ada kegiatan yang tersedia, atau tidak ada yang cocok dengan
-        pencarian dan filter saat ini.
-      </p>
+    <div className="py-8">
+      <CommonEmptyState
+        title="Tidak ada kegiatan"
+        description="Belum ada kegiatan yang tersedia, atau tidak ada yang cocok dengan pencarian dan filter saat ini."
+        icon={
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#E6F2EA] text-[#287A50]">
+            <CalendarIcon className="h-5 w-5" />
+          </span>
+        }
+      />
     </div>
   );
 }
@@ -218,34 +204,16 @@ export function IconButton({
   size?: "md" | "lg";
   bordered?: boolean;
 }) {
-  const sizeClass = size === "lg" ? "h-9 w-9" : "h-8 w-8";
-  const borderClass = bordered
-    ? "border-[#E5EAE6] bg-white"
-    : "border-transparent";
-  const variantClass =
-    variant === "danger"
-      ? "hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100"
-      : "hover:border-[#E5EAE6] hover:bg-[#F0F4F1] hover:text-[#202824] active:bg-[#F0F4F1]";
-
   return (
-    <button
-      type="button"
+    <CommonIconButton
+      label={label}
       onClick={onClick}
-      aria-label={label}
-      title={label}
-      className={[
-        "inline-flex shrink-0 items-center justify-center rounded-lg border text-[#78827C]",
-        "transition-colors duration-150",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#287A50] focus-visible:ring-offset-1",
-        sizeClass,
-        borderClass,
-        variantClass,
-      ].join(" ")}
+      variant={variant === "danger" ? "danger" : "neutral"}
+      size={size === "lg" ? "lg" : "md"}
+      bordered={bordered}
     >
-      <span className="flex h-3.5 w-3.5 items-center justify-center [&>svg]:h-full [&>svg]:w-full">
-        {children}
-      </span>
-    </button>
+      {children}
+    </CommonIconButton>
   );
 }
 
@@ -268,21 +236,21 @@ export function ScanButton({
       aria-label={label}
       title={
         disabled
-          ? "Scan QR hanya tersedia 30 menit sebelum kegiatan dimulai hingga kegiatan selesai"
+          ? "Scan QR hanya tersedia saat kegiatan sedang berlangsung (atau 30 menit sebelumnya)"
           : label
       }
       className={[
-        "inline-flex items-center justify-center gap-1.5 rounded-md font-medium",
-        "transition-colors duration-150",
+        "inline-flex items-center justify-center gap-1.5 rounded-xl font-medium select-none shadow-xs",
+        "transition-all duration-150 active:scale-[0.98]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#287A50] focus-visible:ring-offset-1",
-        large ? "h-9 w-full flex-1 text-[11px]" : "h-8 px-2.5 text-[10px]",
+        large ? "h-9 w-full flex-1 text-[11px] px-3" : "h-8 px-2.5 text-[10px]",
         disabled
-          ? "cursor-not-allowed bg-[#F5F7F5] text-[#9AA39D]"
+          ? "cursor-not-allowed bg-[#F5F7F5] text-[#9AA39D] border border-[#E5EAE6] shadow-none"
           : "bg-[#287A50] text-white hover:bg-[#206440] active:bg-[#206440]",
       ].join(" ")}
     >
       <QrIcon />
-      <span>{large ? "Scan QR" : "Scan"}</span>
+      <span>{large ? "Scan QR Presensi" : "Scan QR"}</span>
     </button>
   );
 }

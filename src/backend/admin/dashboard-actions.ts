@@ -1,4 +1,4 @@
-"use server";
+import "server-only";
 
 import { requireAdmin } from "../auth/admin";
 import { createAdminClient } from "../supabase/admin";
@@ -52,18 +52,40 @@ export type PresensiTerbaruItem = {
 
 export type DashboardData = {
   adminNama: string;
-  totalAnggota: number;
+
+  // Ringkasan Utama
   totalKegiatan: number;
   totalPresensi: number;
   presensiHariIni: number;
   kegiatanAktif: number;
-  kegiatanTerdekat: Kegiatan[];
+
+  // Pemisahan Eksplisit Data Jamaah
+  jamaahStats: {
+    total: number;
+    lakiLaki: number;
+    perempuan: number;
+    kelompokDistribusi: KelompokStat[];
+  };
+
+  // Pemisahan Eksplisit Data Muda-Mudi
+  mudamudiStats: {
+    total: number;
+    lakiLaki: number;
+    perempuan: number;
+    kelompokDistribusi: KelompokStat[];
+    kelasDistribusi: KelasStat[];
+  };
+
+  // Legacy compatibility fields
+  totalAnggota: number;
   kelompokDistribusi: KelompokStat[];
   kelasDistribusi: KelasStat[];
   genderDistribusi: {
     lakiLaki: number;
     perempuan: number;
   };
+
+  kegiatanTerdekat: Kegiatan[];
   statusDistribusi: StatusPresensiStat[];
   presensiTerbaru: PresensiTerbaruItem[];
   error: string | null;
@@ -77,12 +99,17 @@ export async function getDashboardData(): Promise<DashboardData> {
   const today = getToday();
   const tomorrow = getTomorrow(today);
 
-  // 1. Query seluruh data Jamaah Desa Pandak (tanpa kolom desa lama)
-  const anggotaPromise = supabase
+  // 1. Query data Muda-Mudi
+  const mudamudiPromise = supabase
     .from("mudamudi")
     .select("id, kelompok, kelas, jenis_kelamin");
 
-  // 2. Query seluruh kegiatan Desa Pandak
+  // 2. Query data Jamaah
+  const jamaahPromise = supabase
+    .from("jamaah")
+    .select("id, kelompok, jenis_kelamin");
+
+  // 3. Query seluruh kegiatan Desa Pandak
   const kegiatanPromise = supabase
     .from("kegiatan")
     .select(
@@ -91,19 +118,19 @@ export async function getDashboardData(): Promise<DashboardData> {
     .order("tanggal_mulai", { ascending: true })
     .order("jam_mulai", { ascending: true });
 
-  // 3. Query total presensi keseluruhan
+  // 4. Query total presensi keseluruhan
   const totalPresensiPromise = supabase
     .from("presensi")
     .select("id", { count: "exact", head: true });
 
-  // 4. Query presensi hari ini
+  // 5. Query presensi hari ini
   const presensiHariIniPromise = supabase
     .from("presensi")
     .select("id", { count: "exact", head: true })
     .gte("waktu_checkin", `${today}T00:00:00+07:00`)
     .lt("waktu_checkin", `${tomorrow}T00:00:00+07:00`);
 
-  // 5. Query status distribusi presensi
+  // 6. Query status distribusi presensi
   const statusCountsPromise = Promise.all(
     STATUS_PRESENSI_TERCATAT.map((status) =>
       supabase
@@ -113,7 +140,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     ),
   );
 
-  // 6. Query riwayat presensi terbaru (aktivitas real-time)
+  // 7. Query riwayat presensi terbaru (aktivitas real-time)
   const presensiTerbaruPromise = supabase
     .from("presensi")
     .select(
@@ -133,14 +160,16 @@ export async function getDashboardData(): Promise<DashboardData> {
     .limit(8);
 
   const [
-    anggotaResult,
+    mudamudiResult,
+    jamaahResult,
     kegiatanResult,
     totalPresensiResult,
     presensiHariIniResult,
     statusCountsResult,
     presensiTerbaruResult,
   ] = await Promise.all([
-    anggotaPromise,
+    mudamudiPromise,
+    jamaahPromise,
     kegiatanPromise,
     totalPresensiPromise,
     presensiHariIniPromise,
@@ -148,59 +177,96 @@ export async function getDashboardData(): Promise<DashboardData> {
     presensiTerbaruPromise,
   ]);
 
-  const anggotaData = anggotaResult.data ?? [];
-  const totalAnggota = anggotaData.length;
+  const mudamudiData = mudamudiResult.data ?? [];
+  const jamaahData = jamaahResult.data ?? [];
   const kegiatanData: Kegiatan[] = (kegiatanResult.data ?? []) as Kegiatan[];
 
-  // --- Hitung Distribusi Kelompok Desa Pandak ---
-  const kelompokCountMap = new Map<string, number>();
-  // Inisialisasi seluruh kelompok resmi Desa Pandak
-  KELOMPOK_OPTIONS.forEach((kel) => kelompokCountMap.set(kel, 0));
+  // -------------------------------------------------------------
+  // A. PENGOLAHAN DATA JAMAAH
+  // -------------------------------------------------------------
+  const totalJamaah = jamaahData.length;
+  let jamaahLaki = 0;
+  let jamaahPerempuan = 0;
+  const jamaahKelompokMap = new Map<string, number>();
+  KELOMPOK_OPTIONS.forEach((kel) => jamaahKelompokMap.set(kel, 0));
 
-  let countLaki = 0;
-  let countPerempuan = 0;
-  const kelasCountMap = new Map<string, number>();
-  KELAS_OPTIONS.forEach((k) => kelasCountMap.set(k, 0));
+  jamaahData.forEach((row) => {
+    const kel = row.kelompok?.trim();
+    if (kel) {
+      jamaahKelompokMap.set(kel, (jamaahKelompokMap.get(kel) ?? 0) + 1);
+    }
+    const gender = row.jenis_kelamin?.toLowerCase();
+    if (gender === "laki-laki" || gender === "pria") {
+      jamaahLaki++;
+    } else if (gender === "perempuan" || gender === "wanita") {
+      jamaahPerempuan++;
+    }
+  });
 
-  anggotaData.forEach((row) => {
+  const jamaahKelompokDistribusi: KelompokStat[] = KELOMPOK_OPTIONS.map((kel) => {
+    const jumlah = jamaahKelompokMap.get(kel) ?? 0;
+    const persentase = totalJamaah > 0 ? Math.round((jumlah / totalJamaah) * 100) : 0;
+    return { kelompok: kel, jumlah, persentase };
+  });
+
+  // -------------------------------------------------------------
+  // B. PENGOLAHAN DATA MUDA-MUDI
+  // -------------------------------------------------------------
+  const totalMudamudi = mudamudiData.length;
+  let mudamudiLaki = 0;
+  let mudamudiPerempuan = 0;
+  const mudamudiKelompokMap = new Map<string, number>();
+  KELOMPOK_OPTIONS.forEach((kel) => mudamudiKelompokMap.set(kel, 0));
+
+  const mudamudiKelasMap = new Map<string, number>();
+  KELAS_OPTIONS.forEach((k) => mudamudiKelasMap.set(k, 0));
+
+  mudamudiData.forEach((row) => {
     // Kelompok
     const kel = row.kelompok?.trim();
     if (kel) {
-      kelompokCountMap.set(kel, (kelompokCountMap.get(kel) ?? 0) + 1);
+      mudamudiKelompokMap.set(kel, (mudamudiKelompokMap.get(kel) ?? 0) + 1);
     }
 
     // Gender
     const gender = row.jenis_kelamin?.toLowerCase();
     if (gender === "laki-laki" || gender === "pria") {
-      countLaki++;
+      mudamudiLaki++;
     } else if (gender === "perempuan" || gender === "wanita") {
-      countPerempuan++;
+      mudamudiPerempuan++;
     }
 
-    // Kelas (bisa comma-separated string atau nilai tunggal)
-    if (row.kelas) {
+    // Kelas: array string atau comma-separated
+    if (Array.isArray(row.kelas)) {
+      row.kelas.forEach((k: string) => {
+        const trimmed = k?.trim();
+        if (trimmed && mudamudiKelasMap.has(trimmed)) {
+          mudamudiKelasMap.set(trimmed, (mudamudiKelasMap.get(trimmed) ?? 0) + 1);
+        }
+      });
+    } else if (row.kelas) {
       const kelasList = String(row.kelas)
         .split(",")
         .map((k) => k.trim())
         .filter(Boolean);
 
       kelasList.forEach((k) => {
-        if (kelasCountMap.has(k)) {
-          kelasCountMap.set(k, (kelasCountMap.get(k) ?? 0) + 1);
+        if (mudamudiKelasMap.has(k)) {
+          mudamudiKelasMap.set(k, (mudamudiKelasMap.get(k) ?? 0) + 1);
         }
       });
     }
   });
 
-  const kelompokDistribusi: KelompokStat[] = KELOMPOK_OPTIONS.map((kel) => {
-    const jumlah = kelompokCountMap.get(kel) ?? 0;
-    const persentase = totalAnggota > 0 ? Math.round((jumlah / totalAnggota) * 100) : 0;
+  const mudamudiKelompokDistribusi: KelompokStat[] = KELOMPOK_OPTIONS.map((kel) => {
+    const jumlah = mudamudiKelompokMap.get(kel) ?? 0;
+    const persentase = totalMudamudi > 0 ? Math.round((jumlah / totalMudamudi) * 100) : 0;
     return { kelompok: kel, jumlah, persentase };
   });
 
-  const kelasDistribusi: KelasStat[] = KELAS_OPTIONS.map((k) => {
-    const jumlah = kelasCountMap.get(k) ?? 0;
-    const persentase = totalAnggota > 0 ? Math.round((jumlah / totalAnggota) * 100) : 0;
+  const mudamudiKelasDistribusi: KelasStat[] = KELAS_OPTIONS.map((k) => {
+    const jumlah = mudamudiKelasMap.get(k) ?? 0;
+    const persentase = totalMudamudi > 0 ? Math.round((jumlah / totalMudamudi) * 100) : 0;
     return { kelas: k, jumlah, persentase };
   });
 
@@ -249,7 +315,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     return {
       id: item.id,
-      namaPeserta: mudamudiObj?.nama ?? "Jamaah",
+      namaPeserta: mudamudiObj?.nama ?? "Peserta",
       namaKegiatan: kegiatanObj?.nama ?? "Kegiatan",
       waktuCheckin: item.waktu_checkin,
       lokasi: kegiatanObj?.lokasi ?? "",
@@ -257,7 +323,8 @@ export async function getDashboardData(): Promise<DashboardData> {
   });
 
   const queryError =
-    anggotaResult.error?.message ??
+    mudamudiResult.error?.message ??
+    jamaahResult.error?.message ??
     kegiatanResult.error?.message ??
     totalPresensiResult.error?.message ??
     presensiHariIniResult.error?.message ??
@@ -266,18 +333,37 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   return {
     adminNama: admin.profile.nama || "Admin",
-    totalAnggota,
+
     totalKegiatan: kegiatanData.length,
     totalPresensi: totalPresensiResult.count ?? 0,
     presensiHariIni: presensiHariIniResult.count ?? 0,
     kegiatanAktif,
-    kegiatanTerdekat,
-    kelompokDistribusi,
-    kelasDistribusi,
-    genderDistribusi: {
-      lakiLaki: countLaki,
-      perempuan: countPerempuan,
+
+    jamaahStats: {
+      total: totalJamaah,
+      lakiLaki: jamaahLaki,
+      perempuan: jamaahPerempuan,
+      kelompokDistribusi: jamaahKelompokDistribusi,
     },
+
+    mudamudiStats: {
+      total: totalMudamudi,
+      lakiLaki: mudamudiLaki,
+      perempuan: mudamudiPerempuan,
+      kelompokDistribusi: mudamudiKelompokDistribusi,
+      kelasDistribusi: mudamudiKelasDistribusi,
+    },
+
+    // Legacy fields for backward compatibility
+    totalAnggota: totalMudamudi,
+    kelompokDistribusi: mudamudiKelompokDistribusi,
+    kelasDistribusi: mudamudiKelasDistribusi,
+    genderDistribusi: {
+      lakiLaki: mudamudiLaki,
+      perempuan: mudamudiPerempuan,
+    },
+
+    kegiatanTerdekat,
     statusDistribusi,
     presensiTerbaru,
     error: queryError,

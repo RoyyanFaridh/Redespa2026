@@ -35,9 +35,9 @@ const STATUS_STYLES: Record<
   { className: string; label: string; textClassName: string }
 > = {
   hadir: {
-    className: "bg-emerald-500 ring-emerald-100",
+    className: "bg-[#287A50] ring-[#65B98A]/30",
     label: "Hadir",
-    textClassName: "text-emerald-700",
+    textClassName: "text-[#287A50]",
   },
   terlambat: {
     className: "bg-amber-500 ring-amber-100",
@@ -50,9 +50,9 @@ const STATUS_STYLES: Record<
     textClassName: "text-blue-700",
   },
   sakit: {
-    className: "bg-violet-500 ring-violet-100",
+    className: "bg-purple-500 ring-purple-100",
     label: "Sakit",
-    textClassName: "text-violet-700",
+    textClassName: "text-purple-700",
   },
   alpa: {
     className: "bg-red-500 ring-red-100",
@@ -60,9 +60,9 @@ const STATUS_STYLES: Record<
     textClassName: "text-red-700",
   },
   tidak_berlaku: {
-    className: "bg-gray-300 ring-gray-100",
+    className: "bg-gray-300 ring-[#E5EAE6]",
     label: "Tidak Berlaku",
-    textClassName: "text-gray-500",
+    textClassName: "text-[#9AA39D]",
   },
 };
 
@@ -71,8 +71,8 @@ const SUMMARY_COLUMNS = [
     key: "hadir",
     label: "H",
     title: "Hadir",
-    textClassName: "text-emerald-700",
-    headerClassName: "text-emerald-800",
+    textClassName: "text-[#287A50]",
+    headerClassName: "text-[#206440]",
   },
   {
     key: "terlambat",
@@ -92,8 +92,8 @@ const SUMMARY_COLUMNS = [
     key: "sakit",
     label: "S",
     title: "Sakit",
-    textClassName: "text-violet-700",
-    headerClassName: "text-violet-800",
+    textClassName: "text-purple-700",
+    headerClassName: "text-purple-800",
   },
   {
     key: "alpa",
@@ -106,8 +106,8 @@ const SUMMARY_COLUMNS = [
     key: "belumHadir",
     label: "BH",
     title: "Belum Hadir",
-    textClassName: "text-gray-600",
-    headerClassName: "text-gray-600",
+    textClassName: "text-[#78827C]",
+    headerClassName: "text-[#78827C]",
   },
 ] as const;
 
@@ -259,8 +259,8 @@ export default function RekapitulasiTable({
   if (loading) {
     return (
       <div className="px-5 py-12 text-center">
-        <div className="mx-auto h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-teal-600" />
-        <p className="mt-3 text-[11px] text-gray-500">
+        <div className="mx-auto h-5 w-5 animate-spin rounded-full border-2 border-[#E5EAE6] border-t-teal-600" />
+        <p className="mt-3 text-[11px] text-[#78827C]">
           Memuat rekapitulasi presensi...
         </p>
       </div>
@@ -270,13 +270,13 @@ export default function RekapitulasiTable({
   if (mudaMudi.length === 0) {
     return (
       <div className="px-5 py-12 text-center">
-        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-gray-50">
+        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-[#E5EAE6] bg-[#F5F7F5]">
           <svg
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.7"
-            className="h-5 w-5 text-gray-400"
+            className="h-5 w-5 text-[#9AA39D]"
             aria-hidden="true"
           >
             <path
@@ -286,10 +286,10 @@ export default function RekapitulasiTable({
             />
           </svg>
         </div>
-        <p className="mt-3 text-[11px] font-semibold text-gray-700">
+        <p className="mt-3 text-[11px] font-semibold text-[#202824]">
           Data Jamaah tidak ditemukan
         </p>
-        <p className="mt-1 text-[10px] text-gray-500">
+        <p className="mt-1 text-[10px] text-[#78827C]">
           Coba ubah kata kunci atau filter yang digunakan.
         </p>
       </div>
@@ -299,10 +299,10 @@ export default function RekapitulasiTable({
   if (kegiatan.length === 0) {
     return (
       <div className="px-5 py-12 text-center">
-        <p className="text-[11px] font-semibold text-gray-700">
+        <p className="text-[11px] font-semibold text-[#202824]">
           Tidak ada kegiatan pada filter yang dipilih
         </p>
-        <p className="mt-1 text-[10px] text-gray-500">
+        <p className="mt-1 text-[10px] text-[#78827C]">
           Coba pilih bulan atau kegiatan lainnya.
         </p>
       </div>
@@ -311,9 +311,9 @@ export default function RekapitulasiTable({
 
   return (
     <div className="flex min-h-0 flex-col bg-white">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-4">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[#E5EAE6] px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-teal-100 bg-teal-50 text-teal-700">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#65B98A]/30 bg-[#E6F2EA] text-[#287A50]">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -330,24 +330,24 @@ export default function RekapitulasiTable({
             </svg>
           </div>
           <div>
-            <h3 className="text-[10px] font-semibold tracking-tight text-gray-800">
+            <h3 className="text-[10px] font-semibold tracking-tight text-[#202824]">
               Rekapitulasi Kehadiran
             </h3>
-            <p className="text-[9px] leading-3.5 text-gray-400">
+            <p className="text-[9px] leading-3.5 text-[#9AA39D]">
               Ringkasan kehadiran peserta pada setiap kegiatan
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[9px] font-medium text-gray-600">
-            <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#E5EAE6] bg-[#F5F7F5] px-2.5 py-1 text-[9px] font-medium text-gray-600">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#287A50]" />
             {totalItems} Peserta
           </span>
         </div>
       </div>
 
-      <div className="shrink-0 border-b border-gray-100 bg-gray-50/70 px-4 py-2.5 sm:px-5">
+      <div className="shrink-0 border-b border-[#E5EAE6] bg-[#F5F7F5]/70 px-4 py-2.5 sm:px-5">
         <RekapitulasiLegend />
       </div>
 
@@ -355,23 +355,23 @@ export default function RekapitulasiTable({
         <table className="min-w-max border-separate border-spacing-0 text-[13px]">
           <thead className="sticky top-0 z-20">
             <tr>
-              <th className="sticky left-0 z-40 min-w-64 border-b border-r border-gray-200 bg-gray-50 px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+              <th className="sticky left-0 z-40 min-w-64 border-b border-r border-[#E5EAE6] bg-[#F5F7F5] px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wide text-[#78827C]">
                 Jamaah
               </th>
 
               {kegiatan.map((item) => (
                 <th
                   key={item.id}
-                  className="min-w-36 border-b border-gray-200 bg-gray-50 px-3 py-3 text-center"
+                  className="min-w-36 border-b border-[#E5EAE6] bg-[#F5F7F5] px-3 py-3 text-center"
                 >
                   <div
-                    className="mx-auto max-w-36 truncate text-[11px] font-semibold normal-case tracking-normal text-gray-800"
+                    className="mx-auto max-w-36 truncate text-[11px] font-semibold normal-case tracking-normal text-[#202824]"
                     title={item.nama}
                   >
                     {item.nama}
                   </div>
                   <div
-                    className="mx-auto mt-1 max-w-36 truncate whitespace-nowrap text-[10px] font-medium text-gray-500"
+                    className="mx-auto mt-1 max-w-36 truncate whitespace-nowrap text-[10px] font-medium text-[#78827C]"
                     title={formatRentangTanggal(
                       item.tanggal_mulai,
                       item.tanggal_selesai,
@@ -383,7 +383,7 @@ export default function RekapitulasiTable({
                     )}
                   </div>
                   <div
-                    className="mx-auto mt-0.5 max-w-36 truncate text-[9px] font-normal text-gray-400"
+                    className="mx-auto mt-0.5 max-w-36 truncate text-[9px] font-normal text-[#9AA39D]"
                     title={item.lokasi}
                   >
                     {item.lokasi}
@@ -398,7 +398,7 @@ export default function RekapitulasiTable({
                   <th
                     key={column.key}
                     title={column.title}
-                    className={`sticky z-40 w-10 min-w-10 border-b border-gray-200 bg-gray-50 px-1 py-3 text-center text-[10px] font-semibold ${column.key === "belumHadir" ? "border-l" : ""
+                    className={`sticky z-40 w-10 min-w-10 border-b border-[#E5EAE6] bg-[#F5F7F5] px-1 py-3 text-center text-[10px] font-semibold ${column.key === "belumHadir" ? "border-l" : ""
                       } ${column.headerClassName}`}
                     style={{ right: `${rightOffset}px` }}
                   >
@@ -416,13 +416,13 @@ export default function RekapitulasiTable({
               return (
                 <tr
                   key={item.id}
-                  className="group transition-colors hover:bg-teal-50/40"
+                  className="group transition-colors hover:bg-[#E6F2EA]/30"
                 >
-                  <td className="sticky left-0 z-30 min-w-64 border-b border-r border-gray-100 bg-white px-4 py-2.5 transition-colors group-hover:bg-teal-50/40">
-                    <div className="whitespace-nowrap text-[11px] font-semibold text-gray-800">
+                  <td className="sticky left-0 z-30 min-w-64 border-b border-r border-[#E5EAE6] bg-white px-4 py-2.5 transition-colors group-hover:bg-[#E6F2EA]/30">
+                    <div className="whitespace-nowrap text-[11px] font-semibold text-[#202824]">
                       {item.nama}
                     </div>
-                    <div className="mt-1 whitespace-nowrap text-[9px] text-gray-400">
+                    <div className="mt-1 whitespace-nowrap text-[9px] text-[#9AA39D]">
                       {item.kelompok ?? "Kelompok belum ditentukan"}
                     </div>
                   </td>
@@ -434,10 +434,10 @@ export default function RekapitulasiTable({
                       return (
                         <td
                           key={kegiatanItem.id}
-                          className="border-b border-gray-100 px-3 py-2.5 text-center"
+                          className="border-b border-[#E5EAE6] px-3 py-2.5 text-center"
                         >
                           <span
-                            className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-[9px] font-medium text-gray-500"
+                            className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-[9px] font-medium text-[#78827C]"
                             title="Tidak Berlaku"
                             aria-label="Tidak Berlaku"
                           >
@@ -455,7 +455,7 @@ export default function RekapitulasiTable({
                     return (
                       <td
                         key={kegiatanItem.id}
-                        className="border-b border-gray-100 px-3 py-2.5 text-center"
+                        className="border-b border-[#E5EAE6] px-3 py-2.5 text-center"
                       >
                         <span
                           className={`mx-auto block h-2.5 w-2.5 rounded-full ring-2 ring-offset-1 ring-offset-white ${belumHadir
@@ -485,7 +485,7 @@ export default function RekapitulasiTable({
                     return (
                       <td
                         key={column.key}
-                        className={`sticky z-30 w-10 min-w-10 border-b border-gray-100 bg-white px-1 py-2.5 text-center transition-colors group-hover:bg-teal-50/40 ${column.key === "belumHadir" ? "border-l" : ""
+                        className={`sticky z-30 w-10 min-w-10 border-b border-[#E5EAE6] bg-white px-1 py-2.5 text-center transition-colors group-hover:bg-[#E6F2EA]/30 ${column.key === "belumHadir" ? "border-l" : ""
                           }`}
                         style={{ right: `${rightOffset}px` }}
                       >
@@ -509,7 +509,7 @@ export default function RekapitulasiTable({
         <table className="w-full border-separate border-spacing-0 text-[13px]">
           <thead className="sticky top-0 z-20">
             <tr>
-              <th className="min-w-0 border-b border-gray-200 bg-gray-50 px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+              <th className="min-w-0 border-b border-[#E5EAE6] bg-[#F5F7F5] px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-wide text-[#78827C]">
                 Peserta
               </th>
 
@@ -517,7 +517,7 @@ export default function RekapitulasiTable({
                 <th
                   key={column.key}
                   title={column.title}
-                  className={`w-9 border-b border-gray-200 bg-gray-50 px-0.5 py-3 text-center text-[10px] font-semibold ${column.headerClassName} ${column.key === "belumHadir" ? "border-l" : ""
+                  className={`w-9 border-b border-[#E5EAE6] bg-[#F5F7F5] px-0.5 py-3 text-center text-[10px] font-semibold ${column.headerClassName} ${column.key === "belumHadir" ? "border-l" : ""
                     }`}
                 >
                   {column.label}
@@ -533,13 +533,13 @@ export default function RekapitulasiTable({
               return (
                 <tr
                   key={item.id}
-                  className="transition-colors hover:bg-gray-50"
+                  className="transition-colors hover:bg-[#F5F7F5]"
                 >
-                  <td className="max-w-0 border-b border-gray-100 px-3 py-3">
-                    <div className="truncate text-[11px] font-semibold text-gray-800">
+                  <td className="max-w-0 border-b border-[#E5EAE6] px-3 py-3">
+                    <div className="truncate text-[11px] font-semibold text-[#202824]">
                       {item.nama}
                     </div>
-                    <div className="mt-1 truncate text-[9px] text-gray-400">
+                    <div className="mt-1 truncate text-[9px] text-[#9AA39D]">
                       {item.kelompok ?? "Kelompok belum ditentukan"}
                     </div>
                   </td>
@@ -547,7 +547,7 @@ export default function RekapitulasiTable({
                   {SUMMARY_COLUMNS.map((column) => (
                     <td
                       key={column.key}
-                      className={`w-9 border-b border-gray-100 px-0.5 py-3 text-center ${column.key === "belumHadir" ? "border-l" : ""
+                      className={`w-9 border-b border-[#E5EAE6] px-0.5 py-3 text-center ${column.key === "belumHadir" ? "border-l" : ""
                         }`}
                     >
                       <span
@@ -564,7 +564,7 @@ export default function RekapitulasiTable({
         </table>
       </div>
 
-      <div className="shrink-0 border-t border-gray-100 bg-white">
+      <div className="shrink-0 border-t border-[#E5EAE6] bg-white">
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}

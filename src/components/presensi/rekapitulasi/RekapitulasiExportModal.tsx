@@ -36,10 +36,10 @@ type Props = {
 };
 
 const INPUT_CLASS =
-  "mt-1.5 h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-[10px] text-gray-700 outline-none transition placeholder:text-gray-400 hover:border-gray-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400";
+  "mt-1.5 h-9 w-full rounded-lg border border-[#E5EAE6] bg-white px-3 text-[10px] text-[#202824] outline-none transition placeholder:text-[#9AA39D] hover:border-[#E5EAE6] focus:border-[#287A50] focus:ring-2 focus:ring-[#65B98A]/20 disabled:cursor-not-allowed disabled:bg-[#F5F7F5] disabled:text-[#9AA39D]";
 
 const LABEL_CLASS =
-  "block text-[9px] font-semibold tracking-wide text-gray-500";
+  "block text-[9px] font-semibold tracking-wide text-[#78827C]";
 
 function formatBulan(tanggal: string) {
   return new Intl.DateTimeFormat("id-ID", {
@@ -139,11 +139,11 @@ export default function RekapitulasiExportModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="export-modal-title"
-        className="my-auto flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-gray-100 bg-white shadow-2xl sm:max-h-[90dvh] sm:max-w-lg sm:rounded-2xl"
+        className="my-auto flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-[#E5EAE6] bg-white shadow-2xl sm:max-h-[90dvh] sm:max-w-lg sm:rounded-2xl"
       >
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 sm:px-5">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#E5EAE6] px-4 py-3.5 sm:px-5">
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#65B98A]/30 bg-[#E6F2EA] text-[#287A50]">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -168,11 +168,11 @@ export default function RekapitulasiExportModal({
             <div className="min-w-0">
               <h2
                 id="export-modal-title"
-                className="text-[10px] font-semibold text-gray-800"
+                className="text-[10px] font-semibold text-[#202824]"
               >
                 Ekspor Rekapitulasi
               </h2>
-              <p className="mt-0.5 text-[9px] text-gray-400">
+              <p className="mt-0.5 text-[9px] text-[#9AA39D]">
                 Pilih data untuk diunduh dalam format Excel.
               </p>
             </div>
@@ -183,7 +183,7 @@ export default function RekapitulasiExportModal({
             onClick={onClose}
             disabled={loading}
             aria-label="Tutup modal"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#9AA39D] transition hover:bg-gray-100 hover:text-[#202824] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <svg
               viewBox="0 0 24 24"
@@ -203,20 +203,20 @@ export default function RekapitulasiExportModal({
         </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
-          <div className="flex items-start gap-2 rounded-lg border border-teal-100 bg-teal-50/60 px-3 py-2.5">
+          <div className="flex items-start gap-2 rounded-lg border border-[#65B98A]/30 bg-[#E6F2EA]/60 px-3 py-2.5">
             <svg
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth={1.8}
-              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-700"
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#287A50]"
               aria-hidden="true"
             >
               <circle cx="12" cy="12" r="9" />
               <path d="M12 11v5m0-8h.01" />
             </svg>
 
-            <p className="text-[9px] leading-4 text-teal-900">
+            <p className="text-[9px] leading-4 text-[#206440]">
               Semua peserta yang sesuai filter akan diekspor, termasuk data di
               halaman tabel lainnya.
             </p>
@@ -224,10 +224,10 @@ export default function RekapitulasiExportModal({
 
           <div>
             <div className="mb-2.5 flex items-center justify-between gap-2">
-              <h3 className="text-[10px] font-semibold text-gray-800">
+              <h3 className="text-[10px] font-semibold text-[#202824]">
                 Periode dan kegiatan
               </h3>
-              <span className="text-[8px] text-gray-400">Opsional</span>
+              <span className="text-[8px] text-[#9AA39D]">Opsional</span>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -280,12 +280,12 @@ export default function RekapitulasiExportModal({
             </div>
           </div>
 
-          <div className="border-t border-gray-100 pt-3">
+          <div className="border-t border-[#E5EAE6] pt-3">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="text-[10px] font-semibold text-gray-800">
+              <h3 className="text-[10px] font-semibold text-[#202824]">
                 Cakupan peserta
               </h3>
-              <span className="text-[9px] text-gray-400">
+              <span className="text-[9px] text-[#9AA39D]">
                 {activeFilterCount > 0
                   ? `${activeFilterCount} pilihan aktif`
                   : "Semua peserta"}
@@ -319,12 +319,12 @@ export default function RekapitulasiExportModal({
           )}
         </div>
 
-        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#E5EAE6] bg-[#F5F7F5]/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <button
             type="button"
             onClick={handleReset}
             disabled={loading}
-            className="inline-flex h-9 items-center justify-center rounded-lg px-3 text-[10px] font-medium text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 sm:justify-start"
+            className="inline-flex h-9 items-center justify-center rounded-lg px-3 text-[10px] font-medium text-[#78827C] transition hover:bg-gray-100 hover:text-[#202824] disabled:cursor-not-allowed disabled:opacity-50 sm:justify-start"
           >
             Reset filter
           </button>
@@ -334,7 +334,7 @@ export default function RekapitulasiExportModal({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-[#E5EAE6] bg-white px-4 text-[10px] font-semibold text-[#78827C] transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Batal
             </button>
@@ -343,7 +343,7 @@ export default function RekapitulasiExportModal({
               type="button"
               onClick={handleExport}
               disabled={loading}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 text-[10px] font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-[#287A50] px-4 text-xs font-medium text-white transition hover:bg-[#206440] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
                 <>

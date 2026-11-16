@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import LogoutButton from "./LogoutButton";
 import { createClient } from "../../backend/supabase/client";
+import { BrandLogo } from "../common/BrandLogo";
 
 const menuItems = [
   {
@@ -302,27 +303,7 @@ function MenuLinks({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function Brand() {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#287A50] text-[11px] font-bold tracking-tight text-white shadow-sm ring-1 ring-white/10">
-        RD
-      </div>
-
-      <div className="min-w-0">
-        <h1 className="truncate text-[14px] font-bold tracking-tight text-white">
-          REDESPA
-        </h1>
-
-        <p className="truncate text-[9px] font-medium leading-4 text-[#8E9892]">
-          Rekap Data Jamaah
-        </p>
-
-        <p className="truncate text-[9px] font-medium leading-3 text-[#8E9892]">
-          Desa Pandak
-        </p>
-      </div>
-    </div>
-  );
+  return <BrandLogo size="md" variant="dark" />;
 }
 
 function AccountSection({
@@ -545,33 +526,27 @@ export default function AdminSidebar() {
   return (
     <>
       {/* MOBILE TOP BAR */}
-      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center border-b border-[#262D29] bg-[#181C1B] px-4 md:hidden">
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          aria-label="Buka menu"
-          className="relative z-50 flex h-8 w-8 items-center justify-center rounded-lg text-white transition hover:bg-[#262D29] active:bg-[#2D3530]"
-        >
-          <svg
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            className="h-5 w-5"
-            aria-hidden="true"
+      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-[#262D29] bg-[#181C1B] px-4 md:hidden">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <button
+            type="button"
+            onClick={() => setIsOpen(true)}
+            aria-label="Buka menu navigasi"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-white transition hover:bg-[#262D29] active:bg-[#2D3530]"
           >
-            <path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13" strokeLinecap="round" />
-          </svg>
-        </button>
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="h-5 w-5"
+              aria-hidden="true"
+            >
+              <path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13" strokeLinecap="round" />
+            </svg>
+          </button>
 
-        <div className="ml-2.5 min-w-0">
-          <p className="truncate text-[12px] font-bold text-white">
-            REDESPA
-          </p>
-
-          <p className="truncate text-[9px] text-[#8E9892]">
-            Rekap Data Jamaah Desa Pandak
-          </p>
+          <BrandLogo size="sm" variant="dark" />
         </div>
       </header>
 

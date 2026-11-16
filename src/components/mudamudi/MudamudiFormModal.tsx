@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,8 +7,13 @@ import {
   KELOMPOK_OPTIONS,
   KELAS_OPTIONS,
 } from "../../backend/mudamudi/constants";
-import ModalWrapper from "./ModalWrapper";
-import { Button } from "../common";
+import {
+  ModalWrapper,
+  Button,
+  FormInput,
+  FormSelect,
+  CheckboxGroup,
+} from "../common";
 
 type Props = {
   mode: "add" | "edit";
@@ -34,6 +38,10 @@ export default function MudamudiFormModal({
     initialData?.kelompok ?? "",
   );
 
+  const [jenisKelamin, setJenisKelamin] = useState(
+    initialData?.jenis_kelamin ?? "",
+  );
+
   const [kelas, setKelas] = useState<string[]>(
     initialData?.kelas ?? [],
   );
@@ -43,25 +51,27 @@ export default function MudamudiFormModal({
   }, [initialData?.id, initialData?.kelompok]);
 
   useEffect(() => {
+    setJenisKelamin(initialData?.jenis_kelamin ?? "");
+  }, [initialData?.id, initialData?.jenis_kelamin]);
+
+  useEffect(() => {
     setKelas(initialData?.kelas ?? []);
   }, [initialData?.id, initialData?.kelas]);
 
-  const toggleKelas = (value: string) => {
-    setKelas((current) =>
-      current.includes(value)
-        ? current.filter((item) => item !== value)
-        : [...current, value],
-    );
-  };
+  const kelompokOptions = KELOMPOK_OPTIONS.map((opt) => ({
+    value: opt,
+    label: opt,
+  }));
 
-  const inputClass =
-    "h-9 w-full min-w-0 rounded-xl border border-[#E5EAE6] bg-white px-3 text-[10px] text-[#202824] outline-none transition placeholder:text-[#78827C] focus:border-[#287A50] focus:ring-2 focus:ring-[#65B98A]/20 disabled:cursor-not-allowed disabled:bg-[#F5F7F5]";
+  const jenisKelaminOptions = JENIS_KELAMIN_OPTIONS.map((opt) => ({
+    value: opt,
+    label: opt,
+  }));
 
-  const selectClass =
-    "h-9 w-full min-w-0 rounded-xl border border-[#E5EAE6] bg-white px-3 text-[10px] text-[#202824] outline-none transition focus:border-[#287A50] focus:ring-2 focus:ring-[#65B98A]/20 disabled:cursor-not-allowed disabled:bg-[#F5F7F5]";
-
-  const labelClass =
-    "mb-1.5 block text-[9px] font-semibold leading-4 text-[#202824]";
+  const kelasOptions = KELAS_OPTIONS.map((opt) => ({
+    value: opt,
+    label: opt,
+  }));
 
   return (
     <ModalWrapper onClose={onClose} size="lg">
@@ -73,10 +83,11 @@ export default function MudamudiFormModal({
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#E5EAE6] px-4 py-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-2.5">
             <div
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${mode === "add"
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+                mode === "add"
                   ? "bg-[#E6F2EA] text-[#287A50]"
                   : "bg-blue-50 text-blue-700"
-                }`}
+              }`}
             >
               {mode === "add" ? (
                 <svg
@@ -172,232 +183,108 @@ export default function MudamudiFormModal({
             </div>
           )}
 
-          <div>
-            <label htmlFor="nama" className={labelClass}>
-              Nama Lengkap <span className="text-red-500">*</span>
-            </label>
+          <FormInput
+            id="nama"
+            name="nama"
+            type="text"
+            label="Nama Lengkap *"
+            required
+            placeholder="Masukkan nama lengkap"
+            defaultValue={initialData?.nama ?? ""}
+            error={fieldErrors.nama}
+          />
 
-            <input
-              id="nama"
-              name="nama"
-              type="text"
-              required
-              placeholder="Masukkan nama lengkap"
-              defaultValue={initialData?.nama ?? ""}
-              className={`${inputClass} ${fieldErrors.nama
-                  ? "border-red-300 focus:border-red-400 focus:ring-red-50"
-                  : ""
-                }`}
-            />
-
-            {fieldErrors.nama && (
-              <p className="mt-1 text-[9px] text-red-500">
-                {fieldErrors.nama}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="kelompok" className={labelClass}>
-              Kelompok <span className="text-red-500">*</span>
-            </label>
-
-            <select
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormSelect
               id="kelompok"
               name="kelompok"
+              label="Kelompok *"
               required
               value={kelompok}
               onChange={(e) => setKelompok(e.target.value)}
-              className={`${selectClass} ${fieldErrors.kelompok ? "border-red-300" : ""
-                }`}
-            >
-              <option value="">Pilih kelompok</option>
+              options={kelompokOptions}
+              placeholder="Pilih kelompok"
+              error={fieldErrors.kelompok}
+            />
 
-              {KELOMPOK_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-
-            {fieldErrors.kelompok && (
-              <p className="mt-1 text-[9px] text-red-500">
-                {fieldErrors.kelompok}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="jenis_kelamin" className={labelClass}>
-              Jenis Kelamin <span className="text-red-500">*</span>
-            </label>
-
-            <select
+            <FormSelect
               id="jenis_kelamin"
               name="jenis_kelamin"
+              label="Jenis Kelamin *"
               required
-              defaultValue={initialData?.jenis_kelamin ?? ""}
-              className={`${selectClass} ${fieldErrors.jenis_kelamin ? "border-red-300" : ""
-                }`}
-            >
-              <option value="">Pilih jenis kelamin</option>
-
-              {JENIS_KELAMIN_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-
-            {fieldErrors.jenis_kelamin && (
-              <p className="mt-1 text-[9px] text-red-500">
-                {fieldErrors.jenis_kelamin}
-              </p>
-            )}
+              value={jenisKelamin}
+              onChange={(e) => setJenisKelamin(e.target.value)}
+              options={jenisKelaminOptions}
+              placeholder="Pilih jenis kelamin"
+              error={fieldErrors.jenis_kelamin}
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="min-w-0">
-              <label htmlFor="tempat_lahir" className={labelClass}>
-                Tempat Lahir
-              </label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormInput
+              id="tempat_lahir"
+              name="tempat_lahir"
+              type="text"
+              label="Tempat Lahir"
+              placeholder="Tempat lahir"
+              defaultValue={initialData?.tempat_lahir ?? ""}
+              error={fieldErrors.tempat_lahir}
+            />
 
-              <input
-                id="tempat_lahir"
-                name="tempat_lahir"
-                type="text"
-                placeholder="Tempat lahir"
-                defaultValue={initialData?.tempat_lahir ?? ""}
-                className={`${inputClass} ${fieldErrors.tempat_lahir ? "border-red-300" : ""
-                  }`}
-              />
-
-              {fieldErrors.tempat_lahir && (
-                <p className="mt-1 text-[9px] text-red-500">
-                  {fieldErrors.tempat_lahir}
-                </p>
-              )}
-            </div>
-
-            <div className="min-w-0">
-              <label htmlFor="tahun_lahir" className={labelClass}>
-                Tahun Lahir{" "}
-                <span className="font-normal text-gray-400">
-                  (Opsional)
-                </span>
-              </label>
-
-              <input
-                id="tahun_lahir"
-                name="tahun_lahir"
-                type="number"
-                min="1900"
-                max={currentYear}
-                step="1"
-                placeholder={String(currentYear - 20)}
-                defaultValue={
-                  initialData?.tahun_lahir != null
-                    ? String(initialData.tahun_lahir)
-                    : ""
-                }
-                className={`${inputClass} ${fieldErrors.tahun_lahir ? "border-red-300" : ""
-                  }`}
-              />
-
-              {fieldErrors.tahun_lahir && (
-                <p className="mt-1 text-[9px] text-red-500">
-                  {fieldErrors.tahun_lahir}
-                </p>
-              )}
-            </div>
+            <FormInput
+              id="tahun_lahir"
+              name="tahun_lahir"
+              type="number"
+              min="1900"
+              max={currentYear}
+              step="1"
+              label="Tahun Lahir (Opsional)"
+              placeholder={String(currentYear - 20)}
+              defaultValue={
+                initialData?.tahun_lahir != null
+                  ? String(initialData.tahun_lahir)
+                  : ""
+              }
+              error={fieldErrors.tahun_lahir}
+            />
           </div>
 
           <div>
-            <fieldset>
-              <legend className={labelClass}>
-                Kelas <span className="text-red-500">*</span>
-              </legend>
-
-              <p className="mb-2 text-[9px] leading-4 text-[#78827C]">
-                Pilih satu atau beberapa kelas yang sesuai.
-              </p>
-
-              <div
-                className={`grid grid-cols-2 gap-2 rounded-xl border p-3 sm:grid-cols-3 ${fieldErrors.kelas
-                    ? "border-red-300"
-                    : "border-[#E5EAE6]"
-                  }`}
-              >
-                {KELAS_OPTIONS.map((option) => (
-                  <label
-                    key={option}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-[10px] text-[#202824] transition hover:bg-[#F0F4F1]"
-                  >
-                    <input
-                      type="checkbox"
-                      name="kelas"
-                      value={option}
-                      checked={kelas.includes(option)}
-                      onChange={() => toggleKelas(option)}
-                      className="h-3.5 w-3.5 shrink-0 accent-[#287A50]"
-                    />
-
-                    <span>{option}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
-            {fieldErrors.kelas && (
-              <p className="mt-1 text-[9px] text-red-500">
-                {fieldErrors.kelas}
-              </p>
-            )}
+            <CheckboxGroup
+              label="Kelas *"
+              options={kelasOptions}
+              values={kelas}
+              onChange={setKelas}
+              helperText="Pilih satu atau beberapa kelas yang sesuai."
+              error={fieldErrors.kelas}
+            />
+            {/* Hidden inputs to make sure FormData picks up the selected kelas in native submit */}
+            {kelas.map((k) => (
+              <input key={k} type="hidden" name="kelas" value={k} />
+            ))}
           </div>
 
-          <div>
-            <label htmlFor="pekerjaan" className={labelClass}>
-              Pekerjaan
-            </label>
-
-            <input
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormInput
               id="pekerjaan"
               name="pekerjaan"
               type="text"
+              label="Pekerjaan"
               placeholder="Masukkan pekerjaan"
               defaultValue={initialData?.pekerjaan ?? ""}
-              className={`${inputClass} ${fieldErrors.pekerjaan ? "border-red-300" : ""
-                }`}
+              error={fieldErrors.pekerjaan}
             />
 
-            {fieldErrors.pekerjaan && (
-              <p className="mt-1 text-[9px] text-red-500">
-                {fieldErrors.pekerjaan}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="no_hp" className={labelClass}>
-              No. HP
-            </label>
-
-            <input
+            <FormInput
               id="no_hp"
               name="no_hp"
               type="tel"
               inputMode="numeric"
+              label="No. HP"
               placeholder="Masukkan nomor HP"
               defaultValue={initialData?.no_hp ?? ""}
-              className={`${inputClass} ${fieldErrors.no_hp ? "border-red-300" : ""
-                }`}
+              error={fieldErrors.no_hp}
             />
-
-            {fieldErrors.no_hp && (
-              <p className="mt-1 text-[9px] text-red-500">
-                {fieldErrors.no_hp}
-              </p>
-            )}
           </div>
         </div>
 

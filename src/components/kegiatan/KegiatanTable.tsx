@@ -25,7 +25,7 @@ import DeleteConfirmModal from "./DeleteConfirmModal";
 import KegiatanFormModal from "./KegiatanFormModal";
 import KegiatanTableView from "./KegiatanTableView";
 import SearchFilterBar from "./SearchFilterBar";
-import { PageHeader, Button } from "../common";
+import { PageContainer, PageHeader, Button, StatCard } from "../common";
 
 type Props = {
   initialData: Kegiatan[];
@@ -42,6 +42,32 @@ export default function KegiatanTable({ initialData }: Props) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+
+  // Statistics
+  const stats = useMemo(() => {
+    let sedangBerlangsung = 0;
+    let akanBerlangsung = 0;
+    let selesai = 0;
+
+    data.forEach((item) => {
+      const st = getKegiatanStatus(
+        item.tanggal_mulai,
+        item.tanggal_selesai,
+        item.jam_mulai,
+        item.jam_selesai,
+      );
+      if (st === "sedang_berlangsung") sedangBerlangsung++;
+      else if (st === "akan_berlangsung") akanBerlangsung++;
+      else if (st === "selesai") selesai++;
+    });
+
+    return {
+      total: data.length,
+      sedangBerlangsung,
+      akanBerlangsung,
+      selesai,
+    };
+  }, [data]);
 
   const filteredData = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -240,50 +266,109 @@ export default function KegiatanTable({ initialData }: Props) {
   }
 
   return (
-    <>
-      <div className="mx-auto w-full px-4 py-6 sm:px-6 md:px-7 lg:px-8">
-        <div className="mb-5">
-          <PageHeader
-            eyebrow="Kegiatan"
-            title="Data Kegiatan"
-            description="Kelola kegiatan yang digunakan untuk presensi."
-            actions={
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                onClick={openAdd}
-                disabled={loading}
-                aria-label="Tambah kegiatan"
-                title="Tambah kegiatan"
+    <PageContainer maxWidth="8xl">
+      <PageHeader
+        eyebrow="Kegiatan"
+        title="Data Kegiatan"
+        description="Kelola jadwal kegiatan, sasaran peserta, dan akses pemindaian presensi."
+        actions={
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            onClick={openAdd}
+            disabled={loading}
+            aria-label="Tambah kegiatan"
+            title="Tambah kegiatan"
+            leftIcon={
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                className="h-4 w-4"
+                aria-hidden="true"
               >
-                <span className="sm:hidden">+</span>
-                <span className="hidden sm:inline">+ Tambah Kegiatan</span>
-              </Button>
+                <path
+                  d="M10 4v12M4 10h12"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
             }
-          />
-        </div>
+          >
+            <span>Tambah Kegiatan</span>
+          </Button>
+        }
+      />
 
-        <SearchFilterBar
-          search={search}
-          setSearch={setSearch}
-          filterStatus={filterStatus}
-          setFilterStatus={setFilterStatus}
-          hasActiveFilters={hasActiveFilters}
-          sortConfig={sortConfig}
-          setSortConfig={setSortConfig}
-          onReset={handleReset}
+      {/* Summary StatCards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard
+          label="Total Kegiatan"
+          value={stats.total}
+          description="Semua agenda terdaftar"
+          icon={
+            <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.7" />
+              <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
+          }
         />
-
-        <KegiatanTableView
-          data={filteredData}
-          sort={sortConfig}
-          onSort={handleSort}
-          onEdit={openEdit}
-          onDelete={openDelete}
-          onScanQR={handleScanQR}
+        <StatCard
+          label="Sedang Berlangsung"
+          value={stats.sedangBerlangsung}
+          description="Scan QR presensi aktif"
+          className="border-emerald-200/60"
+          icon={
+            <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-emerald-600" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.7" />
+              <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
+          }
+        />
+        <StatCard
+          label="Akan Datang"
+          value={stats.akanBerlangsung}
+          description="Jadwal berikutnya"
+          icon={
+            <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-amber-600" aria-hidden="true">
+              <path d="M12 8v4l2.5 2.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.7" />
+            </svg>
+          }
+        />
+        <StatCard
+          label="Telah Selesai"
+          value={stats.selesai}
+          description="Kegiatan lampau"
+          icon={
+            <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-[#78827C]" aria-hidden="true">
+              <path d="m9 12 2 2 4-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.7" />
+            </svg>
+          }
         />
       </div>
+
+      <SearchFilterBar
+        search={search}
+        setSearch={setSearch}
+        filterStatus={filterStatus}
+        setFilterStatus={setFilterStatus}
+        hasActiveFilters={hasActiveFilters}
+        sortConfig={sortConfig}
+        setSortConfig={setSortConfig}
+        onReset={handleReset}
+      />
+
+      <KegiatanTableView
+        data={filteredData}
+        sort={sortConfig}
+        onSort={handleSort}
+        onEdit={openEdit}
+        onDelete={openDelete}
+        onScanQR={handleScanQR}
+      />
 
       {(modal?.type === "add" || modal?.type === "edit") && (
         <KegiatanFormModal
@@ -316,6 +401,6 @@ export default function KegiatanTable({ initialData }: Props) {
           }}
         />
       )}
-    </>
+    </PageContainer>
   );
 }

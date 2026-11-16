@@ -51,58 +51,75 @@ export default function JamaahQRModal({ data, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl overflow-hidden border border-[#E5EAE6]">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Kartu QR Presensi Jamaah"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-3 backdrop-blur-xs transition-opacity duration-200 motion-reduce:transition-none sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-[#E5EAE6] bg-white shadow-xl sm:max-h-[calc(100dvh-2rem)]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="border-b border-[#F0F4F1] px-5 py-4 flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-[#202824]">
-              Kartu QR Presensi Jamaah
-            </h3>
-            <p className="text-[10px] text-[#78827C]">
-              Gunakan untuk presensi kegiatan kategori Jamaah
-            </p>
+        <div className="flex shrink-0 items-center justify-between border-b border-[#E5EAE6] px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#E6F2EA] text-[#287A50]">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-xs font-semibold text-[#202824]">
+                Kartu QR Presensi
+              </h3>
+              <p className="text-[9px] text-[#78827C]">
+                Presensi kegiatan Jamaah
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            aria-label="Tutup"
+            className="rounded-lg p-1 text-[#78827C] transition-colors duration-150 hover:bg-[#F0F4F1] hover:text-[#202824] motion-reduce:transition-none"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Card Content for Image Export */}
-        <div className="p-5 flex flex-col items-center">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center">
           <div
             ref={cardRef}
-            className="w-full rounded-2xl border border-[#287A50]/20 bg-gradient-to-b from-[#F4F9F6] to-white p-6 shadow-sm flex flex-col items-center text-center"
+            className="w-full rounded-2xl border border-[#287A50]/20 bg-gradient-to-b from-[#F4F9F6] to-white p-5 shadow-xs flex flex-col items-center text-center"
           >
-            <div className="mb-1 text-[10px] font-semibold tracking-wider uppercase text-[#287A50]">
+            <div className="text-[9px] font-semibold tracking-wider uppercase text-[#287A50]">
               REDESPA PANDAK
             </div>
-            <div className="text-xs font-bold text-gray-900 mb-4">
+            <div className="text-[11px] font-bold text-[#202824] mb-3">
               KARTU PRESENSI JAMAAH
             </div>
 
-            <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-inner">
+            <div className="rounded-xl border border-[#E5EAE6] bg-white p-2.5 shadow-2xs">
               <QRCodeSVG
                 value={qrValue}
-                size={180}
+                size={160}
                 level="M"
                 includeMargin={false}
               />
             </div>
 
-            <div className="mt-4">
-              <h4 className="text-sm font-bold text-gray-900">
+            <div className="mt-3.5">
+              <h4 className="text-xs font-bold text-[#202824]">
                 {toTitleCase(data.nama)}
               </h4>
-              <p className="text-xs text-gray-600 mt-0.5">
+              <p className="text-[10px] text-[#78827C] mt-0.5">
                 Kelompok {data.kelompok}
               </p>
-              <div className="mt-2 inline-flex items-center rounded-full bg-[#E6F2EA] px-2.5 py-0.5 text-[10px] font-medium text-[#287A50]">
+              <div className="mt-1.5 inline-flex items-center rounded-full bg-[#E6F2EA] px-2 py-0.5 text-[9px] font-medium text-[#287A50]">
                 {data.jenis_kelamin || "Jamaah"}
               </div>
             </div>
@@ -110,7 +127,7 @@ export default function JamaahQRModal({ data, onClose }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-[#F0F4F1] bg-gray-50/50 px-5 py-3 flex justify-end gap-2.5">
+        <div className="border-t border-[#E5EAE6] bg-[#F5F7F5] px-4 py-2.5 flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={onClose} className="text-xs">
             Tutup
           </Button>
@@ -118,10 +135,10 @@ export default function JamaahQRModal({ data, onClose }: Props) {
             variant="primary"
             size="sm"
             onClick={handleDownload}
-            disabled={isDownloading}
+            isLoading={isDownloading}
             className="bg-[#287A50] text-xs hover:bg-[#1E5E3D]"
           >
-            {isDownloading ? "Mengunduh..." : "Unduh Gambar QR"}
+            Unduh Gambar QR
           </Button>
         </div>
       </div>

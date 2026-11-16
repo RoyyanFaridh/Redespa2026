@@ -1,58 +1,62 @@
 import { PresensiStatus } from "../../../backend/presensi/types";
+import { Badge, type BadgeVariant } from "../../common";
 
 type Props = {
   status: PresensiStatus | null;
+  size?: "sm" | "md";
 };
 
 const STATUS_CONFIG: Record<
   PresensiStatus,
   {
     label: string;
-    className: string;
+    variant: BadgeVariant;
   }
 > = {
   hadir: {
     label: "Hadir",
-    className: "bg-[#E6F2EA] text-[#206440] border border-[#65B98A]/30",
+    variant: "success",
   },
-
   terlambat: {
     label: "Terlambat",
-    className: "bg-amber-50 text-amber-700 border border-amber-200",
+    variant: "warning",
   },
-
   izin: {
     label: "Izin",
-    className: "bg-blue-50 text-blue-700 border border-blue-200",
+    variant: "info",
   },
-
   sakit: {
     label: "Sakit",
-    className: "bg-purple-50 text-purple-700 border border-purple-200",
+    variant: "info",
   },
-
   alpa: {
     label: "Alpa",
-    className: "bg-red-50 text-red-700 border border-red-200",
+    variant: "danger",
   },
 };
 
-export default function MonitoringStatusBadge({ status }: Props) {
+export default function MonitoringStatusBadge({ status, size = "sm" }: Props) {
   if (!status) {
     return (
-      <span className="inline-flex items-center rounded-full border border-[#E5EAE6] bg-[#F5F7F5] px-2 py-0.5 text-[10px] font-medium text-[#78827C]">
+      <Badge variant="neutral" size={size} dot>
         Belum Hadir
-      </span>
+      </Badge>
     );
   }
 
   const config = STATUS_CONFIG[status];
 
+  if (!config) {
+    return (
+      <Badge variant="neutral" size={size}>
+        {status}
+      </Badge>
+    );
+  }
+
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${config.className}`}
-    >
+    <Badge variant={config.variant} size={size} dot>
       {config.label}
-    </span>
+    </Badge>
   );
 }
