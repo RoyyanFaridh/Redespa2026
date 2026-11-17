@@ -16,7 +16,7 @@ const QR_REGION_ID = "redespa-qr-reader";
 const SCAN_COOLDOWN = 1500;
 const RESULT_DISPLAY_DURATION = 2500;
 const FAILURE_DISPLAY_DURATION = 4000;
-const CASHOW_DEBOUNCE = 150;
+const CASHOW_DEBOUNCE = 600;
 
 const MOBILE_QRBOX_SIZE = 200;
 const DESKTOP_QRBOX_SIZE = 240;
@@ -30,6 +30,15 @@ const QR_PREFIXES = [
 ];
 
 type Tone = "emerald" | "amber" | "rose";
+
+type DebugLevel = "INFO" | "SUCCESS" | "WARNING" | "ERROR";
+
+type DebugEntry = {
+  id: number;
+  time: string;
+  level: DebugLevel;
+  message: string;
+};
 
 type FailureMeta = {
   title: string;
@@ -310,6 +319,15 @@ export default function CheckinScanner({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ScanQRResult | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<DebugEntry[]>([]);
+  const [debugExpanded, setDebugExpanded] = useState(true);
+  const [debugPayloadVisible, setDebugPayloadVisible] = useState(false);
+  const [debugPayload, setDebugPayload] = useState("");
+  const [debugInputLength, setDebugInputLength] = useState(0);
+  const [debugStatus, setDebugStatus] = useState("Menunggu input scanner");
+  const [debugStage, setDebugStage] = useState("Belum ada pemindaian");
+  const [debugInputFocused, setDebugInputFocused] = useState(false);
+  const [debugLastInputAt, setDebugLastInputAt] = useState("-");
 
   const cashowInputRef = useRef<HTMLInputElement>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -328,6 +346,10 @@ export default function CheckinScanner({
     null,
   );
 
+  const cashowNoInputTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
   const resultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -340,6 +362,76 @@ export default function CheckinScanner({
   useEffect(() => {
     scanMethodRef.current = scanMethod;
   }, [scanMethod]);
+
+  const addDebugLog = (
+    level: DebugLevel,
+    message: string,
+  ) => {
+    const time = new Date().toLocaleTimeString("id-ID", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+
+    setDebugLogs((previous) => [
+      {
+        id: Date.now() + Math.random(),
+        time,
+        level,
+        message,
+      },
+      ...previous,
+    ].slice(0, 60));
+  };
+
+  const scheduleNoInputWarning = () => {
+    if (cashowNoInputTimeoutRef.current) {
+      clearTimeout(cashowNoInputTimeoutRef.current);
+    }
+
+    cashowNoInputTimeoutRef.current = setTimeout(() => {
+      if (
+        !mountedRef.current ||
+        scanMethodRef.current !== "cashow" ||
+        processingRef.current
+      ) {
+        return;
+      }
+
+      setDebugStatus("Belum menerima input dari scanner");
+      addDebugLog(
+        "WARNING",
+        "Belum ada karakter yang diterima. Pastikan kolom input fokus dan scanner mengirim data sebagai keyboard.",
+      );
+    }, 8000);
+  };
+
+  const handleCopyDebugLogs = async () => {
+    const content = [
+      "REDESPA - DEBUG SCANNER CASHOW",
+      `Status: ${debugStatus}`,
+      `Tahap: ${debugStage}`,
+      `Panjang input: ${debugInputLength}`,
+      `Fokus input: ${debugInputFocused ? "Ya" : "Tidak"}`,
+      `Waktu input terakhir: ${debugLastInputAt}`,
+      `Payload: ${debugPayload || "-"}`,
+      "",
+      ...debugLogs.map(
+        (item) => `[${item.time}] [${item.level}] ${item.message}`,
+      ),
+    ].join("\n");
+
+    try {
+      await navigator.clipboard.writeText(content);
+      addDebugLog("SUCCESS", "Informasi debugging berhasil disalin.");
+    } catch {
+      addDebugLog(
+        "ERROR",
+        "Gagal menyalin informasi debugging. Periksa izin clipboard browser.",
+      );
+    }
+  };
 
   const enableScanSound = async () => {
     try {
@@ -490,36 +582,75 @@ export default function CheckinScanner({
       resultTimeoutRef.current = null;
 
       if (scanMethodRef.current === "cashow") {
+        setDebugStatus("Siap menerima QR berikutnya");
+        setDebugStage("Menunggu input scanner");
+        setDebugInputLength(0);
         cashowInputRef.current?.focus();
+        scheduleNoInputWarning();
       }
     }, duration);
   };
 
-  const handleScan = async (decodedText: string) => {
-    if (!mountedRef.current || processingRef.current) return;
+  const handleScan = async (
+    decodedText: string,
+    source: "Cashow" | "Kamera",
+  ) => {
+    if (!mountedRef.current) return;
+
+    if (processingRef.current) {
+      addDebugLog(
+        "WARNING",
+        `Pemindaian dari ${source} diabaikan karena pemindaian sebelumnya masih diproses.`,
+      );
+      return;
+    }
 
     const qrText = decodedText.trim();
 
-    if (!qrText) return;
+    if (!qrText) {
+      addDebugLog("WARNING", `Payload kosong diterima dari ${source}.`);
+      setDebugStatus("Payload QR kosong");
+      setDebugStage("Validasi payload gagal");
+      return;
+    }
 
-    const isKnownPrefix = QR_PREFIXES.some((prefix) =>
+    setDebugPayload(qrText);
+    setDebugInputLength(qrText.length);
+    setDebugLastInputAt(new Date().toLocaleTimeString("id-ID"));
+    setDebugStatus(`Payload diterima dari ${source}`);
+    setDebugStage("Memeriksa format QR");
+    addDebugLog(
+      "INFO",
+      `Payload diterima dari ${source} dengan panjang ${qrText.length} karakter.`,
+    );
+
+    const matchedPrefix = QR_PREFIXES.find((prefix) =>
       qrText.startsWith(prefix),
     );
 
-    if (!isKnownPrefix) {
+    if (!matchedPrefix) {
       processingRef.current = true;
       setIsProcessing(true);
+      setDebugStatus("Format QR tidak dikenali");
+      setDebugStage("Validasi prefix gagal");
+      addDebugLog(
+        "ERROR",
+        `Prefix QR tidak cocok. Prefix yang didukung: ${QR_PREFIXES.join(", ")}.`,
+      );
 
       playScanSound(false);
 
       showResult({
         success: false,
         type: "invalid_qr",
-        message: "Format QR Code tidak dikenali oleh sistem REDESPA.",
+        message: `Format QR tidak dikenali. Payload diterima sebanyak ${qrText.length} karakter, tetapi prefix tidak sesuai dengan format QR REDESPA.`,
       });
 
       return;
     }
+
+    setDebugStage("Prefix QR dikenali");
+    addDebugLog("SUCCESS", `Prefix QR dikenali: ${matchedPrefix}`);
 
     const now = Date.now();
 
@@ -527,6 +658,12 @@ export default function CheckinScanner({
       lastScannedQRRef.current === qrText &&
       now - lastScannedAtRef.current < SCAN_COOLDOWN
     ) {
+      setDebugStatus("Pemindaian duplikat diabaikan");
+      setDebugStage("Pemeriksaan cooldown");
+      addDebugLog(
+        "WARNING",
+        "Payload sama diterima kembali dalam waktu cooldown 1,5 detik. Pemindaian duplikat diabaikan.",
+      );
       return;
     }
 
@@ -537,11 +674,33 @@ export default function CheckinScanner({
     lastScannedAtRef.current = now;
 
     setError(null);
+    setDebugStatus("Menghubungi server");
+    setDebugStage("Menjalankan fungsi scanMudamudiQR");
+    addDebugLog(
+      "INFO",
+      `Mengirim payload ke server untuk kegiatan ID ${kegiatanId}.`,
+    );
 
     try {
       const scanResult = await scanMudamudiQR(qrText, kegiatanId);
 
       if (!mountedRef.current) return;
+
+      if (scanResult.success) {
+        setDebugStatus("Presensi berhasil diproses");
+        setDebugStage("Server mengembalikan hasil berhasil");
+        addDebugLog(
+          "SUCCESS",
+          `Server berhasil memproses presensi dengan status ${scanResult.status}.`,
+        );
+      } else {
+        setDebugStatus("Server mengembalikan kegagalan");
+        setDebugStage(`Proses server gagal: ${scanResult.type}`);
+        addDebugLog(
+          "ERROR",
+          `Server menolak pemindaian. Kode: ${scanResult.type}. Pesan: ${scanResult.message}`,
+        );
+      }
 
       playScanSound(scanResult.success);
       showResult(scanResult);
@@ -553,12 +712,24 @@ export default function CheckinScanner({
 
       if (!mountedRef.current) return;
 
+      const errorMessage =
+        e instanceof Error
+          ? `${e.name}: ${e.message}`
+          : String(e);
+
+      setDebugStatus("Terjadi exception saat memproses QR");
+      setDebugStage("Pemanggilan server melempar exception");
+      addDebugLog(
+        "ERROR",
+        `Exception saat memanggil server: ${errorMessage}`,
+      );
+
       playScanSound(false);
 
       showResult({
         success: false,
         type: "database_error",
-        message: "Terjadi kesalahan saat memproses presensi.",
+        message: `Terjadi kesalahan saat memproses presensi: ${errorMessage}`,
       });
     }
   };
@@ -575,6 +746,21 @@ export default function CheckinScanner({
 
     if (!value.trim() || processingRef.current) return;
 
+    setDebugPayload(value);
+    setDebugInputLength(value.length);
+    setDebugStatus("Menerima karakter dari scanner");
+    setDebugStage("Input Cashow sedang diterima");
+    setDebugLastInputAt(new Date().toLocaleTimeString("id-ID"));
+
+    if (debugInputLength === 0) {
+      addDebugLog("INFO", "Karakter pertama diterima pada kolom input Cashow.");
+    }
+
+    if (cashowNoInputTimeoutRef.current) {
+      clearTimeout(cashowNoInputTimeoutRef.current);
+      cashowNoInputTimeoutRef.current = null;
+    }
+
     cashowDebounceRef.current = setTimeout(() => {
       const input = cashowInputRef.current;
 
@@ -586,8 +772,15 @@ export default function CheckinScanner({
 
       input.value = "";
       cashowDebounceRef.current = null;
+      setDebugStatus("Input selesai, payload akan diproses");
+      setDebugStage("Input berhenti selama 600 ms");
+      addDebugLog(
+        "INFO",
+        `Input Cashow berhenti setelah menerima ${scannedValue.length} karakter. Payload diteruskan untuk validasi.`,
+      );
 
-      void handleScan(scannedValue);
+      setDebugInputLength(0);
+      void handleScan(scannedValue, "Cashow");
     }, CASHOW_DEBOUNCE);
   };
 
@@ -603,16 +796,45 @@ export default function CheckinScanner({
       cashowDebounceRef.current = null;
     }
 
+    if (cashowNoInputTimeoutRef.current) {
+      clearTimeout(cashowNoInputTimeoutRef.current);
+      cashowNoInputTimeoutRef.current = null;
+    }
+
     const input = cashowInputRef.current;
     const value = input?.value.trim();
 
-    if (!value || processingRef.current) return;
+    if (!value) {
+      setDebugStatus("Enter diterima tanpa payload");
+      setDebugStage("Input kosong saat Enter diterima");
+      addDebugLog(
+        "WARNING",
+        "Scanner mengirim Enter, tetapi kolom input tidak berisi payload.",
+      );
+      return;
+    }
+
+    if (processingRef.current) {
+      addDebugLog(
+        "WARNING",
+        "Enter diterima ketika proses pemindaian sebelumnya masih berjalan.",
+      );
+      return;
+    }
 
     if (input) {
       input.value = "";
     }
 
-    void handleScan(value);
+    setDebugInputLength(0);
+    setDebugStatus("Enter diterima, payload akan diproses");
+    setDebugStage("Input Cashow selesai dengan Enter");
+    addDebugLog(
+      "INFO",
+      `Karakter Enter diterima. Payload memiliki ${value.length} karakter.`,
+    );
+
+    void handleScan(value, "Cashow");
   };
 
   const startScanner = async (force = false) => {
@@ -664,7 +886,7 @@ export default function CheckinScanner({
           aspectRatio: isDesktop ? 16 / 9 : 1,
         },
         (decodedText) => {
-          void handleScan(decodedText);
+          void handleScan(decodedText, "Kamera");
         },
         () => { },
       );
@@ -786,6 +1008,11 @@ export default function CheckinScanner({
         cashowDebounceRef.current = null;
       }
 
+      if (cashowNoInputTimeoutRef.current) {
+        clearTimeout(cashowNoInputTimeoutRef.current);
+        cashowNoInputTimeoutRef.current = null;
+      }
+
       if (resultTimeoutRef.current) {
         clearTimeout(resultTimeoutRef.current);
         resultTimeoutRef.current = null;
@@ -846,6 +1073,10 @@ export default function CheckinScanner({
 
     const timer = window.setTimeout(() => {
       cashowInputRef.current?.focus();
+      setDebugStatus("Kolom input siap menerima scanner");
+      setDebugStage("Menunggu karakter pertama");
+      addDebugLog("INFO", "Mode Cashow aktif. Kolom input sedang difokuskan.");
+      scheduleNoInputWarning();
     }, 100);
 
     return () => window.clearTimeout(timer);
@@ -909,7 +1140,7 @@ export default function CheckinScanner({
 
   const resultColor =
     resultTone === "emerald"
-      ? "bg-[#E6F2EA]0"
+      ? "bg-[#287A50]"
       : resultTone === "amber"
         ? "bg-amber-400"
         : "bg-rose-500";
@@ -1009,7 +1240,7 @@ export default function CheckinScanner({
           </div>
 
           <div className="flex w-fit items-center gap-2 rounded-lg border border-[#65B98A]/30 bg-[#E6F2EA] px-3 py-2">
-            <span className="h-2 w-2 rounded-full bg-[#E6F2EA]0" />
+            <span className="h-2 w-2 rounded-full bg-[#287A50]" />
             <span className="text-[11px] font-semibold text-[#206440]">
               Sasaran {jenisPesertaLabel}
             </span>
@@ -1211,11 +1442,172 @@ export default function CheckinScanner({
                     disabled={isProcessing}
                     onChange={handleCashowChange}
                     onKeyDown={handleCashowKeyDown}
+                    onFocus={() => {
+                      setDebugInputFocused(true);
+                      setDebugStatus("Kolom input sedang fokus");
+                      addDebugLog("SUCCESS", "Kolom input Cashow mendapatkan fokus.");
+                    }}
+                    onBlur={() => {
+                      setDebugInputFocused(false);
+                      setDebugStatus("Kolom input kehilangan fokus");
+                      addDebugLog(
+                        "WARNING",
+                        "Kolom input Cashow kehilangan fokus. Scanner mungkin mengirim karakter ke elemen lain.",
+                      );
+                    }}
                     className="w-full rounded-lg border border-[#E5EAE6] bg-[#F5F7F5] px-4 py-3.5 text-sm text-[#202824] outline-none transition placeholder:text-[#9AA39D] focus:border-[#287A50] focus:bg-white focus:ring-2 focus:ring-[#65B98A]/20 disabled:cursor-not-allowed disabled:opacity-60"
                   />
 
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">                  <div className="mt-4 rounded-xl border border-[#DCE8DF] bg-[#F8FBF8]">
+                    <button
+                      type="button"
+                      onClick={() => setDebugExpanded((value) => !value)}
+                      aria-expanded={debugExpanded}
+                      className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#E6F2EA] text-[#287A50]">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 5h16M4 12h16M4 19h10" />
+                            <circle cx="19" cy="19" r="2" />
+                          </svg>
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-xs font-semibold text-[#202824]">
+                            Debug Scanner
+                          </span>
+                          <span className="mt-0.5 block truncate text-[10px] text-[#78827C]">
+                            {debugStatus}
+                          </span>
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[10px] font-semibold text-[#287A50]">
+                        {debugExpanded ? "Tutup detail" : "Lihat detail"}
+                      </span>
+                    </button>
+
+                    {debugExpanded && (
+                      <div className="space-y-3 border-t border-[#DCE8DF] p-3">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          <div className="rounded-lg border border-[#E5EAE6] bg-white p-2.5">
+                            <p className="text-[9px] text-[#9AA39D]">Status input</p>
+                            <p className="mt-1 text-[10px] font-semibold text-[#202824]">
+                              {debugInputLength > 0 ? "Menerima data" : debugInputFocused ? "Siap menerima" : "Tidak fokus"}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-[#E5EAE6] bg-white p-2.5">
+                            <p className="text-[9px] text-[#9AA39D]">Jumlah karakter</p>
+                            <p className="mt-1 text-[10px] font-semibold tabular-nums text-[#202824]">
+                              {debugInputLength}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-[#E5EAE6] bg-white p-2.5">
+                            <p className="text-[9px] text-[#9AA39D]">Fokus kolom</p>
+                            <p className={`mt-1 text-[10px] font-semibold ${debugInputFocused ? "text-[#287A50]" : "text-rose-600"}`}>
+                              {debugInputFocused ? "Aktif" : "Tidak aktif"}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-[#E5EAE6] bg-white p-2.5">
+                            <p className="text-[9px] text-[#9AA39D]">Tahap terakhir</p>
+                            <p className="mt-1 break-words text-[10px] font-semibold text-[#202824]">
+                              {debugStage}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border border-[#E5EAE6] bg-white p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-[10px] font-semibold text-[#202824]">
+                              Payload QR terakhir
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setDebugPayloadVisible((value) => !value)}
+                              className="text-[10px] font-semibold text-[#287A50] hover:underline"
+                            >
+                              {debugPayloadVisible ? "Sembunyikan payload" : "Tampilkan payload"}
+                            </button>
+                          </div>
+                          <p className="mt-2 break-all rounded-md bg-[#F5F7F5] p-2 font-mono text-[10px] leading-5 text-[#59645D]">
+                            {debugPayloadVisible
+                              ? debugPayload || "Belum ada payload yang diterima."
+                              : debugPayload
+                                ? `${debugPayload.slice(0, 12)}${"•".repeat(Math.min(Math.max(debugPayload.length - 12, 0), 24))} (${debugPayload.length} karakter)`
+                                : "Belum ada payload yang diterima."}
+                          </p>
+                          <div className="mt-2 flex flex-wrap justify-between gap-2 text-[9px] text-[#9AA39D]">
+                            <span>Waktu input terakhir: {debugLastInputAt}</span>
+                            <span>Mode input: keyboard USB</span>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border border-[#E5EAE6] bg-white">
+                          <div className="flex items-center justify-between gap-2 border-b border-[#E5EAE6] px-3 py-2">
+                            <p className="text-[10px] font-semibold text-[#202824]">
+                              Pesan diagnostik
+                            </p>
+                            <span className="text-[9px] text-[#9AA39D]">
+                              {debugLogs.length}/60 pesan
+                            </span>
+                          </div>
+                          <div className="max-h-56 space-y-2 overflow-y-auto p-3">
+                            {debugLogs.length === 0 ? (
+                              <p className="py-3 text-center text-[10px] text-[#9AA39D]">
+                                Belum ada aktivitas. Sistem akan menampilkan pesan ketika input diterima.
+                              </p>
+                            ) : (
+                              debugLogs.map((item) => (
+                                <div key={item.id} className="flex items-start gap-2">
+                                  <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[8px] font-bold ${
+                                    item.level === "SUCCESS"
+                                      ? "bg-emerald-50 text-emerald-700"
+                                      : item.level === "WARNING"
+                                        ? "bg-amber-50 text-amber-700"
+                                        : item.level === "ERROR"
+                                          ? "bg-rose-50 text-rose-700"
+                                          : "bg-slate-100 text-slate-600"
+                                  }`}>
+                                    {item.level}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] leading-4 text-[#39443D]">
+                                      {item.message}
+                                    </p>
+                                    <p className="mt-0.5 text-[9px] tabular-nums text-[#9AA39D]">
+                                      {item.time}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDebugLogs([]);
+                              setDebugStage("Log dihapus");
+                              addDebugLog("INFO", "Log diagnostik dibersihkan.");
+                            }}
+                            className="rounded-md border border-[#E5EAE6] bg-white px-3 py-2 text-[10px] font-semibold text-[#78827C] hover:bg-[#F5F7F5]"
+                          >
+                            Hapus log
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleCopyDebugLogs()}
+                            className="rounded-md bg-[#287A50] px-3 py-2 text-[10px] font-semibold text-white hover:bg-[#206440]"
+                          >
+                            Salin informasi debug
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                       <span
                         className={`h-2 w-2 rounded-full ${isProcessing
                             ? "animate-pulse bg-amber-500"
@@ -1327,6 +1719,9 @@ export default function CheckinScanner({
                       </p>
                       <p className="mt-1 max-w-sm text-[10px] leading-5 text-[#9AA39D]">
                         {error}
+                      </p>
+                      <p className="mt-2 max-w-sm text-[9px] leading-4 text-amber-200">
+                        Detail kegagalan kamera juga dicatat pada status diagnostik browser.
                       </p>
 
                       <button
