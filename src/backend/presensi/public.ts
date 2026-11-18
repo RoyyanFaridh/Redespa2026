@@ -583,9 +583,9 @@ export async function scanQR(
       };
     }
 
-    const { type: qrType, qrId } = parseQR(qrText);
+    const { qrId } = parseQR(qrText);
 
-    if (!qrId || qrType === "unknown") {
+    if (!qrId || !UUID_REGEX.test(qrId)) {
       return {
         success: false,
         type: "invalid_qr",
@@ -609,28 +609,6 @@ export async function scanQR(
         success: false,
         type: "kegiatan_not_found",
         message: "Kegiatan tidak ditemukan.",
-      };
-    }
-
-    const jenisKegiatan = kegiatan.jenis_peserta || "mudamudi";
-
-    if (jenisKegiatan === "jamaah" && qrType !== "jamaah") {
-      return {
-        success: false,
-        type: "qr_mismatch",
-        message:
-          "QR Code ini merupakan QR Muda-Mudi. Kegiatan ini menggunakan sasaran Jamaah.",
-        kegiatan,
-      };
-    }
-
-    if (jenisKegiatan === "mudamudi" && qrType !== "mudamudi") {
-      return {
-        success: false,
-        type: "qr_mismatch",
-        message:
-          "QR Code ini merupakan QR Jamaah. Kegiatan ini menggunakan sasaran Muda-Mudi.",
-        kegiatan,
       };
     }
 
@@ -661,6 +639,8 @@ export async function scanQR(
         kegiatan,
       );
     }
+
+    const jenisKegiatan = kegiatan.jenis_peserta || "mudamudi";
 
     if (jenisKegiatan === "jamaah") {
       return await scanJamaah(

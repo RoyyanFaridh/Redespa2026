@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import CheckinScanner from "../../../../../src/components/presensi/CheckinScanner";
+import ScannerPage from "../../../../../src/components/scanner/ScannerPage";
 import { PageContainer } from "../../../../../src/components/common";
 
 export default function Page() {
@@ -22,5 +22,5 @@ export default function Page() {
     );
   }
 
-  return <CheckinScanner kegiatanId={kegiatanId} />;
+  return <ScannerPage kegiatanId={kegiatanId} />;
 }

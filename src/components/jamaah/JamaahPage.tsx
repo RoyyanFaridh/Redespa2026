@@ -103,56 +103,62 @@ function getActionError(result: unknown): string {
 export default function JamaahPage({ initialData }: Props) {
   const router = useRouter();
 
-  // Modal dan data yang sedang dipilih
   const [modal, setModal] = useState<ModalState | null>(null);
   const [detailData, setDetailData] = useState<Jamaah | null>(null);
   const [qrData, setQrData] = useState<Jamaah | null>(null);
 
-  // Import dan export
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
 
-  // Progress export QR
   const [isExportingQR, setIsExportingQR] = useState(false);
   const [qrExportProgress, setQrExportProgress] = useState<{
     current: number;
     total: number;
   } | null>(null);
 
-  // Error form
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
-  // Filter, pencarian, dan sorting
   const filter = useJamaahFilter(initialData);
-
-  // =========================================================
-  // EXPORT QR BATCH
-  // =========================================================
 
   async function handleExportQR() {
     if (isExportingQR) return;
 
+    if (initialData.length === 0) {
+      setError("Tidak ada data Jamaah yang dapat diekspor.");
+      return;
+    }
+
+    setError("");
+    setIsExportingQR(true);
+
+    setQrExportProgress({
+      current: 0,
+      total: initialData.length,
+    });
+
+    let downloadUrl: string | null = null;
+
     try {
-      setIsExportingQR(true);
-      setError("");
-
-      setQrExportProgress({
-        current: 0,
-        total: initialData.length,
-      });
-
       const blob = await exportJamaahQRBatchZip(
         initialData,
         (current, total) => {
-          setQrExportProgress({ current, total });
+          setQrExportProgress({
+            current,
+            total,
+          });
         },
       );
 
-      const url = URL.createObjectURL(blob);
+      if (!blob || blob.size === 0) {
+        throw new Error("File ZIP QR Code berhasil dibuat tetapi kosong.");
+      }
+
+      downloadUrl = URL.createObjectURL(blob);
+
       const anchor = document.createElement("a");
 
-      anchor.href = url;
+      anchor.href = downloadUrl;
       anchor.download = `QR-Code-Jamaah-${new Date()
         .toISOString()
         .slice(0, 10)}.zip`;
@@ -161,7 +167,12 @@ export default function JamaahPage({ initialData }: Props) {
       anchor.click();
       anchor.remove();
 
-      URL.revokeObjectURL(url);
+      window.setTimeout(() => {
+        if (downloadUrl) {
+          URL.revokeObjectURL(downloadUrl);
+          downloadUrl = null;
+        }
+      }, 1500);
     } catch (err) {
       console.error("Gagal export QR batch:", err);
 
@@ -170,15 +181,16 @@ export default function JamaahPage({ initialData }: Props) {
           ? err.message
           : "Gagal mendownload ZIP QR Code. Silakan coba kembali.",
       );
+
+      if (downloadUrl) {
+        URL.revokeObjectURL(downloadUrl);
+        downloadUrl = null;
+      }
     } finally {
       setIsExportingQR(false);
       setQrExportProgress(null);
     }
   }
-
-  // =========================================================
-  // MODAL HANDLERS
-  // =========================================================
 
   function closeModal() {
     setModal(null);
@@ -226,10 +238,6 @@ export default function JamaahPage({ initialData }: Props) {
     setQrData(null);
   }
 
-  // =========================================================
-  // TAMBAH JAMAAH
-  // =========================================================
-
   async function handleAddSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
@@ -262,10 +270,6 @@ export default function JamaahPage({ initialData }: Props) {
       );
     }
   }
-
-  // =========================================================
-  // EDIT JAMAAH
-  // =========================================================
 
   async function handleEditSubmit(
     e: FormEvent<HTMLFormElement>,
@@ -303,10 +307,6 @@ export default function JamaahPage({ initialData }: Props) {
     }
   }
 
-  // =========================================================
-  // HAPUS JAMAAH
-  // =========================================================
-
   async function handleDelete(id: Jamaah["id"]) {
     setError("");
 
@@ -331,18 +331,10 @@ export default function JamaahPage({ initialData }: Props) {
     }
   }
 
-  // =========================================================
-  // IMPORT SUCCESS
-  // =========================================================
-
   function handleImportSuccess() {
     setShowImportModal(false);
     router.refresh();
   }
-
-  // =========================================================
-  // STATISTIK JAMAAH
-  // =========================================================
 
   const totalLaki = initialData.filter(
     (item) => item.jenis_kelamin === "Laki-laki",
@@ -368,13 +360,15 @@ export default function JamaahPage({ initialData }: Props) {
       ? Math.round((totalPerempuan / initialData.length) * 100)
       : 0;
 
-  // =========================================================
-  // RENDER
-  // =========================================================
+  const exportProgressPercentage =
+    qrExportProgress && qrExportProgress.total > 0
+      ? Math.round(
+        (qrExportProgress.current / qrExportProgress.total) * 100,
+      )
+      : 0;
 
   return (
     <PageContainer maxWidth="9xl">
-      {/* PAGE HEADER */}
       <header className="pb-1">
         <PageHeader
           eyebrow="REDESPA"
@@ -418,7 +412,53 @@ export default function JamaahPage({ initialData }: Props) {
         />
       </header>
 
-      {/* SUMMARY KPI CARDS */}
+      {error && !modal && (
+        <div
+          role="alert"
+          className="mb-3 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700"
+        >
+          <svg
+            className="mt-0.5 h-4 w-4 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 8v4m0 4h.01"
+            />
+          </svg>
+
+          <p className="min-w-0 flex-1">{error}</p>
+
+          <button
+            type="button"
+            onClick={() => setError("")}
+            className="shrink-0 rounded-md p-0.5 text-red-500 transition-colors hover:bg-red-100 hover:text-red-700"
+            aria-label="Tutup pesan kesalahan"
+          >
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
+
       <ContentGrid
         columns={4}
         className="mb-1 grid-cols-2 lg:grid-cols-4"
@@ -516,7 +556,6 @@ export default function JamaahPage({ initialData }: Props) {
         />
       </ContentGrid>
 
-      {/* SEARCH, FILTER, AND TABLE */}
       <section className="pt-1">
         <SearchFilterBar
           search={filter.search}
@@ -544,7 +583,6 @@ export default function JamaahPage({ initialData }: Props) {
         />
       </section>
 
-      {/* FORM MODAL: ADD */}
       {modal?.type === "add" && (
         <JamaahFormModal
           mode="add"
@@ -555,7 +593,6 @@ export default function JamaahPage({ initialData }: Props) {
         />
       )}
 
-      {/* FORM MODAL: EDIT */}
       {modal?.type === "edit" && (
         <JamaahFormModal
           mode="edit"
@@ -569,7 +606,6 @@ export default function JamaahPage({ initialData }: Props) {
         />
       )}
 
-      {/* DELETE MODAL */}
       {modal?.type === "delete" && (
         <JamaahDeleteModal
           data={modal.data}
@@ -578,7 +614,6 @@ export default function JamaahPage({ initialData }: Props) {
         />
       )}
 
-      {/* DETAIL MODAL */}
       {detailData && (
         <JamaahDetailModal
           data={detailData}
@@ -586,7 +621,6 @@ export default function JamaahPage({ initialData }: Props) {
         />
       )}
 
-      {/* QR MODAL */}
       {qrData && (
         <JamaahQRModal
           data={qrData}
@@ -594,7 +628,6 @@ export default function JamaahPage({ initialData }: Props) {
         />
       )}
 
-      {/* EXPORT MODAL */}
       <ExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
@@ -602,17 +635,19 @@ export default function JamaahPage({ initialData }: Props) {
         totalCount={initialData.length}
       />
 
-      {/* IMPORT MODAL */}
       <ImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onSuccess={handleImportSuccess}
       />
 
-      {/* QR EXPORT PROGRESS */}
       {isExportingQR && qrExportProgress && (
-        <div className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-xl border border-[#287A50]/30 bg-white px-4 py-3 shadow-xl shadow-black/10 sm:bottom-6 sm:right-6">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#E6F2EA] text-[#287A50]">
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-4 right-4 z-50 flex w-[calc(100vw-2rem)] max-w-sm items-center gap-3 rounded-xl border border-[#287A50]/30 bg-white px-4 py-3 shadow-xl shadow-black/10 sm:bottom-6 sm:right-6"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#E6F2EA] text-[#287A50]">
             <svg
               className="h-4 w-4 animate-spin"
               xmlns="http://www.w3.org/2000/svg"
@@ -636,21 +671,30 @@ export default function JamaahPage({ initialData }: Props) {
             </svg>
           </div>
 
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-[#202824]">
-              Mengunduh QR Code Jamaah...
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-[#202824]">
+                Mengunduh QR Code Jamaah
+              </p>
+
+              <span className="shrink-0 text-[10px] font-semibold tabular-nums text-[#287A50]">
+                {exportProgressPercentage}%
+              </span>
+            </div>
+
+            <p className="mt-0.5 text-[10px] text-[#78827C]">
+              {qrExportProgress.current} dari {qrExportProgress.total} QR
+              diproses
             </p>
 
-            <p className="text-[10px] text-[#78827C]">
-              {qrExportProgress.current} dari {qrExportProgress.total} QR
-              diproses (
-              {Math.round(
-                (qrExportProgress.current /
-                  Math.max(qrExportProgress.total, 1)) *
-                  100,
-              )}
-              %)
-            </p>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E8EEE9]">
+              <div
+                className="h-full rounded-full bg-[#287A50] transition-all duration-200"
+                style={{
+                  width: `${exportProgressPercentage}%`,
+                }}
+              />
+            </div>
           </div>
         </div>
       )}
