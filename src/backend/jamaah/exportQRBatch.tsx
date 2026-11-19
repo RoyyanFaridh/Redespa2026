@@ -245,6 +245,15 @@ export async function exportJamaahQRBatchZip(
       item.kelompok || "Tanpa_Kelompok",
     );
 
+    const gender = (item.jenis_kelamin || "").trim().toLowerCase();
+
+    const safeGender =
+      gender === "laki-laki" || gender === "laki laki"
+        ? "Laki-laki"
+        : gender === "perempuan"
+          ? "Perempuan"
+          : "Tidak_Diketahui";
+
     const safeNama = sanitizeWindowsFileName(
       item.nama || "Tanpa_Nama",
     );
@@ -252,8 +261,13 @@ export async function exportJamaahQRBatchZip(
     const groupFolder =
       rootFolder.folder(safeKelompok) || rootFolder;
 
+    const genderFolder =
+      groupFolder.folder(safeGender) || groupFolder;
+
+    const folderKey = `${safeKelompok.toLowerCase()}/${safeGender.toLowerCase()}`;
+
     const existingNames =
-      usedFileNames.get(safeKelompok) || new Set<string>();
+      usedFileNames.get(folderKey) || new Set<string>();
 
     let fileName = `${safeNama}.png`;
 
@@ -262,11 +276,11 @@ export async function exportJamaahQRBatchZip(
     }
 
     existingNames.add(fileName.toLowerCase());
-    usedFileNames.set(safeKelompok, existingNames);
+    usedFileNames.set(folderKey, existingNames);
 
     const pngBlob = await generateJamaahCardPng(item);
 
-    groupFolder.file(fileName, pngBlob);
+    genderFolder.file(fileName, pngBlob);
 
     onProgress?.(i + 1, total);
   }
