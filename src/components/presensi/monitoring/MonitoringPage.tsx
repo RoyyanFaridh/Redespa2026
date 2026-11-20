@@ -242,7 +242,11 @@ export default function MonitoringPage({ kegiatan }: Props) {
       });
 
       if (!result.success) {
-        setEditError(result.error || "Data presensi gagal diperbarui.");
+        setEditError(
+          "error" in result
+            ? result.error || "Data presensi gagal diperbarui."
+            : "Data presensi gagal diperbarui.",
+        );
         return;
       }
 

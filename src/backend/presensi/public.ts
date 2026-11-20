@@ -19,6 +19,8 @@ const JAMAAH_QR_PREFIXES = [
   "KMM_PANDAK:JAMAAH:",
 ];
 
+type JenisPeserta = "jamaah" | "mudamudi";
+
 type Kegiatan = {
   id: number;
   nama: string;
@@ -27,7 +29,7 @@ type Kegiatan = {
   jam_mulai: string;
   jam_selesai: string;
   lokasi: string;
-  jenis_peserta?: "jamaah" | "mudamudi" | null;
+  jenis_peserta: JenisPeserta | null;
   kelompok: string[] | null;
   kelas: string[] | null;
   jenis_kelamin: string | null;
@@ -60,6 +62,7 @@ export type ScanQRResult =
     type:
     | "invalid_qr"
     | "qr_mismatch"
+    | "invalid_kegiatan_type"
     | "peserta_not_found"
     | "mudamudi_not_found"
     | "kegiatan_not_found"
@@ -628,6 +631,19 @@ export async function scanQR(
       };
     }
 
+    if (
+      kegiatan.jenis_peserta !== "jamaah" &&
+      kegiatan.jenis_peserta !== "mudamudi"
+    ) {
+      return {
+        success: false,
+        type: "invalid_kegiatan_type",
+        message:
+          "Jenis peserta kegiatan belum ditentukan. Silakan perbarui data kegiatan sebelum melakukan presensi.",
+        kegiatan,
+      };
+    }
+
     let supabase: ReturnType<typeof createAdminClient>;
 
     try {
@@ -640,9 +656,7 @@ export async function scanQR(
       );
     }
 
-    const jenisKegiatan = kegiatan.jenis_peserta || "mudamudi";
-
-    if (jenisKegiatan === "jamaah") {
+    if (kegiatan.jenis_peserta === "jamaah") {
       return await scanJamaah(
         supabase,
         qrId,

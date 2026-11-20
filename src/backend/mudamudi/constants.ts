@@ -1,7 +1,8 @@
 
 export const KELAS_OPTIONS = [
   "PAUD",
-  "Caberawit",
+  "Caberawit A",
+  "Caberawit B",
   "Pra Remaja",
   "Remaja",
   "Usia Nikah",

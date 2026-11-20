@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Kegiatan } from "../../backend/kegiatan/types";
@@ -26,7 +27,7 @@ export default function DeleteConfirmModal({
           <span className="font-semibold text-[#202824]">{data.nama}</span>?
         </span>
       }
-      warningNote="Tindakan ini permanen dan akan menghapus data kegiatan beserta riwayat presensi terkait. Tindakan ini tidak dapat dibatalkan."
+      warningNote="Kegiatan akan dihapus dari daftar aktif. Riwayat kegiatan dan presensi tetap tersimpan."
       error={error}
       onConfirm={onConfirm}
       onClose={onClose}

@@ -34,12 +34,12 @@ export type PresensiTerbaru = {
 
 export type MonitoringPeserta = {
   presensi_id: number | null;
-  peserta_id: number; // ID di tabel mudamudi atau jamaah
+  peserta_id: number;
   mudamudi_id: number | null;
-  jamaah_id?: number | null;
+  jamaah_id: number | null;
   nama: string;
   kelompok: string;
-  kelas: string[]; // Kosong [] untuk Jamaah
+  kelas: string[];
   jenis_kelamin: string | null;
   waktu_checkin: string | null;
   status: PresensiStatus | null;

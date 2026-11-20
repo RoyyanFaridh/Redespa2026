@@ -24,9 +24,11 @@ type ActionResult = {
 
 type ClassValue = string | string[] | null | undefined;
 
-const MUDAMUDI_KELAS_OPTIONS = KELAS_OPTIONS.filter(
-  (item) => item !== "Jamaah",
-);
+const MUDAMUDI_KELAS_OPTIONS = KELAS_OPTIONS;
+
+function normalizeText(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
 
 function parseClasses(value: ClassValue): string[] {
   const values = Array.isArray(value)
@@ -45,21 +47,11 @@ function parseClasses(value: ClassValue): string[] {
 }
 
 function normalizeClasses(value: ClassValue): string[] {
-  const classes = parseClasses(value).filter(
-    (item) => item !== "Jamaah",
-  );
+  const classes = parseClasses(value);
 
-  return [
-    ...MUDAMUDI_KELAS_OPTIONS.filter((item) =>
-      classes.includes(item),
-    ),
-    ...classes.filter(
-      (item) =>
-        !MUDAMUDI_KELAS_OPTIONS.includes(
-          item as (typeof MUDAMUDI_KELAS_OPTIONS)[number],
-        ),
-    ),
-  ];
+  return MUDAMUDI_KELAS_OPTIONS.filter((item) =>
+    classes.includes(item),
+  );
 }
 
 function validateClasses(classes: string[]): boolean {
@@ -67,12 +59,10 @@ function validateClasses(classes: string[]): boolean {
     return false;
   }
 
-  return classes.every(
-    (item) =>
-      item !== "Jamaah" &&
-      MUDAMUDI_KELAS_OPTIONS.includes(
-        item as (typeof MUDAMUDI_KELAS_OPTIONS)[number],
-      ),
+  return classes.every((item) =>
+    MUDAMUDI_KELAS_OPTIONS.includes(
+      item as (typeof MUDAMUDI_KELAS_OPTIONS)[number],
+    ),
   );
 }
 
@@ -145,7 +135,51 @@ function validate(
   }
 
   if (!validateClasses(kelas)) {
-    errors.kelas = "Pilih minimal satu kelas Generus/Muda-Mudi yang valid";
+    errors.kelas =
+      "Pilih minimal satu kelas Mudamudi yang valid";
+  }
+
+  if (!validateYear(tahunLahir)) {
+    errors.tahun_lahir =
+      "Tahun lahir harus berupa 4 digit dan tidak boleh melebihi tahun sekarang";
+  }
+
+  return errors;
+}
+
+function validateImportRow(row: ImportRow): Record<string, string> {
+  const errors: Record<string, string> = {};
+
+  const nama = String(row.nama ?? "").trim();
+  const kelompok = String(row.kelompok ?? "").trim();
+  const jenisKelamin = String(row.jenis_kelamin ?? "").trim();
+  const tahunLahir = String(row.tahun_lahir ?? "").trim();
+  const kelas = parseClasses(row.kelas);
+
+  if (!nama) {
+    errors.nama = "Nama wajib diisi";
+  } else if (/\d/.test(nama)) {
+    errors.nama = "Nama tidak boleh mengandung angka";
+  }
+
+  if (
+    !KELOMPOK_OPTIONS.includes(
+      kelompok as (typeof KELOMPOK_OPTIONS)[number],
+    )
+  ) {
+    errors.kelompok = "Kelompok tidak valid";
+  }
+
+  if (
+    !JENIS_KELAMIN_OPTIONS.includes(
+      jenisKelamin as (typeof JENIS_KELAMIN_OPTIONS)[number],
+    )
+  ) {
+    errors.jenis_kelamin = "Jenis kelamin tidak valid";
+  }
+
+  if (!validateClasses(kelas)) {
+    errors.kelas = "Kelas tidak valid atau belum dipilih";
   }
 
   if (!validateYear(tahunLahir)) {
@@ -173,13 +207,11 @@ function mapImportRow(row: ImportRow) {
 
 function createDuplicateKey(
   nama: string,
-  kelas: ClassValue,
   kelompok: string,
 ): string {
   return [
-    nama.trim().toLowerCase(),
-    normalizeClasses(kelas).sort().join(",").toLowerCase(),
-    kelompok.trim().toLowerCase(),
+    normalizeText(nama),
+    normalizeText(kelompok),
   ].join("|");
 }
 
@@ -192,7 +224,6 @@ function getClassesFromForm(formData: FormData): string[] {
 
 async function findDuplicateMudamudi(
   nama: string,
-  kelas: string[],
   kelompok: string,
   excludeId?: number,
 ): Promise<{ exists: boolean; error: string | null }> {
@@ -200,8 +231,7 @@ async function findDuplicateMudamudi(
 
   let query = supabase
     .from("mudamudi")
-    .select("id, nama, kelas, kelompok")
-    .eq("nama", nama)
+    .select("id, nama, kelompok")
     .eq("kelompok", kelompok);
 
   if (excludeId !== undefined) {
@@ -217,16 +247,13 @@ async function findDuplicateMudamudi(
     };
   }
 
-  const targetKey = createDuplicateKey(nama, kelas, kelompok);
+  const targetKey = createDuplicateKey(nama, kelompok);
 
   const exists = (data ?? []).some((item) => {
-    const existingKey = createDuplicateKey(
-      item.nama,
-      item.kelas,
-      item.kelompok,
+    return (
+      createDuplicateKey(item.nama ?? "", item.kelompok ?? "") ===
+      targetKey
     );
-
-    return existingKey === targetKey;
   });
 
   return {
@@ -277,7 +304,6 @@ export async function addMudamudi(
 
   const duplicate = await findDuplicateMudamudi(
     nama,
-    kelas,
     kelompok,
   );
 
@@ -292,7 +318,7 @@ export async function addMudamudi(
     return {
       success: false,
       message:
-        "Data Muda-Mudi dengan nama, kelas, dan kelompok tersebut sudah ada",
+        "Peserta dengan nama dan kelompok tersebut sudah terdaftar",
     };
   }
 
@@ -371,7 +397,6 @@ export async function updateMudamudi(
 
   const duplicate = await findDuplicateMudamudi(
     nama,
-    kelas,
     kelompok,
     id,
   );
@@ -387,7 +412,7 @@ export async function updateMudamudi(
     return {
       success: false,
       message:
-        "Data Muda-Mudi dengan nama, kelas, dan kelompok tersebut sudah ada",
+        "Peserta dengan nama dan kelompok tersebut sudah terdaftar",
     };
   }
 
@@ -405,13 +430,22 @@ export async function updateMudamudi(
       kelas,
     })
     .eq("id", id)
+    .is("deleted_at", null)
     .select("*")
-    .single();
+    .maybeSingle();
 
   if (error) {
     return {
       success: false,
       message: error.message || "Gagal memperbarui Muda-Mudi",
+    };
+  }
+
+  if (!data) {
+    return {
+      success: false,
+      message:
+        "Data Muda-Mudi tidak ditemukan atau sudah dihapus",
     };
   }
 
@@ -431,15 +465,29 @@ export async function deleteMudamudi(
 
   const supabase = createAdminClient();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("mudamudi")
-    .delete()
-    .eq("id", id);
+    .update({
+      deleted_at: new Date().toISOString(),
+      deleted_reason: "Dihapus melalui pengelolaan data Mudamudi",
+    })
+    .eq("id", id)
+    .is("deleted_at", null)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return {
       success: false,
       message: error.message || "Gagal menghapus Muda-Mudi",
+    };
+  }
+
+  if (!data) {
+    return {
+      success: false,
+      message:
+        "Data Muda-Mudi tidak ditemukan atau sudah dihapus",
     };
   }
 
@@ -459,6 +507,7 @@ export async function getMudamudi(): Promise<Mudamudi[]> {
   const { data, error } = await supabase
     .from("mudamudi")
     .select("*")
+    .is("deleted_at", null)
     .order("kelompok", {
       ascending: true,
     })
@@ -490,6 +539,7 @@ export async function searchMudamudiNames(query: string) {
     .from("mudamudi")
     .select("id, nama, kelompok")
     .ilike("nama", `%${search}%`)
+    .is("deleted_at", null)
     .order("nama", {
       ascending: true,
     })
@@ -524,9 +574,8 @@ export async function previewImportMudamudi(
   const existingKeys = new Set(
     (existingData ?? []).map((item) =>
       createDuplicateKey(
-        item.nama,
-        item.kelas,
-        item.kelompok,
+        item.nama ?? "",
+        item.kelompok ?? "",
       ),
     ),
   );
@@ -535,28 +584,15 @@ export async function previewImportMudamudi(
 
   const preview = rows.map((row, index) => {
     const mapped = mapImportRow(row);
+    const rowErrors = validateImportRow(row);
 
     const key = createDuplicateKey(
       mapped.nama,
-      mapped.kelas,
       mapped.kelompok,
     );
 
     const duplicateInDatabase = existingKeys.has(key);
     const duplicateInFile = importedKeys.has(key);
-
-    const validYear = validateYear(
-      String(row.tahun_lahir ?? ""),
-    );
-
-    const validClasses = validateClasses(
-      parseClasses(row.kelas),
-    );
-
-    const validRequiredFields =
-      Boolean(mapped.nama) &&
-      Boolean(mapped.kelompok) &&
-      Boolean(mapped.jenis_kelamin);
 
     importedKeys.add(key);
 
@@ -568,9 +604,8 @@ export async function previewImportMudamudi(
       valid:
         !duplicateInDatabase &&
         !duplicateInFile &&
-        validYear &&
-        validClasses &&
-        validRequiredFields,
+        Object.keys(rowErrors).length === 0,
+      errors: rowErrors,
     };
   });
 
@@ -620,9 +655,8 @@ export async function importMudamudi(
   const existingKeys = new Set(
     (existingData ?? []).map((item) =>
       createDuplicateKey(
-        item.nama,
-        item.kelas,
-        item.kelompok,
+        item.nama ?? "",
+        item.kelompok ?? "",
       ),
     ),
   );
@@ -637,35 +671,11 @@ export async function importMudamudi(
   rows.forEach((row, index) => {
     const rowNumber = index + 2;
     const mapped = mapImportRow(row);
+    const rowErrors = validateImportRow(row);
 
-    const rawClasses = parseClasses(row.kelas);
-    const tahunLahir = String(
-      row.tahun_lahir ?? "",
-    ).trim();
-
-    if (
-      !mapped.nama ||
-      !mapped.kelompok ||
-      !mapped.jenis_kelamin
-    ) {
+    if (Object.keys(rowErrors).length > 0) {
       errors.push(
-        `Baris ${rowNumber}: Data wajib belum lengkap`,
-      );
-      skipped++;
-      return;
-    }
-
-    if (!validateClasses(rawClasses)) {
-      errors.push(
-        `Baris ${rowNumber}: Kelas tidak valid, mengandung kelas Jamaah, atau belum dipilih`,
-      );
-      skipped++;
-      return;
-    }
-
-    if (!validateYear(tahunLahir)) {
-      errors.push(
-        `Baris ${rowNumber}: Tahun lahir harus berupa 4 digit dan tidak boleh melebihi tahun sekarang`,
+        `Baris ${rowNumber}: ${Object.values(rowErrors).join(", ")}`,
       );
       skipped++;
       return;
@@ -673,13 +683,12 @@ export async function importMudamudi(
 
     const key = createDuplicateKey(
       mapped.nama,
-      mapped.kelas,
       mapped.kelompok,
     );
 
     if (existingKeys.has(key)) {
       errors.push(
-        `Baris ${rowNumber}: Data sudah ada di database`,
+        `Baris ${rowNumber}: Peserta dengan nama dan kelompok tersebut sudah ada di database`,
       );
       skipped++;
       return;
@@ -687,7 +696,7 @@ export async function importMudamudi(
 
     if (importedKeys.has(key)) {
       errors.push(
-        `Baris ${rowNumber}: Data duplikat dalam file`,
+        `Baris ${rowNumber}: Data peserta duplikat dalam file`,
       );
       skipped++;
       return;
@@ -699,7 +708,7 @@ export async function importMudamudi(
 
   if (validRows.length === 0) {
     return {
-      success: errors.length === 0,
+      success: false,
       message:
         errors.length > 0
           ? "Tidak ada data yang dapat diimpor"

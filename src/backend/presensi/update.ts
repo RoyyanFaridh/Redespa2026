@@ -1,15 +1,16 @@
+
 "use server";
 
 import { requireAdmin } from "../auth/admin";
 import { createClient } from "../supabase/server";
-import { isMudamudiTargeted, isJamaahTargeted } from "./target";
+import { createManualPresensi } from "./manual";
 import type { PresensiStatus } from "./types";
 
 type UpdatePresensiStatusInput = {
   presensiId: number | null;
   kegiatanId: number;
   pesertaId?: number;
-  mudamudiId?: number; // backward compatibility
+  mudamudiId?: number;
   status: PresensiStatus;
   keterangan?: string | null;
 };
@@ -22,9 +23,11 @@ const VALID_STATUSES: PresensiStatus[] = [
   "alpa",
 ];
 
-function normalizeKeterangan(keterangan?: string | null): string | null {
-  const value = keterangan?.trim() || null;
-  return value ? value.slice(0, 500) : null;
+function normalizeKeterangan(
+  value?: string | null,
+): string | null {
+  const result = value?.trim() || null;
+  return result ? result.slice(0, 500) : null;
 }
 
 function getWaktuCheckin(
@@ -37,7 +40,8 @@ function getWaktuCheckin(
   }
 
   if (
-    (existingStatus === "hadir" || existingStatus === "terlambat") &&
+    (existingStatus === "hadir" ||
+      existingStatus === "terlambat") &&
     existingWaktu
   ) {
     return existingWaktu;
@@ -46,33 +50,20 @@ function getWaktuCheckin(
   return new Date().toISOString();
 }
 
-export async function updatePresensiStatus(input: UpdatePresensiStatusInput) {
+export async function updatePresensiStatus(
+  input: UpdatePresensiStatusInput,
+) {
   await requireAdmin();
 
   const supabase = await createClient();
-  const targetPesertaId = input.pesertaId || input.mudamudiId;
 
   if (
-    input.presensiId !== null &&
-    (!Number.isInteger(input.presensiId) || input.presensiId <= 0)
+    !Number.isInteger(input.kegiatanId) ||
+    input.kegiatanId <= 0
   ) {
     return {
       success: false,
-      error: "Presensi tidak valid.",
-    };
-  }
-
-  if (!Number.isInteger(input.kegiatanId) || input.kegiatanId <= 0) {
-    return {
-      success: false,
       error: "Kegiatan tidak valid.",
-    };
-  }
-
-  if (!Number.isInteger(targetPesertaId) || targetPesertaId! <= 0) {
-    return {
-      success: false,
-      error: "Peserta tidak valid.",
     };
   }
 
@@ -83,226 +74,107 @@ export async function updatePresensiStatus(input: UpdatePresensiStatusInput) {
     };
   }
 
-  const { data: kegiatan, error: kegiatanError } = await supabase
-    .from("kegiatan")
-    .select("id, kelompok, kelas, jenis_kelamin")
-    .eq("id", input.kegiatanId)
-    .maybeSingle();
-
-  if (kegiatanError || !kegiatan) {
+  if (
+    input.presensiId !== null &&
+    (!Number.isInteger(input.presensiId) ||
+      input.presensiId <= 0)
+  ) {
     return {
       success: false,
-      error: "Kegiatan tidak ditemukan.",
+      error: "Presensi tidak valid.",
     };
   }
 
-  const { data: withJenis } = await supabase
-    .from("kegiatan")
-    .select("jenis_peserta")
-    .eq("id", input.kegiatanId)
+  if (input.presensiId === null) {
+    const pesertaId = input.pesertaId ?? input.mudamudiId ?? 0;
+
+    if (!Number.isInteger(pesertaId) || pesertaId <= 0) {
+      return {
+        success: false,
+        error: "Peserta tidak valid.",
+      };
+    }
+
+    return createManualPresensi({
+      kegiatanId: input.kegiatanId,
+      pesertaId,
+      mudamudiId: input.mudamudiId,
+      status: input.status,
+      keterangan: input.keterangan,
+    });
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("presensi")
+    .select(
+      "id, kegiatan_id, jamaah_id, mudamudi_id, status, waktu_checkin",
+    )
+    .eq("id", input.presensiId)
+    .eq("kegiatan_id", input.kegiatanId)
     .maybeSingle();
 
-  const jenisKegiatan =
-    withJenis?.jenis_peserta ||
-    (kegiatan.kelas && kegiatan.kelas.length > 0 ? "mudamudi" : "jamaah");
+  if (existingError) {
+    return {
+      success: false,
+      error: "Gagal mengambil data presensi.",
+    };
+  }
+
+  if (!existing) {
+    return {
+      success: false,
+      error: "Data presensi tidak ditemukan pada kegiatan tersebut.",
+    };
+  }
+
+  const waktuCheckin = getWaktuCheckin(
+    input.status,
+    existing.status as PresensiStatus,
+    existing.waktu_checkin,
+  );
 
   const keterangan = normalizeKeterangan(input.keterangan);
 
-  if (jenisKegiatan === "jamaah") {
-    const { data: jamaah, error: jamaahError } = await supabase
-      .from("jamaah")
-      .select("id, nama, kelompok, jenis_kelamin")
-      .eq("id", targetPesertaId)
-      .maybeSingle();
+  const { data: updated, error: updateError } = await supabase
+    .from("presensi")
+    .update({
+      status: input.status,
+      waktu_checkin: waktuCheckin,
+      keterangan,
+    })
+    .eq("id", input.presensiId)
+    .eq("kegiatan_id", input.kegiatanId)
+    .select(
+      "id, kegiatan_id, jamaah_id, mudamudi_id, status, waktu_checkin, metode, keterangan",
+    )
+    .maybeSingle();
 
-    if (jamaahError || !jamaah) {
-      return {
-        success: false,
-        error: "Jamaah tidak ditemukan.",
-      };
-    }
-
-    if (!isJamaahTargeted(kegiatan, jamaah)) {
-      return {
-        success: false,
-        error: "Jamaah tidak termasuk sasaran kegiatan.",
-      };
-    }
-
-    if (input.presensiId !== null) {
-      const { data: existing } = await supabase
-        .from("presensi")
-        .select("id, status, waktu_checkin")
-        .eq("id", input.presensiId)
-        .maybeSingle();
-
-      const waktuCheckin = getWaktuCheckin(
-        input.status,
-        existing?.status as PresensiStatus,
-        existing?.waktu_checkin,
-      );
-
-      const { data: updated, error: updateError } = await supabase
-        .from("presensi")
-        .update({
-          status: input.status,
-          waktu_checkin: waktuCheckin,
-          keterangan,
-        })
-        .eq("id", input.presensiId)
-        .select()
-        .single();
-
-      if (updateError) {
-        return { success: false, error: "Gagal memperbarui status presensi." };
-      }
-
-      return {
-        success: true,
-        data: {
-          presensiId: updated.id,
-          kegiatanId: updated.kegiatan_id,
-          pesertaId: updated.jamaah_id,
-          mudamudiId: updated.jamaah_id,
-          status: updated.status,
-          waktuCheckin: updated.waktu_checkin,
-          metode: updated.metode || "manual",
-          keterangan: updated.keterangan,
-        },
-      };
-    } else {
-      // Insert baru jika belum ada record presensi
-      const waktuCheckin = getWaktuCheckin(input.status);
-
-      const { data: inserted, error: insertError } = await supabase
-        .from("presensi")
-        .insert({
-          kegiatan_id: input.kegiatanId,
-          jamaah_id: targetPesertaId,
-          mudamudi_id: null,
-          status: input.status,
-          metode: "manual",
-          waktu_checkin: waktuCheckin,
-          keterangan,
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        return { success: false, error: "Gagal menyimpan status presensi." };
-      }
-
-      return {
-        success: true,
-        data: {
-          presensiId: inserted.id,
-          kegiatanId: inserted.kegiatan_id,
-          pesertaId: inserted.jamaah_id,
-          mudamudiId: inserted.jamaah_id,
-          status: inserted.status,
-          waktuCheckin: inserted.waktu_checkin,
-          metode: inserted.metode || "manual",
-          keterangan: inserted.keterangan,
-        },
-      };
-    }
-  } else {
-    // Muda-Mudi
-    const { data: mudamudi, error: mudamudiError } = await supabase
-      .from("mudamudi")
-      .select("id, nama, kelompok, kelas, jenis_kelamin")
-      .eq("id", targetPesertaId)
-      .maybeSingle();
-
-    if (mudamudiError || !mudamudi) {
-      return {
-        success: false,
-        error: "Muda-Mudi tidak ditemukan.",
-      };
-    }
-
-    if (!isMudamudiTargeted(kegiatan, mudamudi)) {
-      return {
-        success: false,
-        error: "Muda-Mudi tidak termasuk sasaran kegiatan.",
-      };
-    }
-
-    if (input.presensiId !== null) {
-      const { data: existing } = await supabase
-        .from("presensi")
-        .select("id, status, waktu_checkin")
-        .eq("id", input.presensiId)
-        .maybeSingle();
-
-      const waktuCheckin = getWaktuCheckin(
-        input.status,
-        existing?.status as PresensiStatus,
-        existing?.waktu_checkin,
-      );
-
-      const { data: updated, error: updateError } = await supabase
-        .from("presensi")
-        .update({
-          status: input.status,
-          waktu_checkin: waktuCheckin,
-          keterangan,
-        })
-        .eq("id", input.presensiId)
-        .select()
-        .single();
-
-      if (updateError) {
-        return { success: false, error: "Gagal memperbarui status presensi." };
-      }
-
-      return {
-        success: true,
-        data: {
-          presensiId: updated.id,
-          kegiatanId: updated.kegiatan_id,
-          pesertaId: updated.mudamudi_id,
-          mudamudiId: updated.mudamudi_id,
-          status: updated.status,
-          waktuCheckin: updated.waktu_checkin,
-          metode: updated.metode || "manual",
-          keterangan: updated.keterangan,
-        },
-      };
-    } else {
-      const waktuCheckin = getWaktuCheckin(input.status);
-
-      const { data: inserted, error: insertError } = await supabase
-        .from("presensi")
-        .insert({
-          kegiatan_id: input.kegiatanId,
-          mudamudi_id: targetPesertaId,
-          jamaah_id: null,
-          status: input.status,
-          metode: "manual",
-          waktu_checkin: waktuCheckin,
-          keterangan,
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        return { success: false, error: "Gagal menyimpan status presensi." };
-      }
-
-      return {
-        success: true,
-        data: {
-          presensiId: inserted.id,
-          kegiatanId: inserted.kegiatan_id,
-          pesertaId: inserted.mudamudi_id,
-          mudamudiId: inserted.mudamudi_id,
-          status: inserted.status,
-          waktuCheckin: inserted.waktu_checkin,
-          metode: inserted.metode || "manual",
-          keterangan: inserted.keterangan,
-        },
-      };
-    }
+  if (updateError) {
+    return {
+      success: false,
+      error: updateError.message || "Gagal memperbarui status presensi.",
+    };
   }
+
+  if (!updated) {
+    return {
+      success: false,
+      error: "Status presensi tidak berhasil diperbarui.",
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      presensiId: updated.id,
+      kegiatanId: updated.kegiatan_id,
+      pesertaId: updated.mudamudi_id ?? updated.jamaah_id,
+      mudamudiId: updated.mudamudi_id,
+      jamaahId: updated.jamaah_id,
+      status: updated.status as PresensiStatus,
+      waktuCheckin: updated.waktu_checkin,
+      metode: updated.metode || "manual",
+      keterangan: updated.keterangan,
+    },
+  };
 }

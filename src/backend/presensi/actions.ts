@@ -1,3 +1,4 @@
+
 "use server";
 
 import {
@@ -7,10 +8,12 @@ import {
 } from "./dashboard";
 
 import { getMonitoringPresensi as getMonitoringPresensiAdmin } from "./monitoring";
+
 import {
   getRekapitulasiPresensi as getRekapitulasiPresensiAdmin,
   getRekapitulasiKegiatanExportOptions as getRekapitulasiKegiatanExportOptionsAdmin,
 } from "./rekapitulasi";
+
 import { createManualPresensi as createManualPresensiAdmin } from "./manual";
 import { updatePresensiStatus as updatePresensiStatusAdmin } from "./update";
 import type { PresensiStatus } from "./types";
@@ -51,19 +54,10 @@ export async function getRekapitulasiPresensi(
   return getRekapitulasiPresensiAdmin(input);
 }
 
-/**
- * Mengambil daftar kegiatan untuk pilihan filter ekspor,
- * tanpa memuat data peserta dan presensi.
- */
 export async function getRekapitulasiKegiatanExportOptions() {
   return getRekapitulasiKegiatanExportOptionsAdmin();
 }
 
-/**
- * Mengambil seluruh data rekapitulasi untuk kebutuhan ekspor Excel.
- * Data diambil per halaman agar ekspor tidak terbatas pada halaman tabel
- * yang sedang ditampilkan.
- */
 export async function getRekapitulasiPresensiExport(
   input: RekapitulasiFilters,
 ) {
@@ -98,10 +92,17 @@ export async function getRekapitulasiPresensiExport(
 
   return {
     data: {
-      peserta: allResults.flatMap((result) => result.data.peserta || result.data.mudamudi),
-      mudamudi: allResults.flatMap((result) => result.data.mudamudi),
+      peserta: allResults.flatMap(
+        (result) =>
+          result.data.peserta ?? result.data.mudamudi ?? [],
+      ),
+      mudamudi: allResults.flatMap(
+        (result) => result.data.mudamudi ?? [],
+      ),
       kegiatan: firstResult.data.kegiatan,
-      kehadiran: allResults.flatMap((result) => result.data.kehadiran),
+      kehadiran: allResults.flatMap(
+        (result) => result.data.kehadiran ?? [],
+      ),
       jenis_peserta: firstResult.data.jenis_peserta,
     },
     pagination: {

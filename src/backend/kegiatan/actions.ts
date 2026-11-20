@@ -196,22 +196,22 @@ export async function getKegiatan() {
 
   const supabase = await createClient();
 
-  // Memilih kolom secara aman. jenis_peserta diambil jika sudah ada di DB
   const { data, error } = await supabase
     .from("kegiatan")
     .select(
       "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, jenis_peserta, kelompok, kelas, jenis_kelamin, created_at, created_by",
     )
+    .is("deleted_at", null)
     .order("tanggal_mulai", { ascending: false })
     .order("jam_mulai", { ascending: false });
 
   if (error) {
-    // Fallback jika kolom jenis_peserta belum ada di tabel database
     const { data: fallbackData, error: fallbackError } = await supabase
       .from("kegiatan")
       .select(
         "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, kelompok, kelas, jenis_kelamin, created_at, created_by",
       )
+      .is("deleted_at", null)
       .order("tanggal_mulai", { ascending: false })
       .order("jam_mulai", { ascending: false });
 
@@ -221,7 +221,7 @@ export async function getKegiatan() {
 
     const mapped = (fallbackData ?? []).map((k: any) => ({
       ...k,
-      jenis_peserta: null, // Jangan menebak jenis peserta historis
+      jenis_peserta: null,
     }));
 
     return attachCreatorInfo(mapped);
@@ -249,7 +249,8 @@ export async function addKegiatan(formData: FormData) {
   const jenisPeserta = String(formData.get("jenis_peserta") ?? "").trim();
 
   const kelompok = getStringArray(formData, "kelompok");
-  const kelas = jenisPeserta === "jamaah" ? [] : getStringArray(formData, "kelas");
+  const kelas =
+    jenisPeserta === "jamaah" ? [] : getStringArray(formData, "kelas");
   const jenisKelamin = String(formData.get("jenis_kelamin") ?? "").trim();
 
   if (!jenisPeserta || !["jamaah", "mudamudi"].includes(jenisPeserta)) {
@@ -275,7 +276,8 @@ export async function addKegiatan(formData: FormData) {
   const kelompokTersimpan =
     kelompok.length > 0 ? [...kelompok].sort() : null;
 
-  const kelasTersimpan = jenisPeserta === "jamaah" ? null : normalizeKelasTarget(kelas);
+  const kelasTersimpan =
+    jenisPeserta === "jamaah" ? null : normalizeKelasTarget(kelas);
 
   const { data: candidates, error: candidatesError } = await supabase
     .from("kegiatan")
@@ -283,7 +285,8 @@ export async function addKegiatan(formData: FormData) {
       "id, nama, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, lokasi, kelompok, kelas, jenis_kelamin",
     )
     .eq("tanggal_mulai", tanggalMulai)
-    .eq("tanggal_selesai", tanggalSelesai);
+    .eq("tanggal_selesai", tanggalSelesai)
+    .is("deleted_at", null);
 
   if (candidatesError) {
     return { error: candidatesError.message };
@@ -317,14 +320,15 @@ export async function addKegiatan(formData: FormData) {
     created_by: user.id,
   };
 
-  // Coba insert dengan jenis_peserta terlebih dahulu
   let insertResult = await supabase.from("kegiatan").insert({
     ...insertPayload,
     jenis_peserta: jenisPeserta,
   });
 
-  if (insertResult.error && insertResult.error.message?.includes("jenis_peserta")) {
-    // Fallback jika migrasi kolom jenis_peserta belum dijalankan
+  if (
+    insertResult.error &&
+    insertResult.error.message?.includes("jenis_peserta")
+  ) {
     insertResult = await supabase.from("kegiatan").insert(insertPayload);
   }
 
@@ -356,7 +360,8 @@ export async function updateKegiatan(id: number, formData: FormData) {
   const jenisPeserta = String(formData.get("jenis_peserta") ?? "").trim();
 
   const kelompok = getStringArray(formData, "kelompok");
-  const kelas = jenisPeserta === "jamaah" ? [] : getStringArray(formData, "kelas");
+  const kelas =
+    jenisPeserta === "jamaah" ? [] : getStringArray(formData, "kelas");
   const jenisKelamin = String(formData.get("jenis_kelamin") ?? "").trim();
 
   if (!jenisPeserta || !["jamaah", "mudamudi"].includes(jenisPeserta)) {
@@ -379,12 +384,14 @@ export async function updateKegiatan(id: number, formData: FormData) {
     return { error: validationError };
   }
 
-  const kelasTersimpan = jenisPeserta === "jamaah" ? null : normalizeKelasTarget(kelas);
+  const kelasTersimpan =
+    jenisPeserta === "jamaah" ? null : normalizeKelasTarget(kelas);
 
   const { data: existing, error: existingError } = await supabase
     .from("kegiatan")
     .select("id, created_by")
     .eq("id", id)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (existingError) {
@@ -392,7 +399,7 @@ export async function updateKegiatan(id: number, formData: FormData) {
   }
 
   if (!existing) {
-    return { error: "Kegiatan tidak ditemukan" };
+    return { error: "Kegiatan tidak ditemukan atau sudah dihapus" };
   }
 
   if (existing.created_by && existing.created_by !== user.id) {
@@ -411,7 +418,8 @@ export async function updateKegiatan(id: number, formData: FormData) {
     )
     .eq("tanggal_mulai", tanggalMulai)
     .eq("tanggal_selesai", tanggalSelesai)
-    .neq("id", id);
+    .neq("id", id)
+    .is("deleted_at", null);
 
   if (candidatesError) {
     return { error: candidatesError.message };
@@ -451,13 +459,18 @@ export async function updateKegiatan(id: number, formData: FormData) {
       jenis_peserta: jenisPeserta,
     })
     .eq("id", id)
+    .is("deleted_at", null)
     .select("id");
 
-  if (updateResult.error && updateResult.error.message?.includes("jenis_peserta")) {
+  if (
+    updateResult.error &&
+    updateResult.error.message?.includes("jenis_peserta")
+  ) {
     updateResult = await supabase
       .from("kegiatan")
       .update(updatePayload)
       .eq("id", id)
+      .is("deleted_at", null)
       .select("id");
   }
 
@@ -490,6 +503,7 @@ export async function deleteKegiatan(id: number) {
     .from("kegiatan")
     .select("id, created_by")
     .eq("id", id)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (existingError) {
@@ -497,7 +511,7 @@ export async function deleteKegiatan(id: number) {
   }
 
   if (!existing) {
-    return { error: "Kegiatan tidak ditemukan" };
+    return { error: "Kegiatan tidak ditemukan atau sudah dihapus" };
   }
 
   if (existing.created_by && existing.created_by !== user.id) {
@@ -508,8 +522,12 @@ export async function deleteKegiatan(id: number) {
 
   const { data: deleted, error } = await supabase
     .from("kegiatan")
-    .delete()
+    .update({
+      deleted_at: new Date().toISOString(),
+      deleted_by: user.id,
+    })
     .eq("id", id)
+    .is("deleted_at", null)
     .select("id");
 
   if (error) {

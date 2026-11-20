@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -10,12 +11,18 @@ type Props = {
   onClose: () => void;
 };
 
-export default function JamaahDeleteModal({ data, onConfirm, onClose }: Props) {
+export default function JamaahDeleteModal({
+  data,
+  onConfirm,
+  onClose,
+}: Props) {
   const [loading, setLoading] = useState(false);
 
   async function handleConfirm() {
     if (loading) return;
+
     setLoading(true);
+
     try {
       await onConfirm();
     } finally {
@@ -26,7 +33,6 @@ export default function JamaahDeleteModal({ data, onConfirm, onClose }: Props) {
   return (
     <ModalWrapper onClose={onClose} size="sm">
       <div className="p-4 sm:p-5 flex flex-col items-center text-center">
-        {/* Warning icon */}
         <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-red-500 ring-4 ring-red-50/60">
           <svg
             className="h-6 w-6"
@@ -44,17 +50,21 @@ export default function JamaahDeleteModal({ data, onConfirm, onClose }: Props) {
           </svg>
         </div>
 
-        {/* Title */}
-        <h3 className="text-sm font-bold text-[#202824]">Hapus Data Jamaah</h3>
+        <h3 className="text-sm font-bold text-[#202824]">
+          Hapus Data Jamaah
+        </h3>
 
-        {/* Body */}
         <p className="mt-1.5 max-w-xs text-xs leading-relaxed text-[#78827C]">
           Apakah Anda yakin ingin menghapus data{" "}
           <strong className="text-[#202824]">{data.nama}</strong> dari kelompok{" "}
-          <strong className="text-[#202824]">{data.kelompok}</strong>? Tindakan ini tidak dapat dibatalkan.
+          <strong className="text-[#202824]">{data.kelompok}</strong>?
         </p>
 
-        {/* Action buttons */}
+        <p className="mt-2 max-w-xs text-xs leading-relaxed text-[#78827C]">
+          Data Jamaah akan dihapus dari daftar aktif. Riwayat presensi dan
+          snapshot kegiatan tetap tersimpan.
+        </p>
+
         <div className="mt-4 flex w-full justify-center gap-2">
           <Button
             type="button"

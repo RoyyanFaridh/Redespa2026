@@ -1,3 +1,4 @@
+
 import type { ScanQRResult } from "../../backend/presensi/public";
 
 export type ScannerStatus = "idle" | "ready" | "processing" | "success" | "error";
@@ -71,7 +72,8 @@ export function mapResultToNotification(
         type: "already_present",
         title: "Sudah Presensi",
         namaPeserta,
-        message: "Peserta sudah tercatat melakukan presensi sebelumnya. Jangan membuat catatan presensi baru.",
+        message:
+          "Peserta sudah tercatat melakukan presensi sebelumnya. Jangan membuat catatan presensi baru.",
         tone: "amber",
         technicalDetail: result.message,
       };
@@ -96,7 +98,19 @@ export function mapResultToNotification(
         type: "invalid_qr",
         title: "QR Code Tidak Valid",
         namaPeserta,
-        message: "QR Code tidak dikenali atau tidak sesuai dengan data peserta.",
+        message:
+          "QR Code tidak dikenali atau tidak sesuai dengan data peserta.",
+        tone: "rose",
+        technicalDetail: result.message,
+      };
+
+    case "invalid_kegiatan_type":
+      return {
+        id,
+        type: "error",
+        title: "Jenis Peserta Belum Ditentukan",
+        message:
+          "Jenis peserta kegiatan belum ditentukan. Silakan perbarui data kegiatan sebelum melakukan presensi.",
         tone: "rose",
         technicalDetail: result.message,
       };
@@ -111,7 +125,8 @@ export function mapResultToNotification(
         type: "error",
         title: "Gagal Memproses Presensi",
         namaPeserta,
-        message: "Terjadi kesalahan saat memproses hasil pemindaian. Silakan coba kembali.",
+        message:
+          "Terjadi kesalahan saat memproses hasil pemindaian. Silakan coba kembali.",
         tone: "rose",
         technicalDetail: result.message,
       };
